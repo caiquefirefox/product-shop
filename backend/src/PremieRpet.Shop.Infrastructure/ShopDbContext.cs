@@ -11,7 +11,7 @@ public sealed class ShopDbContext : DbContext
     public DbSet<PedidoItem> PedidoItens => Set<PedidoItem>();
     public DbSet<ProdutoEspecieOpcao> ProdutoEspecieOpcoes => Set<ProdutoEspecieOpcao>();
     public DbSet<ProdutoPorteOpcao> ProdutoPorteOpcoes => Set<ProdutoPorteOpcao>();
-    public DbSet<ProdutoTipoOpcao> ProdutoTipoProdutoOpcoes => Set<ProdutoTipoOpcao>();
+    public DbSet<ProdutoTipoOpcao> ProdutoTipoOpcoes => Set<ProdutoTipoOpcao>();
     public DbSet<ProdutoPorte> ProdutoPortes => Set<ProdutoPorte>();
 
     public ShopDbContext(DbContextOptions<ShopDbContext> options) : base(options) { }

@@ -42,7 +42,7 @@ public sealed class ProdutoRepository : IProdutoRepository
             .ToListAsync(ct);
 
     public async Task<IReadOnlyList<ProdutoTipoOpcao>> ListarTiposProdutoAsync(CancellationToken ct)
-        => await _db.ProdutoTipoProdutoOpcoes
+        => await _db.ProdutoTipoOpcoes
             .OrderBy(o => o.Nome)
             .ToListAsync(ct);
 
@@ -50,7 +50,7 @@ public sealed class ProdutoRepository : IProdutoRepository
         => await _db.ProdutoEspecieOpcoes.FirstOrDefaultAsync(o => o.Id == id, ct);
 
     public async Task<ProdutoTipoOpcao?> ObterTipoProdutoAsync(Guid id, CancellationToken ct)
-        => await _db.ProdutoTipoProdutoOpcoes.FirstOrDefaultAsync(o => o.Id == id, ct);
+        => await _db.ProdutoTipoOpcoes.FirstOrDefaultAsync(o => o.Id == id, ct);
 
     public async Task<IReadOnlyList<ProdutoPorteOpcao>> ObterPortesAsync(IEnumerable<Guid> ids, CancellationToken ct)
     {
