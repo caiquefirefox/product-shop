@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PremieRpet.Shop.Application.DTOs;
@@ -13,6 +14,21 @@ public class ProdutosController(IProdutoService svc) : ControllerBase
     [Authorize]
     public async Task<ActionResult<IReadOnlyList<ProdutoDto>>> List([FromQuery] string? q, CancellationToken ct)
         => Ok(await svc.ListAsync(q, ct));
+
+    [HttpGet("especies")]
+    [Authorize]
+    public async Task<ActionResult<IReadOnlyList<ProdutoOpcaoDto>>> ListarEspecies(CancellationToken ct)
+        => Ok(await svc.ListarEspeciesAsync(ct));
+
+    [HttpGet("portes")]
+    [Authorize]
+    public async Task<ActionResult<IReadOnlyList<ProdutoOpcaoDto>>> ListarPortes(CancellationToken ct)
+        => Ok(await svc.ListarPortesAsync(ct));
+
+    [HttpGet("tipos-produto")]
+    [Authorize]
+    public async Task<ActionResult<IReadOnlyList<ProdutoOpcaoDto>>> ListarTiposProduto(CancellationToken ct)
+        => Ok(await svc.ListarTiposProdutoAsync(ct));
 
     [HttpGet("{codigo}")]
     [Authorize("Admin")]

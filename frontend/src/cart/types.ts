@@ -4,6 +4,12 @@ export type Produto = {
   peso: number;
   tipoPeso: number; // 0=grama, 1=quilo
   sabores: string;
+  especieOpcaoId: string;
+  especieNome: string;
+  porteOpcaoIds: string[];
+  porteNomes: string[];
+  tipoProdutoOpcaoId: string;
+  tipoProdutoNome: string;
   preco: number;
   quantidadeMinimaDeCompra: number; // UNIDADES
 };

@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using PremieRpet.Shop.Application.Interfaces.Repositories;
 using PremieRpet.Shop.Domain.Entities;
@@ -25,9 +28,48 @@ public sealed class ProdutoRepository : IProdutoRepository
         => await _db.Produtos.AnyAsync(p => p.Codigo == codigo, ct);
 
     public async Task<Produto?> GetAsync(string codigo, CancellationToken ct)
-        => await _db.Produtos.FirstOrDefaultAsync(p => p.Codigo == codigo, ct);
+        => await Query()
+            .FirstOrDefaultAsync(p => p.Codigo == codigo, ct);
 
-    public IQueryable<Produto> Query() => _db.Produtos.AsQueryable();
+    public async Task<IReadOnlyList<ProdutoEspecieOpcao>> ListarEspeciesAsync(CancellationToken ct)
+        => await _db.ProdutoEspecieOpcoes
+            .OrderBy(o => o.Nome)
+            .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<ProdutoPorteOpcao>> ListarPortesAsync(CancellationToken ct)
+        => await _db.ProdutoPorteOpcoes
+            .OrderBy(o => o.Nome)
+            .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<ProdutoTipoOpcao>> ListarTiposProdutoAsync(CancellationToken ct)
+        => await _db.ProdutoTipoOpcoes
+            .OrderBy(o => o.Nome)
+            .ToListAsync(ct);
+
+    public async Task<ProdutoEspecieOpcao?> ObterEspecieAsync(Guid id, CancellationToken ct)
+        => await _db.ProdutoEspecieOpcoes.FirstOrDefaultAsync(o => o.Id == id, ct);
+
+    public async Task<ProdutoTipoOpcao?> ObterTipoProdutoAsync(Guid id, CancellationToken ct)
+        => await _db.ProdutoTipoOpcoes.FirstOrDefaultAsync(o => o.Id == id, ct);
+
+    public async Task<IReadOnlyList<ProdutoPorteOpcao>> ObterPortesAsync(IEnumerable<Guid> ids, CancellationToken ct)
+    {
+        var portesIds = ids.Distinct().ToList();
+        if (portesIds.Count == 0)
+            return Array.Empty<ProdutoPorteOpcao>();
+
+        return await _db.ProdutoPorteOpcoes
+            .Where(o => portesIds.Contains(o.Id))
+            .ToListAsync(ct);
+    }
+
+    public IQueryable<Produto> Query()
+        => _db.Produtos
+            .Include(p => p.EspecieOpcao)
+            .Include(p => p.TipoProdutoOpcao)
+            .Include(p => p.Portes)
+                .ThenInclude(pp => pp.PorteOpcao)
+            .AsQueryable();
 
     public async Task UpdateAsync(Produto produto, CancellationToken ct)
     {
