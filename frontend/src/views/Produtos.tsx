@@ -15,19 +15,62 @@ export default function Produtos() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [codigo, setCodigo] = useState("");
   const [descricao, setDescricao] = useState("");
-  const [peso, setPeso] = useState(1);
+  const [peso, setPeso] = useState("1");
   const [tipoPeso, setTipoPeso] = useState(1);
   const [sabores, setSabores] = useState("");
-  const [preco, setPreco] = useState(0);
-  const [quantidadeMinimaDeCompra, setQuantidadeMinimaDeCompra] = useState(1);
+  const [preco, setPreco] = useState("0");
+  const [quantidadeMinimaDeCompra, setQuantidadeMinimaDeCompra] = useState("1");
+
+  const parseDecimalInput = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return 0;
+    if (trimmed.includes(",")) {
+      const normalized = trimmed.replace(/\./g, "").replace(/,/g, ".");
+      const parsed = Number.parseFloat(normalized);
+      return Number.isNaN(parsed) ? 0 : parsed;
+    }
+    const parsed = Number.parseFloat(trimmed);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  };
+
+  const parseIntegerInput = (value: string) => {
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isNaN(parsed)) return 0;
+    return parsed;
+  };
+
+  const sanitizeDecimalInput = (value: string) => {
+    const cleaned = value.replace(/[^0-9.,]/g, "");
+    const lastComma = cleaned.lastIndexOf(",");
+    const lastDot = cleaned.lastIndexOf(".");
+    const separatorIndex = Math.max(lastComma, lastDot);
+    if (separatorIndex === -1) return cleaned;
+    const separator = cleaned.charAt(separatorIndex);
+    const before = cleaned.slice(0, separatorIndex).replace(/[.,]/g, "");
+    const after = cleaned.slice(separatorIndex + 1).replace(/[.,]/g, "");
+    return `${before}${separator}${after}`;
+  };
 
   const load = async () => setProdutos((await api.get("/produtos")).data);
   useEffect(() => { load(); }, []);
 
   const salvar = async () => {
-    const dto = { descricao, peso, tipoPeso, sabores, preco, quantidadeMinimaDeCompra };
+    const dto = {
+      descricao,
+      peso: parseDecimalInput(peso),
+      tipoPeso,
+      sabores,
+      preco: parseDecimalInput(preco),
+      quantidadeMinimaDeCompra: Math.max(1, parseIntegerInput(quantidadeMinimaDeCompra)),
+    };
     await api.post(`/produtos/${codigo}`, dto);
-    setCodigo(""); setDescricao(""); setPeso(1); setTipoPeso(1); setSabores(""); setPreco(0); setQuantidadeMinimaDeCompra(1);
+    setCodigo("");
+    setDescricao("");
+    setPeso("1");
+    setTipoPeso(1);
+    setSabores("");
+    setPreco("0");
+    setQuantidadeMinimaDeCompra("1");
     await load();
   };
 
@@ -66,10 +109,10 @@ export default function Produtos() {
             <label htmlFor="peso" className="text-sm text-gray-700">Peso</label>
             <input
               id="peso"
-              type="number"
-              step="0.0001"
+              type="text"
+              inputMode="decimal"
               value={peso}
-              onChange={e=>setPeso(parseFloat(e.target.value || "0"))}
+              onChange={e=>setPeso(sanitizeDecimalInput(e.target.value))}
               className="border rounded p-2"
             />
           </div>
@@ -91,10 +134,10 @@ export default function Produtos() {
             <label htmlFor="qtdMin" className="text-sm text-gray-700">Qtd mínima (unidades)</label>
             <input
               id="qtdMin"
-              type="number"
-              min={1}
+              type="text"
+              inputMode="numeric"
               value={quantidadeMinimaDeCompra}
-              onChange={e => setQuantidadeMinimaDeCompra(parseInt(e.target.value || "1"))}
+              onChange={e => setQuantidadeMinimaDeCompra(e.target.value.replace(/[^0-9]/g, ""))}
               className="border rounded p-2"
             />
           </div>
@@ -113,10 +156,10 @@ export default function Produtos() {
             <label htmlFor="preco" className="text-sm text-gray-700">Preço (R$)</label>
             <input
               id="preco"
-              type="number"
-              step="0.01"
+              type="text"
+              inputMode="decimal"
               value={preco}
-              onChange={e=>setPreco(parseFloat(e.target.value || "0"))}
+              onChange={e=>setPreco(sanitizeDecimalInput(e.target.value))}
               className="border rounded p-2"
             />
           </div>
