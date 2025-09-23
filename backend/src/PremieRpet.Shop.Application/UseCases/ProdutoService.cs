@@ -43,7 +43,11 @@ public sealed class ProdutoService : IProdutoService
     }
 
     private static IReadOnlyList<Guid> NormalizarPortes(IReadOnlyList<Guid> ids)
-        => ids?.Where(id => id != Guid.Empty).Distinct().ToList() ?? Array.Empty<Guid>();
+    {
+        if (ids == null)
+            return Array.Empty<Guid>();
+        return ids.Where(id => id != Guid.Empty).Distinct().ToList();
+    }
 
     public async Task CreateAsync(string codigo, ProdutoCreateUpdateDto dto, CancellationToken ct)
     {

@@ -11,7 +11,7 @@ public sealed class ShopDbContext : DbContext
     public DbSet<PedidoItem> PedidoItens => Set<PedidoItem>();
     public DbSet<ProdutoEspecieOpcao> ProdutoEspecieOpcoes => Set<ProdutoEspecieOpcao>();
     public DbSet<ProdutoPorteOpcao> ProdutoPorteOpcoes => Set<ProdutoPorteOpcao>();
-    public DbSet<ProdutoTipoProdutoOpcao> ProdutoTipoProdutoOpcoes => Set<ProdutoTipoProdutoOpcao>();
+    public DbSet<ProdutoTipoOpcao> ProdutoTipoProdutoOpcoes => Set<ProdutoTipoOpcao>();
     public DbSet<ProdutoPorte> ProdutoPortes => Set<ProdutoPorte>();
 
     public ShopDbContext(DbContextOptions<ShopDbContext> options) : base(options) { }
@@ -80,16 +80,16 @@ public sealed class ShopDbContext : DbContext
             );
         });
 
-        b.Entity<ProdutoTipoProdutoOpcao>(e =>
+        b.Entity<ProdutoTipoOpcao>(e =>
         {
             e.HasKey(x => x.Id);
             e.Property(x => x.Nome).HasMaxLength(128).IsRequired();
             e.HasIndex(x => x.Nome).IsUnique();
 
             e.HasData(
-                new ProdutoTipoProdutoOpcao { Id = Guid.Parse("5006ea85-e9b1-4185-ba5d-08cecbcaf998"), Nome = "Alimento Seco" },
-                new ProdutoTipoProdutoOpcao { Id = Guid.Parse("1e2e7740-36e1-4961-96a5-308c6e48b457"), Nome = "Cookie" },
-                new ProdutoTipoProdutoOpcao { Id = Guid.Parse("601026f0-606b-4f67-bad7-eaefa16c62c6"), Nome = "Alimento Úmido" }
+                new ProdutoTipoOpcao { Id = Guid.Parse("5006ea85-e9b1-4185-ba5d-08cecbcaf998"), Nome = "Alimento Seco" },
+                new ProdutoTipoOpcao { Id = Guid.Parse("1e2e7740-36e1-4961-96a5-308c6e48b457"), Nome = "Cookie" },
+                new ProdutoTipoOpcao { Id = Guid.Parse("601026f0-606b-4f67-bad7-eaefa16c62c6"), Nome = "Alimento Úmido" }
             );
         });
 

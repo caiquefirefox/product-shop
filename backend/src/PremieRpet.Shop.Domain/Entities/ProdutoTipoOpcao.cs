@@ -1,9 +1,6 @@
-using System;
-using System.Collections.Generic;
-
 namespace PremieRpet.Shop.Domain.Entities;
 
-public sealed class ProdutoTipoProdutoOpcao
+public sealed class ProdutoTipoOpcao
 {
     public Guid Id { get; set; }
     public required string Nome { get; set; }

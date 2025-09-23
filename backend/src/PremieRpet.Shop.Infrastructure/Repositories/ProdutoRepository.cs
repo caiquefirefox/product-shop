@@ -41,7 +41,7 @@ public sealed class ProdutoRepository : IProdutoRepository
             .OrderBy(o => o.Nome)
             .ToListAsync(ct);
 
-    public async Task<IReadOnlyList<ProdutoTipoProdutoOpcao>> ListarTiposProdutoAsync(CancellationToken ct)
+    public async Task<IReadOnlyList<ProdutoTipoOpcao>> ListarTiposProdutoAsync(CancellationToken ct)
         => await _db.ProdutoTipoProdutoOpcoes
             .OrderBy(o => o.Nome)
             .ToListAsync(ct);
@@ -49,7 +49,7 @@ public sealed class ProdutoRepository : IProdutoRepository
     public async Task<ProdutoEspecieOpcao?> ObterEspecieAsync(Guid id, CancellationToken ct)
         => await _db.ProdutoEspecieOpcoes.FirstOrDefaultAsync(o => o.Id == id, ct);
 
-    public async Task<ProdutoTipoProdutoOpcao?> ObterTipoProdutoAsync(Guid id, CancellationToken ct)
+    public async Task<ProdutoTipoOpcao?> ObterTipoProdutoAsync(Guid id, CancellationToken ct)
         => await _db.ProdutoTipoProdutoOpcoes.FirstOrDefaultAsync(o => o.Id == id, ct);
 
     public async Task<IReadOnlyList<ProdutoPorteOpcao>> ObterPortesAsync(IEnumerable<Guid> ids, CancellationToken ct)
