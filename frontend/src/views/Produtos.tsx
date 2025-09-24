@@ -29,6 +29,10 @@ type PorteSelectOption = {
 };
 
 const porteSelectStyles: StylesConfig<PorteSelectOption, true> = {
+  menuPortal: base => ({
+    ...base,
+    zIndex: 9999,
+  }),
   control: (base, state) => ({
     ...base,
     borderRadius: 12,
@@ -76,6 +80,8 @@ const porteSelectStyles: StylesConfig<PorteSelectOption, true> = {
     ...base,
     borderRadius: 12,
     padding: 0,
+    maxHeight: "unset",
+    overflowY: "visible",
   }),
   option: (base, state) => ({
     ...base,
@@ -376,6 +382,8 @@ export default function Produtos() {
               isMulti
               isDisabled={opcoesCarregando || !porteSelectOptions.length}
               isLoading={opcoesCarregando}
+              menuPortalTarget={document.body}
+              menuPosition="fixed"
               value={selectedPorteOptions}
               onChange={handlePorteChange}
               options={porteSelectOptions}
