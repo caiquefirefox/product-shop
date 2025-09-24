@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import type { ReactNode } from "react";
 import Select, { MultiValue, StylesConfig } from "react-select";
 import api from "../lib/api";
 
@@ -115,18 +114,6 @@ const porteSelectStyles: StylesConfig<PorteSelectOption, true> = {
   }),
 };
 
-type DetailCardProps = {
-  label: string;
-  children: ReactNode;
-};
-
-const DetailCard = ({ label, children }: DetailCardProps) => (
-  <div className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-    <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</span>
-    <div className="text-sm text-slate-700">{children}</div>
-  </div>
-);
-
 const classNames = (...classes: string[]) => classes.join(" ");
 
 const baseInputClasses = classNames(
@@ -141,40 +128,53 @@ const saveButtonClasses = classNames(
 );
 
 const productCardClasses = classNames(
-  "flex flex-col gap-5 rounded-2xl border border-gray-200 bg-white/75 p-5 shadow-sm transition",
-  "hover:border-indigo-200 hover:shadow-md",
+  "flex flex-col gap-4 rounded-xl border border-gray-200 bg-white/80 p-4 shadow-sm transition",
+  "hover:border-indigo-200 hover:shadow",
 );
 
 const codeBadgeClasses = classNames(
-  "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold text-indigo-600",
-  "bg-indigo-50",
+  "inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-600",
 );
 
 const infoBadgeClasses = classNames(
-  "inline-flex items-center rounded-full px-3 py-1 text-xs font-medium text-slate-600",
-  "bg-slate-100",
+  "inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600",
 );
 
 const deleteButtonClasses = classNames(
   "inline-flex items-center justify-center rounded-lg border border-transparent",
-  "bg-red-50 px-3 py-2 text-sm font-semibold",
-  "text-red-600",
-  "transition hover:bg-red-100 focus:outline-none focus:ring-4 focus:ring-red-100",
-);
-
-const porteChipClasses = classNames(
-  "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold text-indigo-600",
-  "bg-white ring-1 ring-indigo-100",
-);
-
-const saborChipClasses = classNames(
-  "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold text-amber-700",
-  "bg-amber-50 ring-1 ring-amber-100",
+  "bg-red-50 px-3 py-1.5 text-xs font-semibold",
+  "text-red-600 transition hover:bg-red-100 focus:outline-none focus:ring-4 focus:ring-red-100",
 );
 
 const emptyStateClasses = classNames(
   "rounded-2xl border border-dashed border-gray-200 bg-white/60 p-8 text-center",
   "text-sm text-gray-500",
+);
+
+const headerMetaClasses = classNames(
+  "mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500",
+);
+
+const detailsGridClasses = classNames(
+  "grid gap-x-4 gap-y-2 text-xs text-slate-500",
+  "sm:grid-cols-2 lg:grid-cols-4",
+);
+
+const detailLabelClasses = "font-semibold uppercase tracking-wide text-slate-400";
+const detailValueClasses = "text-sm font-medium text-slate-700";
+const detailEmptyClasses = "text-sm font-medium text-slate-400";
+
+type DetailItemProps = {
+  label: string;
+  value: string;
+  muted?: boolean;
+};
+
+const DetailItem = ({ label, value, muted = false }: DetailItemProps) => (
+  <div className="flex flex-col gap-1">
+    <dt className={detailLabelClasses}>{label}</dt>
+    <dd className={muted ? detailEmptyClasses : detailValueClasses}>{value}</dd>
+  </div>
 );
 
 export default function Produtos() {
@@ -556,84 +556,57 @@ export default function Produtos() {
                 .split(",")
                 .map(sabor => sabor.trim())
                 .filter(Boolean);
+              const formattedPortes = portesList.join(", ");
+              const formattedSabores = saboresList.join(", ");
 
               return (
                 <div key={p.codigo} className={productCardClasses}>
-                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                    <div className="flex-1 space-y-3">
-                      <div className="flex flex-wrap items-center gap-3">
-                        <h3 className="text-lg font-semibold text-gray-900">{p.descricao}</h3>
-                        <span className={codeBadgeClasses}>Código {p.codigo}</span>
-                        <span className={infoBadgeClasses}>{pesoComUnidade}</span>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="truncate text-base font-semibold text-gray-900">{p.descricao}</h3>
+                        <span className={codeBadgeClasses}>Cód. {p.codigo}</span>
                       </div>
-                      <p className="text-sm text-gray-500">
-                        Visualize rapidamente todas as características cadastradas para este produto.
-                      </p>
+                      <div className={headerMetaClasses}>
+                        <span className="font-medium text-gray-600">{pesoComUnidade}</span>
+                        <span className="hidden sm:inline text-slate-300">•</span>
+                        <span>
+                          Unidade:
+                          <span className="ml-1 font-medium text-gray-600">{tipoPesoLabel}</span>
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex flex-col items-start gap-3 md:items-end">
-                      <div className="rounded-2xl bg-indigo-50 px-5 py-3 text-indigo-700 shadow-inner">
-                        <span className="block text-xs font-semibold uppercase tracking-wide text-indigo-500">
+                    <div className="flex flex-wrap items-center gap-3 text-sm">
+                      <div className="text-right">
+                        <span className="block text-[11px] uppercase tracking-wide text-indigo-400">
                           Preço unitário
                         </span>
-                        <span className="text-lg font-semibold">{currencyFormatter.format(p.preco)}</span>
+                        <span className="text-base font-semibold text-indigo-600">
+                          {currencyFormatter.format(p.preco)}
+                        </span>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className={infoBadgeClasses}>Mínimo {minimo} un.</span>
-                        <button onClick={() => remover(p.codigo)} className={deleteButtonClasses}>
-                          Excluir
-                        </button>
-                      </div>
+                      <span className={infoBadgeClasses}>Mínimo {minimo} un.</span>
+                      <button onClick={() => remover(p.codigo)} className={deleteButtonClasses}>
+                        Excluir
+                      </button>
                     </div>
                   </div>
 
-                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                    <DetailCard label="Peso">
-                      <span className="font-semibold text-slate-700">{pesoComUnidade}</span>
-                    </DetailCard>
-                    <DetailCard label="Unidade de medida">
-                      <span className="font-semibold text-slate-700">{tipoPesoLabel}</span>
-                    </DetailCard>
-                    <DetailCard label="Espécie">
-                      <span className="font-semibold text-slate-700">{p.especieNome}</span>
-                    </DetailCard>
-                    <DetailCard label="Faixa etária">
-                      <span className="font-semibold text-slate-700">{p.faixaEtariaNome}</span>
-                    </DetailCard>
-                    <DetailCard label="Tipo de produto">
-                      <span className="font-semibold text-slate-700">{p.tipoProdutoNome}</span>
-                    </DetailCard>
-                    <DetailCard label="Portes atendidos">
-                      {portesList.length ? (
-                        <div className="flex flex-wrap gap-2">
-                          {portesList.map((porte, index) => (
-                            <span key={`${p.codigo}-porte-${index}`} className={porteChipClasses}>
-                              {porte}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-sm font-normal text-slate-500">Sem porte definido</span>
-                      )}
-                    </DetailCard>
-                    <DetailCard label="Sabores">
-                      {saboresList.length ? (
-                        <div className="flex flex-wrap gap-2">
-                          {saboresList.map((sabor, index) => (
-                            <span key={`${p.codigo}-sabor-${index}`} className={saborChipClasses}>
-                              {sabor}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-sm font-normal text-slate-500">Nenhum sabor informado</span>
-                      )}
-                    </DetailCard>
-                    <DetailCard label="Quantidade mínima por pedido">
-                      <span className="font-semibold text-slate-700">
-                        {`${minimo} unidade${minimo > 1 ? "s" : ""}`}
-                      </span>
-                    </DetailCard>
-                  </div>
+                  <dl className={detailsGridClasses}>
+                    <DetailItem label="Espécie" value={p.especieNome} />
+                    <DetailItem label="Faixa etária" value={p.faixaEtariaNome} />
+                    <DetailItem label="Tipo de produto" value={p.tipoProdutoNome} />
+                    <DetailItem
+                      label="Portes atendidos"
+                      value={formattedPortes || "Sem porte definido"}
+                      muted={!portesList.length}
+                    />
+                    <DetailItem
+                      label="Sabores"
+                      value={formattedSabores || "Nenhum sabor informado"}
+                      muted={!saboresList.length}
+                    />
+                  </dl>
                 </div>
               );
             })
