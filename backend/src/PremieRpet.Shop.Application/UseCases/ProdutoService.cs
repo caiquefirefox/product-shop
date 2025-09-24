@@ -38,6 +38,8 @@ public sealed class ProdutoService : IProdutoService
             porteNomes,
             p.TipoProdutoOpcaoId,
             p.TipoProdutoOpcao?.Nome ?? string.Empty,
+            p.FaixaEtariaOpcaoId,
+            p.FaixaEtariaOpcao?.Nome ?? string.Empty,
             p.Preco,
             p.QuantidadeMinimaDeCompra);
     }
@@ -58,6 +60,8 @@ public sealed class ProdutoService : IProdutoService
             ?? throw new InvalidOperationException("Espécie inválida.");
         var tipoProduto = await _repo.ObterTipoProdutoAsync(dto.TipoProdutoOpcaoId, ct)
             ?? throw new InvalidOperationException("Tipo de produto inválido.");
+        var faixaEtaria = await _repo.ObterFaixaEtariaAsync(dto.FaixaEtariaOpcaoId, ct)
+            ?? throw new InvalidOperationException("Faixa etária inválida.");
 
         var porteIds = NormalizarPortes(dto.PorteOpcaoIds);
         var portes = await _repo.ObterPortesAsync(porteIds, ct);
@@ -73,6 +77,7 @@ public sealed class ProdutoService : IProdutoService
             Sabores = dto.Sabores,
             EspecieOpcaoId = especie.Id,
             TipoProdutoOpcaoId = tipoProduto.Id,
+            FaixaEtariaOpcaoId = faixaEtaria.Id,
             Preco = dto.Preco,
             QuantidadeMinimaDeCompra = Math.Max(1, dto.QuantidadeMinimaDeCompra),
             Portes = portes.Select(p => new ProdutoPorte { PorteOpcaoId = p.Id }).ToList()
@@ -117,6 +122,11 @@ public sealed class ProdutoService : IProdutoService
             .Select(o => new ProdutoOpcaoDto(o.Id, o.Nome))
             .ToList();
 
+    public async Task<IReadOnlyList<ProdutoOpcaoDto>> ListarFaixasEtariasAsync(CancellationToken ct)
+        => (await _repo.ListarFaixasEtariasAsync(ct))
+            .Select(o => new ProdutoOpcaoDto(o.Id, o.Nome))
+            .ToList();
+
     public async Task UpdateAsync(string codigo, ProdutoCreateUpdateDto dto, CancellationToken ct)
     {
         var prod = await _repo.GetAsync(codigo, ct) ?? throw new InvalidOperationException("Produto não encontrado.");
@@ -124,6 +134,8 @@ public sealed class ProdutoService : IProdutoService
             ?? throw new InvalidOperationException("Espécie inválida.");
         var tipoProduto = await _repo.ObterTipoProdutoAsync(dto.TipoProdutoOpcaoId, ct)
             ?? throw new InvalidOperationException("Tipo de produto inválido.");
+        var faixaEtaria = await _repo.ObterFaixaEtariaAsync(dto.FaixaEtariaOpcaoId, ct)
+            ?? throw new InvalidOperationException("Faixa etária inválida.");
 
         var porteIds = NormalizarPortes(dto.PorteOpcaoIds);
         var portes = await _repo.ObterPortesAsync(porteIds, ct);
@@ -136,6 +148,7 @@ public sealed class ProdutoService : IProdutoService
         prod.Sabores = dto.Sabores;
         prod.EspecieOpcaoId = especie.Id;
         prod.TipoProdutoOpcaoId = tipoProduto.Id;
+        prod.FaixaEtariaOpcaoId = faixaEtaria.Id;
         prod.Preco = dto.Preco;
         prod.QuantidadeMinimaDeCompra = Math.Max(1, dto.QuantidadeMinimaDeCompra);
 

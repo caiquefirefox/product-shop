@@ -15,6 +15,8 @@ public sealed class Produto
     public ProdutoEspecieOpcao? EspecieOpcao { get; set; }
     public Guid TipoProdutoOpcaoId { get; set; }
     public ProdutoTipoOpcao? TipoProdutoOpcao { get; set; }
+    public Guid FaixaEtariaOpcaoId { get; set; }
+    public ProdutoFaixaEtariaOpcao? FaixaEtariaOpcao { get; set; }
     public ICollection<ProdutoPorte> Portes { get; set; } = new List<ProdutoPorte>();
     public required decimal Preco { get; set; }
     public int QuantidadeMinimaDeCompra { get; set; } = 1;

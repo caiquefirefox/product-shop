@@ -15,5 +15,7 @@ public record ProdutoDto(
     IReadOnlyList<string> PorteNomes,
     Guid TipoProdutoOpcaoId,
     string TipoProdutoNome,
+    Guid FaixaEtariaOpcaoId,
+    string FaixaEtariaNome,
     decimal Preco,
     int QuantidadeMinimaDeCompra);

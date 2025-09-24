@@ -46,11 +46,19 @@ public sealed class ProdutoRepository : IProdutoRepository
             .OrderBy(o => o.Nome)
             .ToListAsync(ct);
 
+    public async Task<IReadOnlyList<ProdutoFaixaEtariaOpcao>> ListarFaixasEtariasAsync(CancellationToken ct)
+        => await _db.ProdutoFaixaEtariaOpcoes
+            .OrderBy(o => o.Nome)
+            .ToListAsync(ct);
+
     public async Task<ProdutoEspecieOpcao?> ObterEspecieAsync(Guid id, CancellationToken ct)
         => await _db.ProdutoEspecieOpcoes.FirstOrDefaultAsync(o => o.Id == id, ct);
 
     public async Task<ProdutoTipoOpcao?> ObterTipoProdutoAsync(Guid id, CancellationToken ct)
         => await _db.ProdutoTipoOpcoes.FirstOrDefaultAsync(o => o.Id == id, ct);
+
+    public async Task<ProdutoFaixaEtariaOpcao?> ObterFaixaEtariaAsync(Guid id, CancellationToken ct)
+        => await _db.ProdutoFaixaEtariaOpcoes.FirstOrDefaultAsync(o => o.Id == id, ct);
 
     public async Task<IReadOnlyList<ProdutoPorteOpcao>> ObterPortesAsync(IEnumerable<Guid> ids, CancellationToken ct)
     {
@@ -67,6 +75,7 @@ public sealed class ProdutoRepository : IProdutoRepository
         => _db.Produtos
             .Include(p => p.EspecieOpcao)
             .Include(p => p.TipoProdutoOpcao)
+            .Include(p => p.FaixaEtariaOpcao)
             .Include(p => p.Portes)
                 .ThenInclude(pp => pp.PorteOpcao)
             .AsQueryable();

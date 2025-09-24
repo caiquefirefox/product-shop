@@ -13,4 +13,5 @@ public interface IProdutoService
     Task<IReadOnlyList<ProdutoOpcaoDto>> ListarEspeciesAsync(CancellationToken ct);
     Task<IReadOnlyList<ProdutoOpcaoDto>> ListarPortesAsync(CancellationToken ct);
     Task<IReadOnlyList<ProdutoOpcaoDto>> ListarTiposProdutoAsync(CancellationToken ct);
+    Task<IReadOnlyList<ProdutoOpcaoDto>> ListarFaixasEtariasAsync(CancellationToken ct);
 }

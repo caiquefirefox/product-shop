@@ -14,8 +14,10 @@ public interface IProdutoRepository
     Task<IReadOnlyList<ProdutoEspecieOpcao>> ListarEspeciesAsync(CancellationToken ct);
     Task<IReadOnlyList<ProdutoPorteOpcao>> ListarPortesAsync(CancellationToken ct);
     Task<IReadOnlyList<ProdutoTipoOpcao>> ListarTiposProdutoAsync(CancellationToken ct);
+    Task<IReadOnlyList<ProdutoFaixaEtariaOpcao>> ListarFaixasEtariasAsync(CancellationToken ct);
     Task<ProdutoEspecieOpcao?> ObterEspecieAsync(Guid id, CancellationToken ct);
     Task<ProdutoTipoOpcao?> ObterTipoProdutoAsync(Guid id, CancellationToken ct);
+    Task<ProdutoFaixaEtariaOpcao?> ObterFaixaEtariaAsync(Guid id, CancellationToken ct);
     Task<IReadOnlyList<ProdutoPorteOpcao>> ObterPortesAsync(IEnumerable<Guid> ids, CancellationToken ct);
     IQueryable<Produto> Query();
 }

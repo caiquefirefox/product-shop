@@ -11,5 +11,6 @@ public record ProdutoCreateUpdateDto(
     Guid EspecieOpcaoId,
     IReadOnlyList<Guid> PorteOpcaoIds,
     Guid TipoProdutoOpcaoId,
+    Guid FaixaEtariaOpcaoId,
     decimal Preco,
     int QuantidadeMinimaDeCompra);
