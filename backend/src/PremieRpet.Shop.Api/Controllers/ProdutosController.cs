@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using PremieRpet.Shop.Api.Contracts;
 using PremieRpet.Shop.Application.DTOs;
 using PremieRpet.Shop.Application.Interfaces.UseCases;
 
@@ -12,8 +13,8 @@ public class ProdutosController(IProdutoService svc) : ControllerBase
 {
     [HttpGet]
     [Authorize]
-    public async Task<ActionResult<IReadOnlyList<ProdutoDto>>> List([FromQuery] string? q, CancellationToken ct)
-        => Ok(await svc.ListAsync(q, ct));
+    public async Task<ActionResult<PagedResultDto<ProdutoDto>>> List([FromQuery] ProdutoFiltroQuery filtro, CancellationToken ct)
+        => Ok(await svc.ListAsync(filtro?.ToDto(), ct));
 
     [HttpGet("especies")]
     [Authorize]

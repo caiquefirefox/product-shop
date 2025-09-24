@@ -97,14 +97,76 @@ public sealed class ProdutoService : IProdutoService
         return p is null ? null : MapToDto(p);
     }
 
-    public async Task<IReadOnlyList<ProdutoDto>> ListAsync(string? filtro, CancellationToken ct)
+    public async Task<PagedResultDto<ProdutoDto>> ListAsync(ProdutoFiltroDto? filtro, CancellationToken ct)
     {
-        var q = _repo.Query().AsNoTracking();
-        if (!string.IsNullOrWhiteSpace(filtro))
-            q = q.Where(p => p.Descricao.ToLower().Contains(filtro.ToLower()));
+        var query = _repo.Query().AsNoTracking();
 
-        var produtos = await q.OrderBy(p => p.Descricao).ToListAsync(ct);
-        return produtos.Select(MapToDto).ToList();
+        var page = 1;
+        var pageSize = ProdutoFiltroDto.DefaultPageSize;
+
+        if (filtro is not null)
+        {
+            if (!string.IsNullOrWhiteSpace(filtro.Codigo))
+            {
+                var codigo = filtro.Codigo.Trim().ToLower();
+                query = query.Where(p => p.Codigo.ToLower().Contains(codigo));
+            }
+
+            if (!string.IsNullOrWhiteSpace(filtro.Descricao))
+            {
+                var descricao = filtro.Descricao.Trim().ToLower();
+                query = query.Where(p => p.Descricao.ToLower().Contains(descricao));
+            }
+
+            if (filtro.TipoProdutoOpcaoId is Guid tipoProdutoId && tipoProdutoId != Guid.Empty)
+                query = query.Where(p => p.TipoProdutoOpcaoId == tipoProdutoId);
+
+            if (filtro.EspecieOpcaoId is Guid especieId && especieId != Guid.Empty)
+                query = query.Where(p => p.EspecieOpcaoId == especieId);
+
+            if (filtro.FaixaEtariaOpcaoId is Guid faixaEtariaId && faixaEtariaId != Guid.Empty)
+                query = query.Where(p => p.FaixaEtariaOpcaoId == faixaEtariaId);
+
+            if (filtro.PorteOpcaoId is Guid porteId && porteId != Guid.Empty)
+                query = query.Where(p => p.Portes.Any(pp => pp.PorteOpcaoId == porteId));
+
+            if (filtro.Page > 0)
+                page = filtro.Page;
+
+            if (filtro.PageSize > 0)
+                pageSize = filtro.PageSize;
+        }
+
+        var totalItems = await query.CountAsync(ct);
+
+        if (totalItems == 0)
+        {
+            return new PagedResultDto<ProdutoDto>(
+                Array.Empty<ProdutoDto>(),
+                1,
+                pageSize,
+                0,
+                0);
+        }
+
+        var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
+        if (page > totalPages)
+            page = totalPages;
+
+        var skip = (page - 1) * pageSize;
+
+        var produtos = await query
+            .OrderBy(p => p.Descricao)
+            .Skip(skip)
+            .Take(pageSize)
+            .ToListAsync(ct);
+
+        return new PagedResultDto<ProdutoDto>(
+            produtos.Select(MapToDto).ToList(),
+            page,
+            pageSize,
+            totalItems,
+            totalPages);
     }
 
     public async Task<IReadOnlyList<ProdutoOpcaoDto>> ListarEspeciesAsync(CancellationToken ct)
