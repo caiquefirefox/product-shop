@@ -10,6 +10,8 @@ export type Produto = {
   porteNomes: string[];
   tipoProdutoOpcaoId: string;
   tipoProdutoNome: string;
+  faixaEtariaOpcaoId: string;
+  faixaEtariaNome: string;
   preco: number;
   quantidadeMinimaDeCompra: number; // UNIDADES
 };

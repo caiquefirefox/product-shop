@@ -28,6 +28,7 @@ export default function Catalogo() {
               )}
             </div>
             <p className="text-sm text-gray-500 mt-1">{p.sabores}</p>
+            <p className="text-xs text-indigo-600 mt-1 font-medium">Faixa etária: {p.faixaEtariaNome}</p>
             <p className="mt-2">R$ {p.preco.toFixed(2)}</p>
 
             <button

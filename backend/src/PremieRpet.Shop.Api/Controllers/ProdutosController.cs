@@ -30,6 +30,11 @@ public class ProdutosController(IProdutoService svc) : ControllerBase
     public async Task<ActionResult<IReadOnlyList<ProdutoOpcaoDto>>> ListarTiposProduto(CancellationToken ct)
         => Ok(await svc.ListarTiposProdutoAsync(ct));
 
+    [HttpGet("faixas-etarias")]
+    [Authorize]
+    public async Task<ActionResult<IReadOnlyList<ProdutoOpcaoDto>>> ListarFaixasEtarias(CancellationToken ct)
+        => Ok(await svc.ListarFaixasEtariasAsync(ct));
+
     [HttpGet("{codigo}")]
     [Authorize("Admin")]
     public async Task<ActionResult<ProdutoDto?>> Get(string codigo, CancellationToken ct)

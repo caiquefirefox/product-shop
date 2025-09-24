@@ -14,6 +14,8 @@ type Produto = {
   porteNomes: string[];
   tipoProdutoOpcaoId: string;
   tipoProdutoNome: string;
+  faixaEtariaOpcaoId: string;
+  faixaEtariaNome: string;
   preco: number;
   quantidadeMinimaDeCompra: number;
 };
@@ -116,6 +118,7 @@ export default function Produtos() {
   const [especies, setEspecies] = useState<ProdutoOpcao[]>([]);
   const [porteOpcoes, setPorteOpcoes] = useState<ProdutoOpcao[]>([]);
   const [tiposProduto, setTiposProduto] = useState<ProdutoOpcao[]>([]);
+  const [faixasEtarias, setFaixasEtarias] = useState<ProdutoOpcao[]>([]);
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [codigo, setCodigo] = useState("");
   const [descricao, setDescricao] = useState("");
@@ -125,6 +128,7 @@ export default function Produtos() {
   const [especieId, setEspecieId] = useState("");
   const [porteIds, setPorteIds] = useState<string[]>([]);
   const [tipoProdutoId, setTipoProdutoId] = useState("");
+  const [faixaEtariaId, setFaixaEtariaId] = useState("");
   const [preco, setPreco] = useState("0");
   const [quantidadeMinimaDeCompra, setQuantidadeMinimaDeCompra] = useState("1");
   const [opcoesCarregando, setOpcoesCarregando] = useState(true);
@@ -163,14 +167,16 @@ export default function Produtos() {
   const loadOpcoes = async () => {
     try {
       setOpcoesCarregando(true);
-      const [especiesResp, portesResp, tiposResp] = await Promise.all([
+      const [especiesResp, portesResp, tiposResp, faixasResp] = await Promise.all([
         api.get<ProdutoOpcao[]>("/produtos/especies"),
         api.get<ProdutoOpcao[]>("/produtos/portes"),
         api.get<ProdutoOpcao[]>("/produtos/tipos-produto"),
+        api.get<ProdutoOpcao[]>("/produtos/faixas-etarias"),
       ]);
       setEspecies(especiesResp.data);
       setPorteOpcoes(portesResp.data);
       setTiposProduto(tiposResp.data);
+      setFaixasEtarias(faixasResp.data);
     } finally {
       setOpcoesCarregando(false);
     }
@@ -193,6 +199,13 @@ export default function Produtos() {
       return tiposProduto.some(opcao => opcao.id === prev) ? prev : tiposProduto[0].id;
     });
   }, [tiposProduto]);
+
+  useEffect(() => {
+    setFaixaEtariaId(prev => {
+      if (!faixasEtarias.length) return "";
+      return faixasEtarias.some(opcao => opcao.id === prev) ? prev : faixasEtarias[0].id;
+    });
+  }, [faixasEtarias]);
 
   useEffect(() => {
     setPorteIds(prev => {
@@ -219,7 +232,8 @@ export default function Produtos() {
   const salvar = async () => {
     const especieSelecionada = especieId || especies[0]?.id || "";
     const tipoSelecionado = tipoProdutoId || tiposProduto[0]?.id || "";
-    if (!especieSelecionada || !tipoSelecionado) return;
+    const faixaSelecionada = faixaEtariaId || faixasEtarias[0]?.id || "";
+    if (!especieSelecionada || !tipoSelecionado || !faixaSelecionada) return;
 
     const dto = {
       descricao,
@@ -229,6 +243,7 @@ export default function Produtos() {
       especieOpcaoId: especieSelecionada,
       porteOpcaoIds: porteIds,
       tipoProdutoOpcaoId: tipoSelecionado,
+      faixaEtariaOpcaoId: faixaSelecionada,
       preco: parseDecimalInput(preco),
       quantidadeMinimaDeCompra: Math.max(1, parseIntegerInput(quantidadeMinimaDeCompra)),
     };
@@ -241,6 +256,7 @@ export default function Produtos() {
     setEspecieId(especies[0]?.id ?? "");
     setPorteIds([]);
     setTipoProdutoId(tiposProduto[0]?.id ?? "");
+    setFaixaEtariaId(faixasEtarias[0]?.id ?? "");
     setPreco("0");
     setQuantidadeMinimaDeCompra("1");
     await loadProdutos();
@@ -375,6 +391,25 @@ export default function Produtos() {
             </select>
           </div>
 
+          <div className="flex flex-col gap-2">
+            <label htmlFor="faixaEtaria" className="text-sm font-medium text-gray-700">Faixa etária</label>
+            <select
+              id="faixaEtaria"
+              value={faixaEtariaId}
+              onChange={e => setFaixaEtariaId(e.target.value)}
+              className={baseInputClasses}
+              disabled={!faixasEtarias.length}
+            >
+              {faixasEtarias.length === 0 ? (
+                <option value="" disabled>Carregando...</option>
+              ) : (
+                faixasEtarias.map(opcao => (
+                  <option key={opcao.id} value={opcao.id}>{opcao.nome}</option>
+                ))
+              )}
+            </select>
+          </div>
+
           <div className="flex flex-col gap-2 md:col-span-2 xl:col-span-2">
             <label htmlFor="portes" className="text-sm font-medium text-gray-700">Porte</label>
             <Select
@@ -447,7 +482,7 @@ export default function Produtos() {
                       {p.codigo} • {p.sabores}
                     </div>
                     <div className="text-sm text-gray-600">
-                      {p.especieNome} • {portesLabel || "Sem porte definido"} • {p.tipoProdutoNome}
+                      {p.especieNome} • {p.faixaEtariaNome} • {portesLabel || "Sem porte definido"} • {p.tipoProdutoNome}
                     </div>
                     <div className="text-sm font-medium text-gray-700">
                       mín: {minimo} un. • R$ {p.preco.toFixed(2)}

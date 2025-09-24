@@ -12,6 +12,7 @@ public sealed class ShopDbContext : DbContext
     public DbSet<ProdutoEspecieOpcao> ProdutoEspecieOpcoes => Set<ProdutoEspecieOpcao>();
     public DbSet<ProdutoPorteOpcao> ProdutoPorteOpcoes => Set<ProdutoPorteOpcao>();
     public DbSet<ProdutoTipoOpcao> ProdutoTipoOpcoes => Set<ProdutoTipoOpcao>();
+    public DbSet<ProdutoFaixaEtariaOpcao> ProdutoFaixaEtariaOpcoes => Set<ProdutoFaixaEtariaOpcao>();
     public DbSet<ProdutoPorte> ProdutoPortes => Set<ProdutoPorte>();
 
     public ShopDbContext(DbContextOptions<ShopDbContext> options) : base(options) { }
@@ -26,6 +27,7 @@ public sealed class ShopDbContext : DbContext
             e.Property(p => p.Descricao).HasMaxLength(256).IsRequired();
             e.Property(p => p.EspecieOpcaoId).IsRequired();
             e.Property(p => p.TipoProdutoOpcaoId).IsRequired();
+            e.Property(p => p.FaixaEtariaOpcaoId).IsRequired();
             e.Property(x => x.Peso).HasColumnType("decimal(18,4)");
             e.Property(x => x.Preco).HasColumnType("numeric(18,2)");
             e.Property(p => p.TipoPeso).HasColumnType("int");
@@ -39,6 +41,11 @@ public sealed class ShopDbContext : DbContext
             e.HasOne(p => p.TipoProdutoOpcao)
                 .WithMany(t => t.Produtos)
                 .HasForeignKey(p => p.TipoProdutoOpcaoId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(p => p.FaixaEtariaOpcao)
+                .WithMany(f => f.Produtos)
+                .HasForeignKey(p => p.FaixaEtariaOpcaoId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
@@ -90,6 +97,20 @@ public sealed class ShopDbContext : DbContext
                 new ProdutoTipoOpcao { Id = Guid.Parse("5006ea85-e9b1-4185-ba5d-08cecbcaf998"), Nome = "Alimento Seco" },
                 new ProdutoTipoOpcao { Id = Guid.Parse("1e2e7740-36e1-4961-96a5-308c6e48b457"), Nome = "Cookie" },
                 new ProdutoTipoOpcao { Id = Guid.Parse("601026f0-606b-4f67-bad7-eaefa16c62c6"), Nome = "Alimento Úmido" }
+            );
+        });
+
+        b.Entity<ProdutoFaixaEtariaOpcao>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Nome).HasMaxLength(64).IsRequired();
+            e.HasIndex(x => x.Nome).IsUnique();
+
+            e.HasData(
+                new ProdutoFaixaEtariaOpcao { Id = Guid.Parse("8e29fa8e-f3bd-4f4a-a73c-82009fcb2998"), Nome = "Filhote" },
+                new ProdutoFaixaEtariaOpcao { Id = Guid.Parse("1bb02ce7-54c9-43c6-9d28-68c9323fc86e"), Nome = "Adulto" },
+                new ProdutoFaixaEtariaOpcao { Id = Guid.Parse("d815602e-b739-497c-bb92-2ff27c51a638"), Nome = "Senior" },
+                new ProdutoFaixaEtariaOpcao { Id = Guid.Parse("87ba6774-1929-4ada-97ec-385fc846ab51"), Nome = "Todas" }
             );
         });
 
