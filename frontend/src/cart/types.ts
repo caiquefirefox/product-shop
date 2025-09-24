@@ -1,8 +1,10 @@
+export type TipoPesoCodigo = 0 | 1; // 0=grama, 1=quilo
+
 export type Produto = {
   codigo: string;
   descricao: string;
   peso: number;
-  tipoPeso: number; // 0=grama, 1=quilo
+  tipoPeso: TipoPesoCodigo;
   sabores: string;
   especieOpcaoId: string;
   especieNome: string;

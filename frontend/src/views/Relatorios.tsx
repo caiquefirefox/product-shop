@@ -4,6 +4,7 @@ import type { PedidoDetalhe, Item } from "../report/types";
 import {
   formatCurrencyBRL,
   formatDateBR,
+  formatPeso,
   startOfDayISO_BR,
   endOfDayISO_BR,
 } from "../lib/format";
@@ -109,10 +110,10 @@ export default function Relatorios() {
               String(it.quantidade),
               String(it.preco).replace(".", ","),
               String(it.subtotal).replace(".", ","),
-              String(it.pesoKg).replace(".", ","),
-              String(it.pesoTotalKg).replace(".", ","),
+              formatPeso(it.pesoKg, "kg", { unit: "kg", unitSuffix: false, useGrouping: false }),
+              formatPeso(it.pesoTotalKg, "kg", { unit: "kg", unitSuffix: false, useGrouping: false }),
               String(p.total).replace(".", ","),
-              String(p.pesoTotalKg).replace(".", ","),
+              formatPeso(p.pesoTotalKg, "kg", { unit: "kg", unitSuffix: false, useGrouping: false }),
             ]
               .map((v) => `"${String(v).replaceAll('"', '""')}"`)
               .join(",")
@@ -206,7 +207,7 @@ export default function Relatorios() {
                   Total: <strong>{formatCurrencyBRL(g.totalValor)}</strong>
                 </span>
                 <span>
-                  Peso: <strong>{g.totalPeso.toFixed(3)} kg</strong>
+                  Peso: <strong>{formatPeso(g.totalPeso, "kg", { unit: "kg" })}</strong>
                 </span>
               </div>
             </div>
@@ -232,7 +233,7 @@ export default function Relatorios() {
                         <td className="px-4 py-2">{p.unidadeEntrega}</td>
                         <td className="px-4 py-2">{p.itens.length}</td>
                         <td className="px-4 py-2">{formatCurrencyBRL(p.total)}</td>
-                        <td className="px-4 py-2">{p.pesoTotalKg.toFixed(3)}</td>
+                        <td className="px-4 py-2">{formatPeso(p.pesoTotalKg, "kg", { unit: "kg", unitSuffix: false })}</td>
                         <td className="px-4 py-2 text-right">
                           <button
                             className="px-3 py-1 border rounded-lg text-sm hover:bg-gray-50"
@@ -269,8 +270,8 @@ export default function Relatorios() {
                                       <td className="px-3 py-2">{it.quantidade}</td>
                                       <td className="px-3 py-2">{formatCurrencyBRL(it.preco)}</td>
                                       <td className="px-3 py-2">{formatCurrencyBRL(it.subtotal)}</td>
-                                      <td className="px-3 py-2">{it.pesoKg.toFixed(3)}</td>
-                                      <td className="px-3 py-2">{it.pesoTotalKg.toFixed(3)}</td>
+                                      <td className="px-3 py-2">{formatPeso(it.pesoKg, "kg", { unit: "kg", unitSuffix: false })}</td>
+                                      <td className="px-3 py-2">{formatPeso(it.pesoTotalKg, "kg", { unit: "kg", unitSuffix: false })}</td>
                                     </tr>
                                   ))}
                                 </tbody>

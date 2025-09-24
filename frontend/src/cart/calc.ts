@@ -1,8 +1,8 @@
 import { ENV } from "../config/env";
-import type { CartItem, Produto } from "./types";
+import type { CartItem, Produto, TipoPesoCodigo } from "./types";
 
 /** Converte peso informado para kg (0=grama, 1=quilo) */
-export function toKg(peso: number, tipoPeso: number) {
+export function toKg(peso: number, tipoPeso: TipoPesoCodigo) {
   return tipoPeso === 0 ? peso / 1000 : peso;
 }
 

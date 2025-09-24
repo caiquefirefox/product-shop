@@ -5,6 +5,99 @@ export function formatCurrencyBRL(n: number) {
   return brl.format(n);
 }
 
+type TipoPeso = 0 | 1 | "g" | "kg";
+type PesoUnit = "g" | "kg";
+type FormatPesoOptions = {
+  unit?: PesoUnit | "auto";
+  maximumFractionDigits?: number;
+  minimumFractionDigits?: number;
+  unitSuffix?: boolean;
+  useGrouping?: boolean;
+};
+
+const numberCache = new Map<string, Intl.NumberFormat>();
+
+function getNumberFormatter(min: number, max: number, useGrouping: boolean) {
+  const key = `${min}|${max}|${useGrouping ? 1 : 0}`;
+  const cached = numberCache.get(key);
+  if (cached) return cached;
+  const formatter = new Intl.NumberFormat("pt-BR", {
+    minimumFractionDigits: min,
+    maximumFractionDigits: max,
+    useGrouping,
+  });
+  numberCache.set(key, formatter);
+  return formatter;
+}
+
+function resolveTipoPeso(tipoPeso: TipoPeso): PesoUnit {
+  return tipoPeso === 0 || tipoPeso === "g" ? "g" : "kg";
+}
+
+export function formatPeso(peso: number, tipoPeso: TipoPeso = "kg", options?: FormatPesoOptions) {
+  if (!Number.isFinite(peso)) return "-";
+
+  const inputUnit = resolveTipoPeso(tipoPeso);
+  const unitPreference = options?.unit ?? "auto";
+
+  let displayUnit: PesoUnit;
+  let value: number;
+
+  if (unitPreference === "kg") {
+    displayUnit = "kg";
+    value = inputUnit === "kg" ? peso : peso / 1000;
+  } else if (unitPreference === "g") {
+    displayUnit = "g";
+    value = inputUnit === "g" ? peso : peso * 1000;
+  } else {
+    if (inputUnit === "g" && peso >= 1000) {
+      displayUnit = "kg";
+      value = peso / 1000;
+    } else {
+      displayUnit = inputUnit;
+      value = peso;
+    }
+  }
+
+  let maximumFractionDigits = options?.maximumFractionDigits;
+  let minimumFractionDigits = options?.minimumFractionDigits;
+
+  if (displayUnit === "g") {
+    if (maximumFractionDigits === undefined) maximumFractionDigits = 0;
+    if (minimumFractionDigits === undefined) minimumFractionDigits = 0;
+  } else {
+    const isAuto = unitPreference === "auto";
+    if (isAuto) {
+      if (inputUnit === "g") {
+        if (Number.isInteger(value)) {
+          if (maximumFractionDigits === undefined) maximumFractionDigits = 0;
+          if (minimumFractionDigits === undefined) minimumFractionDigits = 0;
+        } else {
+          if (maximumFractionDigits === undefined) maximumFractionDigits = 2;
+          if (minimumFractionDigits === undefined) minimumFractionDigits = 2;
+        }
+      } else {
+        if (maximumFractionDigits === undefined) {
+          maximumFractionDigits = Number.isInteger(value) ? 0 : 3;
+        }
+        if (minimumFractionDigits === undefined) minimumFractionDigits = 0;
+      }
+    } else {
+      if (maximumFractionDigits === undefined) maximumFractionDigits = 3;
+      if (minimumFractionDigits === undefined) minimumFractionDigits = maximumFractionDigits;
+    }
+  }
+
+  // Segurança extra caso opções inconsistentes sejam fornecidas.
+  maximumFractionDigits = Math.max(0, maximumFractionDigits ?? 0);
+  minimumFractionDigits = Math.max(0, Math.min(minimumFractionDigits ?? 0, maximumFractionDigits));
+
+  const useGrouping = options?.useGrouping ?? true;
+  const formatter = getNumberFormatter(minimumFractionDigits, maximumFractionDigits, useGrouping);
+  const formatted = formatter.format(value);
+  return options?.unitSuffix === false ? formatted : `${formatted} ${displayUnit}`;
+}
+
 // --- Datas BR (dd/MM/yyyy) --- //
 export function formatDateBR(d: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
