@@ -35,8 +35,6 @@ export default function App() {
           <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
             <nav className="flex items-center gap-4">
               <Link to="/" className="font-semibold">Catálogo</Link>
-              <Link to="/carrinho">Carrinho</Link>
-              <Link to="/checkout">Checkout</Link>
               {isAdmin && <Link to="/produtos">Produtos</Link>}
               {isAdmin && <Link to="/relatorios">Relatórios</Link>}
             </nav>

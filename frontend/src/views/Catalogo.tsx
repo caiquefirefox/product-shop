@@ -220,7 +220,7 @@ export default function Catalogo() {
   const displayTotalPages = normalizedTotalPages > 0 ? normalizedTotalPages : 1;
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-4">
       <div className="pointer-events-none fixed inset-x-0 top-4 z-50 flex justify-center sm:top-8">
         {feedback && (
           <div
