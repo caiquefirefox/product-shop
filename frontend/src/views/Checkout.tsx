@@ -4,11 +4,14 @@ import { useCart } from "../cart/CartContext";
 import { useNavigate } from "react-router-dom";
 import { ENV } from "../config/env";
 import { useToast } from "../ui/toast";
+import { formatPeso } from "../lib/format";
 
 type UnidadeEntrega = string;
 
 export default function Checkout() {
   const { items, totalValor, totalPesoKg, clear, anyBelowMinimum } = useCart();
+  const pesoTotalFormatado = formatPeso(totalPesoKg, "kg", { unit: "kg" });
+  const limiteMensalFormatado = formatPeso(ENV.LIMIT_KG_MES, "kg");
   const [unidades, setUnidades] = useState<UnidadeEntrega[]>([]);
   const [unidade, setUnidade] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -90,11 +93,11 @@ export default function Checkout() {
         <h2 className="font-semibold mb-3">Resumo</h2>
         <div className="grid grid-cols-2 gap-3 max-w-md">
           <div className="text-gray-600">Peso total</div>
-          <div>{totalPesoKg.toFixed(3)} kg</div>
+          <div>{pesoTotalFormatado}</div>
           <div className="text-gray-600">Valor total</div>
           <div>R$ {totalValor.toFixed(2)}</div>
           <div className="text-gray-600">Limite mensal</div>
-          <div>{ENV.LIMIT_KG_MES} kg</div>
+          <div>{limiteMensalFormatado}</div>
         </div>
 
         {anyBelowMinimum && (
@@ -105,7 +108,7 @@ export default function Checkout() {
 
         {totalPesoKg > ENV.LIMIT_KG_MES && (
           <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-            Atenção: seu carrinho tem {totalPesoKg.toFixed(3)} kg. O limite mensal é {ENV.LIMIT_KG_MES} kg (validado no backend).
+            Atenção: seu carrinho tem {pesoTotalFormatado}. O limite mensal é {limiteMensalFormatado} (validado no backend).
           </div>
         )}
 

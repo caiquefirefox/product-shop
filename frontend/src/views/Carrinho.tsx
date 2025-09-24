@@ -1,12 +1,15 @@
 import { useCart } from "../cart/CartContext";
 import { useNavigate } from "react-router-dom";
 import { ENV } from "../config/env";
-import { isBelowMin, itemSubtotal, itemPesoKg } from "../cart/calc";
+import { isBelowMin, itemSubtotal } from "../cart/calc";
+import { formatPeso } from "../lib/format";
 
 export default function Carrinho() {
   const { items, totalUnidades, totalValor, totalPesoKg, setQuantity, remove, clear, anyBelowMinimum } = useCart();
   const navigate = useNavigate();
   const passouLimite = totalPesoKg > ENV.LIMIT_KG_MES;
+  const totalPesoFormatado = formatPeso(totalPesoKg, "kg", { unit: "kg" });
+  const limiteMensalFormatado = formatPeso(ENV.LIMIT_KG_MES, "kg");
 
   if (!items.length) {
     return (
@@ -50,7 +53,7 @@ export default function Carrinho() {
                     </div>
                   </td>
                   <td className="py-2 pr-4">{i.preco.toFixed(2)}</td>
-                  <td className="py-2 pr-4">{i.pesoKg.toFixed(3)}</td>
+                  <td className="py-2 pr-4">{formatPeso(i.pesoKg, "kg", { unit: "kg", unitSuffix: false })}</td>
                   <td className="py-2 pr-4">
                     <input
                       type="number"
@@ -75,7 +78,7 @@ export default function Carrinho() {
             <tr className="border-t font-semibold">
               <td className="py-2">Totais</td>
               <td />
-              <td className="py-2">{totalPesoKg.toFixed(3)} kg</td>
+              <td className="py-2">{totalPesoFormatado}</td>
               <td className="py-2">{totalUnidades}</td>
               <td className="py-2">R$ {totalValor.toFixed(2)}</td>
               <td />
@@ -99,7 +102,7 @@ export default function Carrinho() {
 
       {passouLimite && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          Atenção: seu carrinho tem {totalPesoKg.toFixed(3)} kg. O limite mensal é {ENV.LIMIT_KG_MES} kg por colaborador (validado no checkout).
+          Atenção: seu carrinho tem {totalPesoFormatado}. O limite mensal é {limiteMensalFormatado} por colaborador (validado no checkout).
         </div>
       )}
     </div>

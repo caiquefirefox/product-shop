@@ -10,6 +10,7 @@ import Login from "../views/Login";
 import Protected from "../auth/Protected";
 import { useUser } from "../auth/useUser";
 import { useCart } from "../cart/CartContext";
+import { formatPeso } from "../lib/format";
 
 export default function App() {
   const { instance } = useMsal();
@@ -18,6 +19,7 @@ export default function App() {
   const { account, isAdmin, isLoading, clearRolesCache } = useUser();
   const { totalUnidades, totalPesoKg, totalValor } = useCart();
   const isLoginRoute = location.pathname.startsWith("/login");
+  const pesoResumo = formatPeso(totalPesoKg, "kg", { unit: "kg", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const gotoLogin = () => navigate("/login");
   const logout = async () => {
@@ -44,14 +46,14 @@ export default function App() {
               <button
                 onClick={() => navigate("/carrinho")}
                 className="relative flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-50"
-                title={`Itens: ${totalUnidades} • ${totalPesoKg.toFixed(2)} kg • R$ ${totalValor.toFixed(2)}`}
+                title={`Itens: ${totalUnidades} • ${pesoResumo} • R$ ${totalValor.toFixed(2)}`}
               >
                 <ShoppingCart size={20} />
                 {/* contador */}
                 <span className="text-sm tabular-nums">{totalUnidades}</span>
                 {/* totals compactos */}
                 <span className="hidden md:inline text-xs text-gray-600">
-                  {totalPesoKg.toFixed(2)} kg • R$ {totalValor.toFixed(2)}
+                  {pesoResumo} • R$ {totalValor.toFixed(2)}
                 </span>
               </button>
 
