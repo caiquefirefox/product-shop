@@ -114,6 +114,69 @@ const porteSelectStyles: StylesConfig<PorteSelectOption, true> = {
   }),
 };
 
+const classNames = (...classes: string[]) => classes.join(" ");
+
+const baseInputClasses = classNames(
+  "h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-700",
+  "shadow-sm transition focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-100",
+);
+
+const saveButtonClasses = classNames(
+  "inline-flex items-center justify-center rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white",
+  "shadow-lg shadow-indigo-200 transition hover:bg-indigo-500",
+  "focus:outline-none focus:ring-4 focus:ring-indigo-200 focus:ring-offset-1 focus:ring-offset-white",
+);
+
+const productCardClasses = classNames(
+  "flex flex-col gap-4 rounded-xl border border-gray-200 bg-white/80 p-4 shadow-sm transition",
+  "hover:border-indigo-200 hover:shadow",
+);
+
+const codeBadgeClasses = classNames(
+  "inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-600",
+);
+
+const infoBadgeClasses = classNames(
+  "inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600",
+);
+
+const deleteButtonClasses = classNames(
+  "inline-flex items-center justify-center rounded-lg border border-transparent",
+  "bg-red-50 px-3 py-1.5 text-xs font-semibold",
+  "text-red-600 transition hover:bg-red-100 focus:outline-none focus:ring-4 focus:ring-red-100",
+);
+
+const emptyStateClasses = classNames(
+  "rounded-2xl border border-dashed border-gray-200 bg-white/60 p-8 text-center",
+  "text-sm text-gray-500",
+);
+
+const headerMetaClasses = classNames(
+  "mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500",
+);
+
+const detailsGridClasses = classNames(
+  "grid gap-x-4 gap-y-2 text-xs text-slate-500",
+  "sm:grid-cols-2 lg:grid-cols-5",
+);
+
+const detailLabelClasses = "font-semibold uppercase tracking-wide text-slate-400";
+const detailValueClasses = "text-sm font-medium text-slate-700";
+const detailEmptyClasses = "text-sm font-medium text-slate-400";
+
+type DetailItemProps = {
+  label: string;
+  value: string;
+  muted?: boolean;
+};
+
+const DetailItem = ({ label, value, muted = false }: DetailItemProps) => (
+  <div className="flex flex-col gap-1">
+    <dt className={detailLabelClasses}>{label}</dt>
+    <dd className={muted ? detailEmptyClasses : detailValueClasses}>{value}</dd>
+  </div>
+);
+
 export default function Produtos() {
   const [especies, setEspecies] = useState<ProdutoOpcao[]>([]);
   const [porteOpcoes, setPorteOpcoes] = useState<ProdutoOpcao[]>([]);
@@ -132,6 +195,24 @@ export default function Produtos() {
   const [preco, setPreco] = useState("0");
   const [quantidadeMinimaDeCompra, setQuantidadeMinimaDeCompra] = useState("1");
   const [opcoesCarregando, setOpcoesCarregando] = useState(true);
+
+  const pesoFormatter = useMemo(
+    () =>
+      new Intl.NumberFormat("pt-BR", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 3,
+      }),
+    [],
+  );
+
+  const currencyFormatter = useMemo(
+    () =>
+      new Intl.NumberFormat("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+      }),
+    [],
+  );
 
   const parseDecimalInput = (value: string) => {
     const trimmed = value.trim();
@@ -266,9 +347,6 @@ export default function Produtos() {
     await api.delete(`/produtos/${c}`);
     await loadProdutos();
   };
-
-  const baseInputClasses =
-    "h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 text-sm text-gray-700 shadow-sm transition focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-100";
 
   return (
     <div className="space-y-8">
@@ -447,7 +525,7 @@ export default function Produtos() {
           <div className="flex justify-end md:col-span-2 xl:col-span-3">
             <button
               onClick={salvar}
-              className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-200 transition hover:bg-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-200 focus:ring-offset-1 focus:ring-offset-white"
+              className={saveButtonClasses}
             >
               Salvar produto
             </button>
@@ -458,42 +536,76 @@ export default function Produtos() {
       <div className="rounded-3xl border border-gray-100 bg-white/90 p-6 shadow-sm backdrop-blur">
         <div className="mb-4">
           <h2 className="text-xl font-semibold text-gray-900">Produtos</h2>
-          <p className="text-sm text-gray-500">Acompanhe os itens cadastrados e exclua aqueles que não fazem mais parte do catálogo.</p>
+          <p className="text-sm text-gray-500">
+            Acompanhe os itens cadastrados e exclua aqueles que não fazem mais parte do catálogo.
+          </p>
         </div>
         <div className="grid gap-3">
           {produtos.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-gray-200 bg-white/60 p-8 text-center text-sm text-gray-500">
+            <div className={emptyStateClasses}>
               Nenhum produto cadastrado por aqui ainda. Utilize o formulário acima para adicionar o primeiro item.
             </div>
           ) : (
             produtos.map(p => {
-              const portesLabel = p.porteNomes.length
-                ? p.porteNomes.join(", ")
-                : "";
               const minimo = Math.max(1, p.quantidadeMinimaDeCompra);
+              const tipoPesoLabel = p.tipoPeso === 0 ? "Gramas" : "Quilos";
+              const tipoPesoAbreviacao = p.tipoPeso === 0 ? "g" : "kg";
+              const pesoComUnidade = `${pesoFormatter.format(p.peso)} ${tipoPesoAbreviacao}`;
+              const portesList = p.porteNomes.map(nome => nome.trim()).filter(Boolean);
+              const saboresList = p.sabores
+                .split(",")
+                .map(sabor => sabor.trim())
+                .filter(Boolean);
+              const formattedPortes = portesList.join(", ");
+              const formattedSabores = saboresList.join(", ");
+
               return (
-                <div
-                  key={p.codigo}
-                  className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white/70 p-4 transition hover:border-indigo-200 hover:shadow-md md:flex-row md:items-center md:justify-between"
-                >
-                  <div className="flex-1 space-y-1">
-                    <div className="text-base font-semibold text-gray-900">{p.descricao}</div>
-                    <div className="text-sm text-gray-600">
-                      {p.codigo} • {p.sabores}
+                <div key={p.codigo} className={productCardClasses}>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="truncate text-base font-semibold text-gray-900">{p.codigo} - {p.descricao}</h3>
+                        <span className={codeBadgeClasses}>Preço: {currencyFormatter.format(p.preco)}</span>
+                        <span className={infoBadgeClasses}>Mínimo {minimo} un.</span>
+                      </div>
+                      <div className={headerMetaClasses}>
+                        <span>
+                          Peso:
+                          <span className="ml-1 font-medium text-gray-600">{pesoComUnidade}</span>
+                        </span>
+                        <span className="hidden sm:inline text-slate-300">•</span>
+                        <span>
+                          Unidade:
+                          <span className="ml-1 font-medium text-gray-600">{tipoPesoLabel}</span>
+                        </span>
+                        <span className="hidden sm:inline text-slate-300">•</span>
+                        <span>
+                          Tipo:
+                          <span className="ml-1 font-medium text-gray-600">{p.tipoProdutoNome}</span>
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-sm text-gray-600">
-                      {p.especieNome} • {p.faixaEtariaNome} • {portesLabel || "Sem porte definido"} • {p.tipoProdutoNome}
-                    </div>
-                    <div className="text-sm font-medium text-gray-700">
-                      mín: {minimo} un. • R$ {p.preco.toFixed(2)}
+                    <div className="flex flex-wrap items-center gap-3 text-sm">
+                      <button onClick={() => remover(p.codigo)} className={deleteButtonClasses}>
+                        Excluir
+                      </button>
                     </div>
                   </div>
-                  <button
-                    onClick={() => remover(p.codigo)}
-                    className="inline-flex items-center justify-center self-start rounded-lg border border-transparent bg-red-50 px-3 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-100 focus:outline-none focus:ring-4 focus:ring-red-100"
-                  >
-                    Excluir
-                  </button>
+
+                  <dl className={detailsGridClasses}>
+                    <DetailItem label="Espécie" value={p.especieNome} />
+                    <DetailItem label="Faixa etária" value={p.faixaEtariaNome} />
+                    <DetailItem
+                      label="Portes atendidos"
+                      value={formattedPortes || "Sem porte definido"}
+                      muted={!portesList.length}
+                    />
+                    <DetailItem
+                      label="Sabores"
+                      value={formattedSabores || "Nenhum sabor informado"}
+                      muted={!saboresList.length}
+                    />
+                  </dl>
                 </div>
               );
             })
