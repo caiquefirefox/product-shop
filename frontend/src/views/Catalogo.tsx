@@ -56,8 +56,8 @@ export default function Catalogo() {
 
     hideTimeout.current = window.setTimeout(() => {
       setShowFeedback(false);
-      removeTimeout.current = window.setTimeout(() => setFeedback(null), 300);
-    }, 2400);
+      removeTimeout.current = window.setTimeout(() => setFeedback(null), 5000);
+    }, 5000);
   };
 
   return (
@@ -69,12 +69,12 @@ export default function Catalogo() {
             aria-live="polite"
             role="status"
           >
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-600/90 text-white shadow-inner">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-600/90 text-white shadow-inner">
               <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
             </span>
             <div className="space-y-1">
               <p className="text-sm font-medium text-slate-900">
-                Adicionamos <span className="font-semibold">{feedback.quantidade}x</span> {feedback.descricao}
+                <span className="font-semibold">{feedback.quantidade}x</span> {feedback.descricao}
               </p>
               <p className="text-xs text-slate-600">
                 Subtotal adicionado de {formatCurrencyBRL(feedback.subtotal)} ao carrinho
@@ -85,10 +85,7 @@ export default function Catalogo() {
       </div>
 
       <section className="overflow-hidden rounded-3xl border border-indigo-100 bg-white px-8 py-12 text-center shadow-sm">
-        <span className="inline-flex items-center justify-center rounded-full bg-indigo-50 px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-indigo-600">
-          Catálogo de produtos
-        </span>
-        <h1 className="mt-6 text-3xl font-bold text-slate-900 sm:text-4xl">Descubra a linha completa da nossa loja</h1>
+        <h1 className="mt-4 text-3xl font-bold text-slate-900 sm:text-4xl">Catálogo de produtos</h1>
         <p className="mt-3 max-w-2xl mx-auto text-sm text-slate-600 sm:text-base">
           Visualize todos os detalhes de cada item antes de adicionar ao carrinho: indicações, sabores, peso e faixa etária em um só lugar.
         </p>

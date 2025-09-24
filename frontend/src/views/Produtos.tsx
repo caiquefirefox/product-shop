@@ -157,7 +157,7 @@ const headerMetaClasses = classNames(
 
 const detailsGridClasses = classNames(
   "grid gap-x-4 gap-y-2 text-xs text-slate-500",
-  "sm:grid-cols-2 lg:grid-cols-4",
+  "sm:grid-cols-2 lg:grid-cols-5",
 );
 
 const detailLabelClasses = "font-semibold uppercase tracking-wide text-slate-400";
@@ -564,28 +564,28 @@ export default function Produtos() {
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="truncate text-base font-semibold text-gray-900">{p.descricao}</h3>
-                        <span className={codeBadgeClasses}>Cód. {p.codigo}</span>
+                        <h3 className="truncate text-base font-semibold text-gray-900">{p.codigo} - {p.descricao}</h3>
+                        <span className={codeBadgeClasses}>Preço: {currencyFormatter.format(p.preco)}</span>
+                        <span className={infoBadgeClasses}>Mínimo {minimo} un.</span>
                       </div>
                       <div className={headerMetaClasses}>
-                        <span className="font-medium text-gray-600">{pesoComUnidade}</span>
+                        <span>
+                          Peso:
+                          <span className="ml-1 font-medium text-gray-600">{pesoComUnidade}</span>
+                        </span>
                         <span className="hidden sm:inline text-slate-300">•</span>
                         <span>
                           Unidade:
                           <span className="ml-1 font-medium text-gray-600">{tipoPesoLabel}</span>
                         </span>
+                        <span className="hidden sm:inline text-slate-300">•</span>
+                        <span>
+                          Tipo:
+                          <span className="ml-1 font-medium text-gray-600">{p.tipoProdutoNome}</span>
+                        </span>
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-3 text-sm">
-                      <div className="text-right">
-                        <span className="block text-[11px] uppercase tracking-wide text-indigo-400">
-                          Preço unitário
-                        </span>
-                        <span className="text-base font-semibold text-indigo-600">
-                          {currencyFormatter.format(p.preco)}
-                        </span>
-                      </div>
-                      <span className={infoBadgeClasses}>Mínimo {minimo} un.</span>
                       <button onClick={() => remover(p.codigo)} className={deleteButtonClasses}>
                         Excluir
                       </button>
@@ -595,7 +595,6 @@ export default function Produtos() {
                   <dl className={detailsGridClasses}>
                     <DetailItem label="Espécie" value={p.especieNome} />
                     <DetailItem label="Faixa etária" value={p.faixaEtariaNome} />
-                    <DetailItem label="Tipo de produto" value={p.tipoProdutoNome} />
                     <DetailItem
                       label="Portes atendidos"
                       value={formattedPortes || "Sem porte definido"}
