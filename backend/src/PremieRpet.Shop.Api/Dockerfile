@@ -3,16 +3,16 @@ FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
 # Copy project files individually to leverage Docker layer caching
-COPY src/PremieRpet.Shop.sln ./
-COPY src/PremieRpet.Shop.Domain/PremieRpet.Shop.Domain.csproj PremieRpet.Shop.Domain/
-COPY src/PremieRpet.Shop.Application/PremieRpet.Shop.Application.csproj PremieRpet.Shop.Application/
-COPY src/PremieRpet.Shop.Infrastructure/PremieRpet.Shop.Infrastructure.csproj PremieRpet.Shop.Infrastructure/
-COPY src/PremieRpet.Shop.Api/PremieRpet.Shop.Api.csproj PremieRpet.Shop.Api/
+COPY PremieRpet.Shop.sln ./
+COPY PremieRpet.Shop.Domain/PremieRpet.Shop.Domain.csproj PremieRpet.Shop.Domain/
+COPY PremieRpet.Shop.Application/PremieRpet.Shop.Application.csproj PremieRpet.Shop.Application/
+COPY PremieRpet.Shop.Infrastructure/PremieRpet.Shop.Infrastructure.csproj PremieRpet.Shop.Infrastructure/
+COPY PremieRpet.Shop.Api/PremieRpet.Shop.Api.csproj PremieRpet.Shop.Api/
 
 RUN dotnet restore PremieRpet.Shop.Api/PremieRpet.Shop.Api.csproj
 
 # Copy the remaining source code and publish
-COPY src/ ./
+COPY . ./
 RUN dotnet publish PremieRpet.Shop.Api/PremieRpet.Shop.Api.csproj \
     -c Release \
     -o /app/publish \
