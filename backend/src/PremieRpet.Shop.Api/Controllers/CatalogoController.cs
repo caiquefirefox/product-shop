@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using PremieRpet.Shop.Api.Contracts;
 using PremieRpet.Shop.Application.DTOs;
 using PremieRpet.Shop.Application.Interfaces.UseCases;
 
@@ -11,6 +12,6 @@ public class CatalogoController(IProdutoService svc) : ControllerBase
 {
     [HttpGet]
     [Authorize]
-    public Task<IReadOnlyList<ProdutoDto>> List([FromQuery] string? q, CancellationToken ct)
-        => svc.ListAsync(q, ct);
+    public Task<PagedResultDto<ProdutoDto>> List([FromQuery] ProdutoFiltroQuery filtro, CancellationToken ct)
+        => svc.ListAsync(filtro?.ToDto(), ct);
 }

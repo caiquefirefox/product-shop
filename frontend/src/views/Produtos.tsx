@@ -25,6 +25,16 @@ type ProdutoOpcao = {
   nome: string;
 };
 
+type ProdutosPagedResponse = {
+  items?: Produto[] | null;
+  page?: number;
+  pageSize?: number;
+  totalItems?: number;
+  totalPages?: number;
+};
+
+type ProdutosListResponse = Produto[] | ProdutosPagedResponse;
+
 type PorteSelectOption = {
   value: string;
   label: string;
@@ -260,7 +270,18 @@ export default function Produtos() {
     return `${before}${separator}${after}`;
   };
 
-  const loadProdutos = async () => setProdutos((await api.get("/produtos")).data);
+  const loadProdutos = async () => {
+    const response = await api.get<ProdutosListResponse>("/produtos");
+    const data = response.data;
+
+    if (Array.isArray(data)) {
+      setProdutos(data);
+      return;
+    }
+
+    const items = Array.isArray(data?.items) ? data.items : [];
+    setProdutos(items);
+  };
   const resetFormCampos = () => {
     setProdutoEmEdicao(null);
     setCodigo("");
