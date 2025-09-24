@@ -5,6 +5,18 @@ using PremieRpet.Shop.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
+if (!builder.Environment.IsDevelopment())
+{
+    var portValue = Environment.GetEnvironmentVariable("PORT")
+                   ?? Environment.GetEnvironmentVariable("ASPNETCORE_HTTP_PORTS")
+                   ?? "8080";
+
+    if (!int.TryParse(portValue, out var port))
+        port = 8080;
+
+    builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+}
+
 builder.Services.AddHttpContextAccessor();
 
 // Layers
@@ -23,7 +35,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         o.Authority = $"https://login.microsoftonline.com/{tenantId}/v2.0";
         o.TokenValidationParameters = new TokenValidationParameters
         {
-            // Alguns tokens vir„o com aud = api://<API_APP_ID>, outros com aud = <API_CLIENT_ID>
+            // Alguns tokens vir√£o com aud = api://<API_APP_ID>, outros com aud = <API_CLIENT_ID>
             ValidAudiences = new[]
             {
                 audience,           // api://<API_APP_ID>
