@@ -448,13 +448,15 @@ export default function Catalogo() {
                   </div>
 
                   {p.imagemUrl && (
-                    <div className="overflow-hidden border-t border-slate-100">
-                      <img
-                        src={p.imagemUrl}
-                        alt={`Imagem ilustrativa do produto ${p.descricao}`}
-                        className="h-48 w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-                        loading="lazy"
-                      />
+                    <div className="border-t border-slate-100 bg-white">
+                      <div className="relative aspect-[368/368] w-full overflow-hidden">
+                        <img
+                          src={p.imagemUrl}
+                          alt={`Imagem ilustrativa do produto ${p.descricao}`}
+                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                          loading="lazy"
+                        />
+                      </div>
                     </div>
                   )}
 
