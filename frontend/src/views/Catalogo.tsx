@@ -424,77 +424,95 @@ export default function Catalogo() {
               return (
                 <article
                   key={p.codigo}
-                  className="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
+                  className="group flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white/90 shadow-sm ring-1 ring-transparent transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:ring-indigo-100"
                 >
-                  <div className={`relative flex flex-col gap-5 overflow-hidden bg-gradient-to-br ${gradient} px-5 pb-5 pt-6`}>
-                    {p.imagemUrl && (
-                      <div className="mx-auto flex h-44 w-full max-w-[260px] items-center justify-center overflow-hidden rounded-2xl border border-white/70 bg-white/70 p-4 shadow-inner">
-                        <img
-                          src={p.imagemUrl}
-                          alt={`Imagem ilustrativa do produto ${p.descricao}`}
-                          className="max-h-full w-auto object-contain transition-transform duration-300 group-hover:scale-[1.02]"
-                          loading="lazy"
-                        />
+                  <div className="flex flex-1 flex-col gap-6 p-6">
+                    <div className={`rounded-2xl border border-indigo-50 bg-gradient-to-br ${gradient} p-4`}
+                    >
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-6">
+                        <div className="mx-auto flex h-32 w-32 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/70 bg-white/80 shadow-inner sm:mx-0">
+                          {p.imagemUrl ? (
+                            <img
+                              src={p.imagemUrl}
+                              alt={`Imagem ilustrativa do produto ${p.descricao}`}
+                              className="h-full w-full object-contain"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Sem imagem</span>
+                          )}
+                        </div>
+
+                        <div className="flex flex-1 flex-col gap-4">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="inline-flex items-center rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700">
+                              {p.tipoProdutoNome}
+                            </span>
+                            <span className="inline-flex items-center rounded-full bg-indigo-600/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-indigo-700">
+                              {p.especieNome}
+                            </span>
+                            {p.faixaEtariaNome && (
+                              <span className="inline-flex items-center rounded-full bg-white/60 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+                                {p.faixaEtariaNome}
+                              </span>
+                            )}
+                            {minimo > 1 && (
+                              <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-600">
+                                Mín. {minimo} un.
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">SKU #{p.codigo}</span>
+                            <h3 className="text-lg font-semibold text-slate-900">
+                              {p.descricao}
+                            </h3>
+                            <p className="text-sm text-slate-600">
+                              {p.sabores || "Variedade não informada"}
+                            </p>
+                          </div>
+
+                          <dl className="grid gap-x-6 gap-y-3 text-sm text-slate-600 sm:grid-cols-2">
+                            <div className="space-y-0.5">
+                              <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Peso</dt>
+                              <dd className="text-sm font-medium text-slate-900">{formatPeso(p.peso, p.tipoPeso)}</dd>
+                            </div>
+                            <div className="space-y-0.5">
+                              <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Categoria</dt>
+                              <dd className="text-sm font-medium text-slate-900">{p.tipoProdutoNome}</dd>
+                            </div>
+                            <div className="space-y-0.5">
+                              <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Porte indicado</dt>
+                              <dd className="text-sm font-medium text-slate-900">{portes}</dd>
+                            </div>
+                            <div className="space-y-0.5">
+                              <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Disponibilidade</dt>
+                              <dd className="text-sm font-medium text-slate-900">Em estoque</dd>
+                            </div>
+                          </dl>
+                        </div>
                       </div>
-                    )}
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="inline-flex items-center rounded-full bg-white/70 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700">
-                        {p.tipoProdutoNome}
-                      </span>
-                      {minimo > 1 && (
-                        <span className="rounded-full bg-slate-900/10 px-2.5 py-1 text-[10px] font-semibold text-slate-700">
-                          Mínimo {minimo} un.
-                        </span>
-                      )}
                     </div>
-                    <h3 className="text-lg font-semibold text-slate-900">{p.descricao}</h3>
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-700">
-                      <span className="font-medium uppercase tracking-wide text-slate-600">Sabor:</span>
-                      <span>{p.sabores || "variedades"}</span>
-                      <span className="inline-flex items-center rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-700">
-                        {p.especieNome}
-                      </span>
-                    </div>
-                  </div>
 
-                  <div className="flex flex-1 flex-col gap-4 p-5">
-                    <span className="text-[11px] font-mono uppercase tracking-wide text-slate-400">SKU #{p.codigo}</span>
-
-                    <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-[13px] text-slate-600">
-                      <div className="space-y-0.5">
-                        <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Peso</dt>
-                        <dd className="text-sm text-slate-900">{formatPeso(p.peso, p.tipoPeso)}</dd>
-                      </div>
-                      <div className="space-y-0.5">
-                        <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Faixa etária</dt>
-                        <dd className="text-sm text-slate-900">{p.faixaEtariaNome}</dd>
-                      </div>
-                      <div className="space-y-0.5">
-                        <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Sabores</dt>
-                        <dd className="text-sm text-slate-900">{p.sabores || "Não informado"}</dd>
-                      </div>
-                      <div className="space-y-0.5">
-                        <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Porte indicado</dt>
-                        <dd className="text-sm text-slate-900">{portes}</dd>
-                      </div>
-                      <div className="col-span-2 space-y-0.5">
-                        <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Categoria</dt>
-                        <dd className="text-sm text-slate-900">{p.tipoProdutoNome}</dd>
-                      </div>
-                    </dl>
-
-                    <div className="mt-auto flex items-center justify-between gap-3">
+                    <div className="mt-auto flex flex-col gap-4 rounded-2xl border border-slate-100 bg-white/70 p-4 sm:flex-row sm:items-center sm:justify-between">
                       <div>
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Preço</span>
-                        <p className="text-xl font-semibold text-slate-900">{precoFormatado}</p>
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Preço unitário</span>
+                        <p className="text-2xl font-semibold text-slate-900">{precoFormatado}</p>
                       </div>
-                      <button
-                        className="inline-flex items-center gap-1.5 rounded-full bg-indigo-600 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-white shadow-sm transition-colors duration-200 hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-                        onClick={() => handleAdd(p)}
-                      >
-                        <ShoppingCart className="h-3.5 w-3.5" aria-hidden="true" />
-                        Adicionar
-                      </button>
+
+                      <div className="flex flex-wrap items-center gap-3">
+                        <div className="hidden items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500 shadow-sm sm:flex">
+                          Entrega: CD Santana
+                        </div>
+                        <button
+                          className="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white shadow-sm transition-colors duration-200 hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                          onClick={() => handleAdd(p)}
+                        >
+                          <ShoppingCart className="h-4 w-4" aria-hidden="true" />
+                          Adicionar ao carrinho
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </article>
