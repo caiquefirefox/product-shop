@@ -1,9 +1,13 @@
-﻿namespace PremieRpet.Shop.Application.DTOs;
+using System;
+using System.Collections.Generic;
+
+namespace PremieRpet.Shop.Application.DTOs;
 
 public sealed record PedidoDetalheDto(
     Guid Id,
-    string UsuarioId,
+    Guid UsuarioId,
     string UsuarioNome,
+    string? UsuarioCpf,
     string UnidadeEntrega,
     DateTimeOffset DataHora,
     decimal Total,

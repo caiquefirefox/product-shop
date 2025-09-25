@@ -17,6 +17,7 @@ public static class DependencyInjection
             o.UseNpgsql(configuration.GetConnectionString("Postgres")));
         services.AddScoped<IProdutoRepository, ProdutoRepository>();
         services.AddScoped<IPedidoRepository, PedidoRepository>();
+        services.AddScoped<IUsuarioRepository, UsuarioRepository>();
         services.Configure<AzureBlobStorageOptions>(configuration.GetSection("AzureStorage"));
         services.AddSingleton<IProdutoImagemStorageService, AzureProdutoImagemStorageService>();
         return services;

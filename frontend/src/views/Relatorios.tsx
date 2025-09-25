@@ -8,6 +8,7 @@ import {
   startOfDayISO_BR,
   endOfDayISO_BR,
 } from "../lib/format";
+import { formatCpf } from "../lib/cpf";
 
 // ---------------------- Component ---------------------- //
 export default function Relatorios() {
@@ -38,7 +39,10 @@ export default function Relatorios() {
         setLoading(false);
         return;
       }
-      
+
+      params.de = deIso;
+      params.ate = ateIso;
+
       const r = await api.get<PedidoDetalhe[]>("/relatorios/pedidos/detalhes", { params });
       setPedidos(r.data);
     } catch (e: any) {
@@ -56,19 +60,38 @@ export default function Relatorios() {
 
   // agrupamento por usuário (nome)
   const grupos = useMemo(() => {
-    const grouped = new Map<string, PedidoDetalhe[]>();
+    const grouped = new Map<string, { usuarioNome: string; usuarioCpf: string | null; lista: PedidoDetalhe[] }>();
+    const filtro = buscaUsuario.trim().toLowerCase();
     for (const p of pedidos) {
-      if (buscaUsuario && !p.usuarioNome.toLowerCase().includes(buscaUsuario.toLowerCase())) continue;
-      const key = `${p.usuarioNome}__${p.usuarioId}`;
-      if (!grouped.has(key)) grouped.set(key, []);
-      grouped.get(key)!.push(p);
+      if (filtro) {
+        const nomeMatch = p.usuarioNome.toLowerCase().includes(filtro);
+        const cpfDigits = (p.usuarioCpf ?? "").toLowerCase();
+        const cpfFormatado = formatCpf(p.usuarioCpf).toLowerCase();
+        if (!nomeMatch && !cpfDigits.includes(filtro) && !cpfFormatado.includes(filtro)) continue;
+      }
+
+      const existente = grouped.get(p.usuarioId);
+      if (!existente) {
+        grouped.set(p.usuarioId, { usuarioNome: p.usuarioNome, usuarioCpf: p.usuarioCpf ?? null, lista: [p] });
+      } else {
+        existente.lista.push(p);
+        if (!existente.usuarioCpf && p.usuarioCpf) existente.usuarioCpf = p.usuarioCpf;
+        if (p.usuarioNome && existente.usuarioNome !== p.usuarioNome) existente.usuarioNome = p.usuarioNome;
+      }
     }
-    return Array.from(grouped.entries()).map(([key, lista]) => {
-      const [usuarioNome, usuarioId] = key.split("__");
-      const totalPedidos = lista.length;
-      const totalValor = lista.reduce((acc, p) => acc + p.total, 0);
-      const totalPeso = lista.reduce((acc, p) => acc + p.pesoTotalKg, 0);
-      return { usuarioNome, usuarioId, lista, totalPedidos, totalValor, totalPeso };
+    return Array.from(grouped.entries()).map(([usuarioId, data]) => {
+      const totalPedidos = data.lista.length;
+      const totalValor = data.lista.reduce((acc, p) => acc + p.total, 0);
+      const totalPeso = data.lista.reduce((acc, p) => acc + p.pesoTotalKg, 0);
+      return {
+        usuarioId,
+        usuarioNome: data.usuarioNome,
+        usuarioCpf: data.usuarioCpf,
+        lista: data.lista,
+        totalPedidos,
+        totalValor,
+        totalPeso,
+      };
     });
   }, [pedidos, buscaUsuario]);
 
@@ -80,6 +103,7 @@ export default function Relatorios() {
     const header = [
       "UsuarioId",
       "UsuarioNome",
+      "UsuarioCpf",
       "PedidoId",
       "DataHora",
       "UnidadeEntrega",
@@ -102,6 +126,7 @@ export default function Relatorios() {
             [
               g.usuarioId,
               g.usuarioNome,
+              formatCpf(g.usuarioCpf),
               p.id,
               formatDateBR(new Date(p.dataHora)),
               p.unidadeEntrega,
@@ -198,6 +223,7 @@ export default function Relatorios() {
               <div>
                 <div className="text-lg font-medium">{g.usuarioNome}</div>
                 <div className="text-sm text-gray-500">ID: {g.usuarioId}</div>
+                <div className="text-sm text-gray-500">CPF: {g.usuarioCpf ? formatCpf(g.usuarioCpf) : "Não informado"}</div>
               </div>
               <div className="text-sm text-gray-700 flex gap-4">
                 <span>

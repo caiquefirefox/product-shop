@@ -1,3 +1,4 @@
+using System;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PremieRpet.Shop.Api.Security;
@@ -16,15 +17,22 @@ public class CheckoutController(IPedidoService pedidos, IHttpContextAccessor ctx
     [Authorize]
     public async Task<IActionResult> Criar([FromBody] PedidoCreateDto dto, CancellationToken ct)
     {
-        var usuarioId = User.GetUserId();
-        if (string.IsNullOrWhiteSpace(usuarioId))
+        var usuarioMicrosoftId = User.GetUserId();
+        if (string.IsNullOrWhiteSpace(usuarioMicrosoftId))
             return Problem(title: "Token sem identificador de usuário (oid/sub).", statusCode: StatusCodes.Status401Unauthorized);
 
         var usuarioNome = User.GetDisplayName();
         if (string.IsNullOrWhiteSpace(usuarioNome))
             return Problem(title: "Token sem identificador de nome de usuário.", statusCode: StatusCodes.Status401Unauthorized);
 
-        var pedidoId = await pedidos.CriarPedidoAsync(usuarioId, usuarioNome, dto, ct);
-        return Ok(new { id = pedidoId });
+        try
+        {
+            var pedido = await pedidos.CriarPedidoAsync(usuarioMicrosoftId, usuarioNome, dto, ct);
+            return Ok(new { id = pedido.Id });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Problem(detail: ex.Message, statusCode: StatusCodes.Status400BadRequest);
+        }
     }
 }

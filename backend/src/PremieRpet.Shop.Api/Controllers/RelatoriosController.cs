@@ -1,3 +1,4 @@
+using System;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PremieRpet.Shop.Application.DTOs;
@@ -19,7 +20,7 @@ public class RelatoriosController(IPedidoService svc) : ControllerBase
     public Task<IReadOnlyList<PedidoDetalheDto>> PedidosDetalhes(
         [FromQuery] DateTimeOffset? de,
         [FromQuery] DateTimeOffset? ate,
-        [FromQuery] string? usuarioId,
+        [FromQuery] Guid? usuarioId,
         CancellationToken ct)
         => svc.ListarPedidosDetalhadosAsync(de, ate, usuarioId, ct);
 }

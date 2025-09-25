@@ -1,3 +1,4 @@
+using System;
 using Microsoft.EntityFrameworkCore;
 using PremieRpet.Shop.Application.DTOs;
 using PremieRpet.Shop.Application.Interfaces.Repositories;
@@ -12,26 +13,30 @@ public sealed class PedidoService : IPedidoService
 {
     private readonly IPedidoRepository _pedidos;
     private readonly IProdutoRepository _produtos;
+    private readonly IUsuarioService _usuarios;
     public const decimal LIMITE_KG_MES = 30m;
 
-    public PedidoService(IPedidoRepository ped, IProdutoRepository prod)
-    { 
-        _pedidos = ped; 
+    public PedidoService(IPedidoRepository ped, IProdutoRepository prod, IUsuarioService usuarios)
+    {
+        _pedidos = ped;
         _produtos = prod;
+        _usuarios = usuarios;
     }
 
-    public async Task<PedidoResumoDto> CriarPedidoAsync(string usuarioId, string usuarioNome, PedidoCreateDto dto, CancellationToken ct)
+    public async Task<PedidoResumoDto> CriarPedidoAsync(string usuarioMicrosoftId, string usuarioNome, PedidoCreateDto dto, CancellationToken ct)
     {
         if (!UnidadesEntrega.Todas.Contains(dto.UnidadeEntrega))
             throw new InvalidOperationException("Unidade de entrega inválida.");
 
         var agora = DateTimeOffset.UtcNow;
-        var pesoAcumulado = await PesoAcumuladoMesEmKgAsync(usuarioId, agora, ct);
+        var perfil = await _usuarios.GarantirCpfAsync(usuarioMicrosoftId, dto.Cpf, ct);
+        var pesoAcumulado = await PesoAcumuladoMesEmKgAsync(perfil.Id, agora, ct);
 
         var pedido = new Pedido
         {
-            UsuarioId = usuarioId,
+            UsuarioId = perfil.Id,
             UsuarioNome = usuarioNome,
+            UsuarioCpf = perfil.Cpf,
             UnidadeEntrega = dto.UnidadeEntrega,
         };
 
@@ -68,13 +73,13 @@ public sealed class PedidoService : IPedidoService
         await _pedidos.AddAsync(pedido, ct);
 
         return new PedidoResumoDto(
-            pedido.Id, pedido.UsuarioNome, pedido.UnidadeEntrega, pedido.DataHora,
+            pedido.Id, pedido.UsuarioNome, pedido.UsuarioCpf, pedido.UnidadeEntrega, pedido.DataHora,
             pedido.Total(),
             pedido.PesoTotalKg()
         );
     }
 
-    public async Task<decimal> PesoAcumuladoMesEmKgAsync(string usuarioId, DateTimeOffset referencia, CancellationToken ct)
+    public async Task<decimal> PesoAcumuladoMesEmKgAsync(Guid usuarioId, DateTimeOffset referencia, CancellationToken ct)
     {
         var inicio = new DateTimeOffset(new DateTime(referencia.Year, referencia.Month, 1, 0, 0, 0, DateTimeKind.Utc));
         var fim = inicio.AddMonths(1);
@@ -95,20 +100,20 @@ public sealed class PedidoService : IPedidoService
         return await q.AsNoTracking()
             .OrderByDescending(p => p.DataHora)
             .Select(p => new PedidoResumoDto(
-                p.Id, p.UsuarioNome, p.UnidadeEntrega, p.DataHora,
+                p.Id, p.UsuarioNome, p.UsuarioCpf, p.UnidadeEntrega, p.DataHora,
                 p.Itens.Sum(i => i.Preco * i.Quantidade),
                 p.Itens.AsQueryable().Select(PesoRules.ItemTotalKgExpr).Sum()
             ))
             .ToListAsync(ct);
     }
     public async Task<IReadOnlyList<PedidoDetalheDto>> ListarPedidosDetalhadosAsync(
-        DateTimeOffset? de, DateTimeOffset? ate, string? usuarioId, CancellationToken ct)
+        DateTimeOffset? de, DateTimeOffset? ate, Guid? usuarioId, CancellationToken ct)
     {
         var q = _pedidos.Query();
 
         if (de is not null) q = q.Where(p => p.DataHora >= de);
         if (ate is not null) q = q.Where(p => p.DataHora <= ate);
-        if (!string.IsNullOrWhiteSpace(usuarioId)) q = q.Where(p => p.UsuarioId == usuarioId);
+        if (usuarioId is not null) q = q.Where(p => p.UsuarioId == usuarioId);
 
         return await q.AsNoTracking()
             .OrderByDescending(p => p.DataHora)
@@ -116,6 +121,7 @@ public sealed class PedidoService : IPedidoService
                 p.Id,
                 p.UsuarioId,
                 p.UsuarioNome,
+                p.UsuarioCpf,
                 p.UnidadeEntrega,
                 p.DataHora,
                 p.Itens.Sum(i => i.Preco * i.Quantidade),

@@ -5,6 +5,8 @@ import { useNavigate } from "react-router-dom";
 import { ENV } from "../config/env";
 import { useToast } from "../ui/toast";
 import { formatPeso } from "../lib/format";
+import { sanitizeCpf, isValidCpf, formatCpf } from "../lib/cpf";
+import type { UsuarioPerfil } from "../types/user";
 
 type UnidadeEntrega = string;
 
@@ -16,6 +18,11 @@ export default function Checkout() {
   const [unidade, setUnidade] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [loadingUnidades, setLoadingUnidades] = useState(true);
+  const [loadingPerfil, setLoadingPerfil] = useState(true);
+  const [perfilErro, setPerfilErro] = useState<string | null>(null);
+  const [cpf, setCpf] = useState<string>("");
+  const [cpfBloqueado, setCpfBloqueado] = useState(false);
+  const [cpfErro, setCpfErro] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const navigate = useNavigate();
   const { success, error: toastError } = useToast();
@@ -31,13 +38,51 @@ export default function Checkout() {
     return () => { alive = false; };
   }, []);
 
+  useEffect(() => {
+    let alive = true;
+    setLoadingPerfil(true);
+    setPerfilErro(null);
+    api.get<UsuarioPerfil>("/usuarios/me")
+      .then(r => {
+        if (!alive) return;
+        const dados = r.data;
+        const digits = sanitizeCpf(dados?.cpf ?? "");
+        setCpf(digits);
+        setCpfBloqueado(Boolean(digits));
+      })
+      .catch(e => {
+        if (!alive) return;
+        const msg = e?.response?.data?.detail || e?.message || "Não foi possível carregar seus dados.";
+        setPerfilErro(msg);
+        setCpfBloqueado(false);
+      })
+      .finally(() => { if (!alive) return; setLoadingPerfil(false); });
+
+    return () => { alive = false; };
+  }, []);
+
+  const onCpfChange = (value: string) => {
+    const digits = sanitizeCpf(value).slice(0, 11);
+    setCpf(digits);
+    if (cpfErro) setCpfErro(null);
+  };
+
   const enviar = async () => {
     setErr(null);
+    setCpfErro(null);
+
+    if (!cpfBloqueado && !isValidCpf(cpf)) {
+      setCpfErro("Informe um CPF válido.");
+      return;
+    }
+
     setLoading(true);
     try {
+      const cpfDigits = sanitizeCpf(cpf);
       const dto = {
         unidadeEntrega: unidade,
-        itens: items.map(i => ({ produtoCodigo: i.codigo, quantidade: i.quantidade }))
+        itens: items.map(i => ({ produtoCodigo: i.codigo, quantidade: i.quantidade })),
+        cpf: cpfDigits || undefined,
       };
       const r = await api.post("/checkout", dto);
 
@@ -53,6 +98,9 @@ export default function Checkout() {
     } catch (e: any) {
       const msg = e?.response?.data?.detail || e?.response?.data?.title || e?.message || "Erro ao finalizar pedido.";
       setErr(msg);
+      if (msg?.toLowerCase().includes("cpf")) {
+        setCpfErro(msg);
+      }
       toastError("Não foi possível finalizar", msg);
     } finally {
       setLoading(false);
@@ -69,6 +117,38 @@ export default function Checkout() {
 
   return (
     <div className="space-y-4">
+      <div className="bg-white p-4 rounded-xl shadow">
+        <h2 className="font-semibold mb-3">Dados cadastrais</h2>
+        {loadingPerfil ? (
+          <div className="text-gray-600 text-sm">Carregando informações...</div>
+        ) : (
+          <div className="space-y-2 max-w-md">
+            <label className="text-sm text-gray-600" htmlFor="cpf-input">CPF</label>
+            <input
+              id="cpf-input"
+              type="text"
+              inputMode="numeric"
+              placeholder="000.000.000-00"
+              value={formatCpf(cpf)}
+              onChange={(e) => onCpfChange(e.target.value)}
+              disabled={cpfBloqueado}
+              className="border rounded p-2 w-full disabled:opacity-60"
+            />
+            {cpfBloqueado ? (
+              <p className="text-xs text-gray-500">CPF já cadastrado. Entre em contato com o suporte para alterações.</p>
+            ) : (
+              <p className="text-xs text-gray-500">Informe seu CPF para concluir o pedido.</p>
+            )}
+            {cpfErro && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{cpfErro}</div>
+            )}
+            {perfilErro && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{perfilErro}</div>
+            )}
+          </div>
+        )}
+      </div>
+
       <div className="bg-white p-4 rounded-xl shadow">
         <h2 className="font-semibold mb-3">Entrega</h2>
 
@@ -120,7 +200,7 @@ export default function Checkout() {
 
         <button
           onClick={enviar}
-          disabled={loading || loadingUnidades || !unidade || anyBelowMinimum}
+          disabled={loading || loadingUnidades || loadingPerfil || !unidade || anyBelowMinimum || (!cpfBloqueado && !isValidCpf(cpf))}
           className="mt-4 px-3 py-2 border rounded-lg disabled:opacity-60"
           title={anyBelowMinimum ? "Há itens abaixo da quantidade mínima." : ""}
         >
