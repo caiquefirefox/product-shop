@@ -42,9 +42,9 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                 name: "FK_Produtos_ProdutoTipoOpcoes_TipoProdutoOpcaoId",
                 table: "Produtos");
 
-            migrationBuilder.Sql("ALTER TABLE \"Produtos\" DROP CONSTRAINT IF EXISTS \"FK_Produtos_Usuarios_AtualizadoPorUsuarioId\";");
+            migrationBuilder.Sql(@"ALTER TABLE ""Produtos"" DROP CONSTRAINT IF EXISTS ""FK_Produtos_Usuarios_AtualizadoPorUsuarioId"";");
 
-            migrationBuilder.Sql("ALTER TABLE \"Produtos\" DROP CONSTRAINT IF EXISTS \"FK_Produtos_Usuarios_CriadoPorUsuarioId\";");
+            migrationBuilder.Sql(@"ALTER TABLE ""Produtos"" DROP CONSTRAINT IF EXISTS ""FK_Produtos_Usuarios_CriadoPorUsuarioId"";");
 
             migrationBuilder.DropPrimaryKey(
                 name: "PK_ProdutoPortes",
@@ -82,29 +82,29 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                 name: "PK_Usuarios",
                 table: "Usuarios");
 
-            migrationBuilder.Sql(@"ALTER TABLE \"Usuarios\" ALTER COLUMN \"Id\" TYPE uuid USING \"Id\"::uuid;");
+            migrationBuilder.Sql(@"ALTER TABLE ""Usuarios"" ALTER COLUMN ""Id"" TYPE uuid USING ""Id""::uuid;");
 
-            migrationBuilder.Sql(@"ALTER TABLE \"Pedidos\" ALTER COLUMN \"Id\" TYPE uuid USING \"Id\"::uuid;");
-            migrationBuilder.Sql(@"ALTER TABLE \"Pedidos\" ALTER COLUMN \"UsuarioId\" TYPE uuid USING \"UsuarioId\"::uuid;");
+            migrationBuilder.Sql(@"ALTER TABLE ""Pedidos"" ALTER COLUMN ""Id"" TYPE uuid USING ""Id""::uuid;");
+            migrationBuilder.Sql(@"ALTER TABLE ""Pedidos"" ALTER COLUMN ""UsuarioId"" TYPE uuid USING ""UsuarioId""::uuid;");
 
-            migrationBuilder.Sql(@"ALTER TABLE \"ProdutoEspecieOpcoes\" ALTER COLUMN \"Id\" TYPE uuid USING \"Id\"::uuid;");
-            migrationBuilder.Sql(@"ALTER TABLE \"ProdutoTipoOpcoes\" ALTER COLUMN \"Id\" TYPE uuid USING \"Id\"::uuid;");
-            migrationBuilder.Sql(@"ALTER TABLE \"ProdutoFaixaEtariaOpcoes\" ALTER COLUMN \"Id\" TYPE uuid USING \"Id\"::uuid;");
-            migrationBuilder.Sql(@"ALTER TABLE \"ProdutoPorteOpcoes\" ALTER COLUMN \"Id\" TYPE uuid USING \"Id\"::uuid;");
+            migrationBuilder.Sql(@"ALTER TABLE ""ProdutoEspecieOpcoes"" ALTER COLUMN ""Id"" TYPE uuid USING ""Id""::uuid;");
+            migrationBuilder.Sql(@"ALTER TABLE ""ProdutoTipoOpcoes"" ALTER COLUMN ""Id"" TYPE uuid USING ""Id""::uuid;");
+            migrationBuilder.Sql(@"ALTER TABLE ""ProdutoFaixaEtariaOpcoes"" ALTER COLUMN ""Id"" TYPE uuid USING ""Id""::uuid;");
+            migrationBuilder.Sql(@"ALTER TABLE ""ProdutoPorteOpcoes"" ALTER COLUMN ""Id"" TYPE uuid USING ""Id""::uuid;");
 
-            migrationBuilder.Sql(@"ALTER TABLE \"Produtos\" ALTER COLUMN \"Id\" TYPE uuid USING \"Id\"::uuid;");
-            migrationBuilder.Sql(@"ALTER TABLE \"Produtos\" ALTER COLUMN \"EspecieOpcaoId\" TYPE uuid USING \"EspecieOpcaoId\"::uuid;");
-            migrationBuilder.Sql(@"ALTER TABLE \"Produtos\" ALTER COLUMN \"TipoProdutoOpcaoId\" TYPE uuid USING \"TipoProdutoOpcaoId\"::uuid;");
-            migrationBuilder.Sql(@"ALTER TABLE \"Produtos\" ALTER COLUMN \"FaixaEtariaOpcaoId\" TYPE uuid USING \"FaixaEtariaOpcaoId\"::uuid;");
-            migrationBuilder.Sql(@"ALTER TABLE \"Produtos\" ALTER COLUMN \"CriadoPorUsuarioId\" TYPE uuid USING NULLIF(\"CriadoPorUsuarioId\", '')::uuid;");
-            migrationBuilder.Sql(@"ALTER TABLE \"Produtos\" ALTER COLUMN \"AtualizadoPorUsuarioId\" TYPE uuid USING NULLIF(\"AtualizadoPorUsuarioId\", '')::uuid;");
+            migrationBuilder.Sql(@"ALTER TABLE ""Produtos"" ALTER COLUMN ""Id"" TYPE uuid USING ""Id""::uuid;");
+            migrationBuilder.Sql(@"ALTER TABLE ""Produtos"" ALTER COLUMN ""EspecieOpcaoId"" TYPE uuid USING ""EspecieOpcaoId""::uuid;");
+            migrationBuilder.Sql(@"ALTER TABLE ""Produtos"" ALTER COLUMN ""TipoProdutoOpcaoId"" TYPE uuid USING ""TipoProdutoOpcaoId""::uuid;");
+            migrationBuilder.Sql(@"ALTER TABLE ""Produtos"" ALTER COLUMN ""FaixaEtariaOpcaoId"" TYPE uuid USING ""FaixaEtariaOpcaoId""::uuid;");
+            migrationBuilder.Sql(@"ALTER TABLE ""Produtos"" ALTER COLUMN ""CriadoPorUsuarioId"" TYPE uuid USING NULLIF(""CriadoPorUsuarioId"", '')::uuid;");
+            migrationBuilder.Sql(@"ALTER TABLE ""Produtos"" ALTER COLUMN ""AtualizadoPorUsuarioId"" TYPE uuid USING NULLIF(""AtualizadoPorUsuarioId"", '')::uuid;");
 
-            migrationBuilder.Sql(@"ALTER TABLE \"ProdutoPortes\" ALTER COLUMN \"ProdutoId\" TYPE uuid USING \"ProdutoId\"::uuid;");
-            migrationBuilder.Sql(@"ALTER TABLE \"ProdutoPortes\" ALTER COLUMN \"PorteOpcaoId\" TYPE uuid USING \"PorteOpcaoId\"::uuid;");
+            migrationBuilder.Sql(@"ALTER TABLE ""ProdutoPortes"" ALTER COLUMN ""ProdutoId"" TYPE uuid USING ""ProdutoId""::uuid;");
+            migrationBuilder.Sql(@"ALTER TABLE ""ProdutoPortes"" ALTER COLUMN ""PorteOpcaoId"" TYPE uuid USING ""PorteOpcaoId""::uuid;");
 
-            migrationBuilder.Sql(@"ALTER TABLE \"PedidoItens\" ALTER COLUMN \"Id\" TYPE uuid USING \"Id\"::uuid;");
-            migrationBuilder.Sql(@"ALTER TABLE \"PedidoItens\" ALTER COLUMN \"PedidoId\" TYPE uuid USING \"PedidoId\"::uuid;");
-            migrationBuilder.Sql(@"ALTER TABLE \"PedidoItens\" ALTER COLUMN \"ProdutoId\" TYPE uuid USING \"ProdutoId\"::uuid;");
+            migrationBuilder.Sql(@"ALTER TABLE ""PedidoItens"" ALTER COLUMN ""Id"" TYPE uuid USING ""Id""::uuid;");
+            migrationBuilder.Sql(@"ALTER TABLE ""PedidoItens"" ALTER COLUMN ""PedidoId"" TYPE uuid USING ""PedidoId""::uuid;");
+            migrationBuilder.Sql(@"ALTER TABLE ""PedidoItens"" ALTER COLUMN ""ProdutoId"" TYPE uuid USING ""ProdutoId""::uuid;");
 
             migrationBuilder.AddPrimaryKey(
                 name: "PK_Usuarios",
@@ -267,9 +267,9 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                 name: "FK_Produtos_ProdutoTipoOpcoes_TipoProdutoOpcaoId",
                 table: "Produtos");
 
-            migrationBuilder.Sql("ALTER TABLE \"Produtos\" DROP CONSTRAINT IF EXISTS \"FK_Produtos_Usuarios_AtualizadoPorUsuarioId\";");
+            migrationBuilder.Sql(@"ALTER TABLE ""Produtos"" DROP CONSTRAINT IF EXISTS ""FK_Produtos_Usuarios_AtualizadoPorUsuarioId"";");
 
-            migrationBuilder.Sql("ALTER TABLE \"Produtos\" DROP CONSTRAINT IF EXISTS \"FK_Produtos_Usuarios_CriadoPorUsuarioId\";");
+            migrationBuilder.Sql(@"ALTER TABLE ""Produtos"" DROP CONSTRAINT IF EXISTS ""FK_Produtos_Usuarios_CriadoPorUsuarioId"";");
 
             migrationBuilder.DropPrimaryKey(
                 name: "PK_ProdutoPortes",
@@ -307,29 +307,29 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                 name: "PK_Usuarios",
                 table: "Usuarios");
 
-            migrationBuilder.Sql(@"ALTER TABLE \"PedidoItens\" ALTER COLUMN \"ProdutoId\" TYPE character varying(36) USING \"ProdutoId\"::text;");
-            migrationBuilder.Sql(@"ALTER TABLE \"PedidoItens\" ALTER COLUMN \"PedidoId\" TYPE character varying(36) USING \"PedidoId\"::text;");
-            migrationBuilder.Sql(@"ALTER TABLE \"PedidoItens\" ALTER COLUMN \"Id\" TYPE character varying(36) USING \"Id\"::text;");
+            migrationBuilder.Sql(@"ALTER TABLE ""PedidoItens"" ALTER COLUMN ""ProdutoId"" TYPE character varying(36) USING ""ProdutoId""::text;");
+            migrationBuilder.Sql(@"ALTER TABLE ""PedidoItens"" ALTER COLUMN ""PedidoId"" TYPE character varying(36) USING ""PedidoId""::text;");
+            migrationBuilder.Sql(@"ALTER TABLE ""PedidoItens"" ALTER COLUMN ""Id"" TYPE character varying(36) USING ""Id""::text;");
 
-            migrationBuilder.Sql(@"ALTER TABLE \"ProdutoPortes\" ALTER COLUMN \"PorteOpcaoId\" TYPE character varying(36) USING \"PorteOpcaoId\"::text;");
-            migrationBuilder.Sql(@"ALTER TABLE \"ProdutoPortes\" ALTER COLUMN \"ProdutoId\" TYPE character varying(36) USING \"ProdutoId\"::text;");
+            migrationBuilder.Sql(@"ALTER TABLE ""ProdutoPortes"" ALTER COLUMN ""PorteOpcaoId"" TYPE character varying(36) USING ""PorteOpcaoId""::text;");
+            migrationBuilder.Sql(@"ALTER TABLE ""ProdutoPortes"" ALTER COLUMN ""ProdutoId"" TYPE character varying(36) USING ""ProdutoId""::text;");
 
-            migrationBuilder.Sql(@"ALTER TABLE \"Produtos\" ALTER COLUMN \"AtualizadoPorUsuarioId\" TYPE character varying(36) USING \"AtualizadoPorUsuarioId\"::text;");
-            migrationBuilder.Sql(@"ALTER TABLE \"Produtos\" ALTER COLUMN \"CriadoPorUsuarioId\" TYPE character varying(36) USING \"CriadoPorUsuarioId\"::text;");
-            migrationBuilder.Sql(@"ALTER TABLE \"Produtos\" ALTER COLUMN \"FaixaEtariaOpcaoId\" TYPE character varying(36) USING \"FaixaEtariaOpcaoId\"::text;");
-            migrationBuilder.Sql(@"ALTER TABLE \"Produtos\" ALTER COLUMN \"TipoProdutoOpcaoId\" TYPE character varying(36) USING \"TipoProdutoOpcaoId\"::text;");
-            migrationBuilder.Sql(@"ALTER TABLE \"Produtos\" ALTER COLUMN \"EspecieOpcaoId\" TYPE character varying(36) USING \"EspecieOpcaoId\"::text;");
-            migrationBuilder.Sql(@"ALTER TABLE \"Produtos\" ALTER COLUMN \"Id\" TYPE character varying(36) USING \"Id\"::text;");
+            migrationBuilder.Sql(@"ALTER TABLE ""Produtos"" ALTER COLUMN ""AtualizadoPorUsuarioId"" TYPE character varying(36) USING ""AtualizadoPorUsuarioId""::text;");
+            migrationBuilder.Sql(@"ALTER TABLE ""Produtos"" ALTER COLUMN ""CriadoPorUsuarioId"" TYPE character varying(36) USING ""CriadoPorUsuarioId""::text;");
+            migrationBuilder.Sql(@"ALTER TABLE ""Produtos"" ALTER COLUMN ""FaixaEtariaOpcaoId"" TYPE character varying(36) USING ""FaixaEtariaOpcaoId""::text;");
+            migrationBuilder.Sql(@"ALTER TABLE ""Produtos"" ALTER COLUMN ""TipoProdutoOpcaoId"" TYPE character varying(36) USING ""TipoProdutoOpcaoId""::text;");
+            migrationBuilder.Sql(@"ALTER TABLE ""Produtos"" ALTER COLUMN ""EspecieOpcaoId"" TYPE character varying(36) USING ""EspecieOpcaoId""::text;");
+            migrationBuilder.Sql(@"ALTER TABLE ""Produtos"" ALTER COLUMN ""Id"" TYPE character varying(36) USING ""Id""::text;");
 
-            migrationBuilder.Sql(@"ALTER TABLE \"ProdutoPorteOpcoes\" ALTER COLUMN \"Id\" TYPE character varying(36) USING \"Id\"::text;");
-            migrationBuilder.Sql(@"ALTER TABLE \"ProdutoFaixaEtariaOpcoes\" ALTER COLUMN \"Id\" TYPE character varying(36) USING \"Id\"::text;");
-            migrationBuilder.Sql(@"ALTER TABLE \"ProdutoTipoOpcoes\" ALTER COLUMN \"Id\" TYPE character varying(36) USING \"Id\"::text;");
-            migrationBuilder.Sql(@"ALTER TABLE \"ProdutoEspecieOpcoes\" ALTER COLUMN \"Id\" TYPE character varying(36) USING \"Id\"::text;");
+            migrationBuilder.Sql(@"ALTER TABLE ""ProdutoPorteOpcoes"" ALTER COLUMN ""Id"" TYPE character varying(36) USING ""Id""::text;");
+            migrationBuilder.Sql(@"ALTER TABLE ""ProdutoFaixaEtariaOpcoes"" ALTER COLUMN ""Id"" TYPE character varying(36) USING ""Id""::text;");
+            migrationBuilder.Sql(@"ALTER TABLE ""ProdutoTipoOpcoes"" ALTER COLUMN ""Id"" TYPE character varying(36) USING ""Id""::text;");
+            migrationBuilder.Sql(@"ALTER TABLE ""ProdutoEspecieOpcoes"" ALTER COLUMN ""Id"" TYPE character varying(36) USING ""Id""::text;");
 
-            migrationBuilder.Sql(@"ALTER TABLE \"Pedidos\" ALTER COLUMN \"UsuarioId\" TYPE character varying(36) USING \"UsuarioId\"::text;");
-            migrationBuilder.Sql(@"ALTER TABLE \"Pedidos\" ALTER COLUMN \"Id\" TYPE character varying(36) USING \"Id\"::text;");
+            migrationBuilder.Sql(@"ALTER TABLE ""Pedidos"" ALTER COLUMN ""UsuarioId"" TYPE character varying(36) USING ""UsuarioId""::text;");
+            migrationBuilder.Sql(@"ALTER TABLE ""Pedidos"" ALTER COLUMN ""Id"" TYPE character varying(36) USING ""Id""::text;");
 
-            migrationBuilder.Sql(@"ALTER TABLE \"Usuarios\" ALTER COLUMN \"Id\" TYPE character varying(36) USING \"Id\"::text;");
+            migrationBuilder.Sql(@"ALTER TABLE ""Usuarios"" ALTER COLUMN ""Id"" TYPE character varying(36) USING ""Id""::text;");
 
             migrationBuilder.AddPrimaryKey(
                 name: "PK_Usuarios",
