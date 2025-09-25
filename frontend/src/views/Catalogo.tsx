@@ -427,23 +427,26 @@ export default function Catalogo() {
                   className="group flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white/90 shadow-sm ring-1 ring-transparent transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:ring-indigo-100"
                 >
                   <div className="flex flex-1 flex-col gap-6 p-6">
-                    <div className={`rounded-2xl border border-indigo-50 bg-gradient-to-br ${gradient} p-4`}
+                    <div
+                      className={`rounded-2xl border border-indigo-50 bg-gradient-to-br ${gradient} p-5`}
                     >
-                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-6">
-                        <div className="mx-auto flex h-32 w-32 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/70 bg-white/80 shadow-inner sm:mx-0">
-                          {p.imagemUrl ? (
-                            <img
-                              src={p.imagemUrl}
-                              alt={`Imagem ilustrativa do produto ${p.descricao}`}
-                              className="h-full w-full object-contain"
-                              loading="lazy"
-                            />
-                          ) : (
-                            <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Sem imagem</span>
-                          )}
+                      <div className="flex flex-col gap-5">
+                        <div className="mx-auto w-full max-w-[368px]">
+                          <div className="flex aspect-[368/368] w-full items-center justify-center overflow-hidden rounded-2xl border border-white/70 bg-white/80 shadow-inner">
+                            {p.imagemUrl ? (
+                              <img
+                                src={p.imagemUrl}
+                                alt={`Imagem ilustrativa do produto ${p.descricao}`}
+                                className="h-full w-full object-contain"
+                                loading="lazy"
+                              />
+                            ) : (
+                              <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Sem imagem</span>
+                            )}
+                          </div>
                         </div>
 
-                        <div className="flex flex-1 flex-col gap-4">
+                        <div className="flex flex-col gap-4">
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="inline-flex items-center rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700">
                               {p.tipoProdutoNome}
@@ -463,7 +466,7 @@ export default function Catalogo() {
                             )}
                           </div>
 
-                          <div className="space-y-1">
+                          <div className="space-y-1 text-center sm:text-left">
                             <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">SKU #{p.codigo}</span>
                             <h3 className="text-lg font-semibold text-slate-900">
                               {p.descricao}
@@ -486,10 +489,6 @@ export default function Catalogo() {
                               <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Porte indicado</dt>
                               <dd className="text-sm font-medium text-slate-900">{portes}</dd>
                             </div>
-                            <div className="space-y-0.5">
-                              <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Disponibilidade</dt>
-                              <dd className="text-sm font-medium text-slate-900">Em estoque</dd>
-                            </div>
                           </dl>
                         </div>
                       </div>
@@ -502,9 +501,6 @@ export default function Catalogo() {
                       </div>
 
                       <div className="flex flex-wrap items-center gap-3">
-                        <div className="hidden items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500 shadow-sm sm:flex">
-                          Entrega: CD Santana
-                        </div>
                         <button
                           className="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white shadow-sm transition-colors duration-200 hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
                           onClick={() => handleAdd(p)}
