@@ -21,35 +21,30 @@ public sealed class ProdutoService : IProdutoService
         _usuarios = usuarios;
     }
 
-    private static ProdutoDto MapToDto(Produto p)
-    {
-        var portesOrdenados = p.Portes
-            .Select(pp => pp.PorteOpcao)
-            .Where(po => po is not null)
-            .OrderBy(po => po!.Nome)
-            .ToList();
-
-        var porteIds = portesOrdenados.Select(po => po!.Id).ToList();
-        var porteNomes = portesOrdenados.Select(po => po!.Nome).ToList();
-
-        return new ProdutoDto(
+    private static IQueryable<ProdutoDto> ProjectToDto(IQueryable<Produto> query)
+        => query.Select(p => new ProdutoDto(
             p.Codigo,
             p.Descricao,
             p.Peso,
             (int)p.TipoPeso,
             p.Sabores,
             p.EspecieOpcaoId,
-            p.EspecieOpcao?.Nome ?? string.Empty,
-            porteIds,
-            porteNomes,
+            p.EspecieOpcao != null ? p.EspecieOpcao.Nome : string.Empty,
+            p.Portes
+                .OrderBy(pp => pp.PorteOpcao != null ? pp.PorteOpcao.Nome : string.Empty)
+                .Select(pp => pp.PorteOpcaoId)
+                .ToArray(),
+            p.Portes
+                .OrderBy(pp => pp.PorteOpcao != null ? pp.PorteOpcao.Nome : string.Empty)
+                .Select(pp => pp.PorteOpcao != null ? pp.PorteOpcao.Nome : string.Empty)
+                .ToArray(),
             p.TipoProdutoOpcaoId,
-            p.TipoProdutoOpcao?.Nome ?? string.Empty,
+            p.TipoProdutoOpcao != null ? p.TipoProdutoOpcao.Nome : string.Empty,
             p.FaixaEtariaOpcaoId,
-            p.FaixaEtariaOpcao?.Nome ?? string.Empty,
+            p.FaixaEtariaOpcao != null ? p.FaixaEtariaOpcao.Nome : string.Empty,
             p.Preco,
             p.QuantidadeMinimaDeCompra,
-            p.ImagemUrl);
-    }
+            p.ImagemUrl));
 
     private static IReadOnlyList<Guid> NormalizarPortes(IReadOnlyList<Guid> ids)
     {
@@ -108,8 +103,8 @@ public sealed class ProdutoService : IProdutoService
 
     public async Task<ProdutoDto?> GetByCodigoAsync(string codigo, CancellationToken ct)
     {
-        var p = await _repo.Query().AsNoTracking().FirstOrDefaultAsync(x => x.Codigo == codigo, ct);
-        return p is null ? null : MapToDto(p);
+        return await ProjectToDto(_repo.Query().AsNoTracking().Where(x => x.Codigo == codigo))
+            .FirstOrDefaultAsync(ct);
     }
 
     public async Task<PagedResultDto<ProdutoDto>> ListAsync(ProdutoFiltroDto? filtro, CancellationToken ct)
@@ -170,14 +165,13 @@ public sealed class ProdutoService : IProdutoService
 
         var skip = (page - 1) * pageSize;
 
-        var produtos = await query
-            .OrderBy(p => p.Descricao)
-            .Skip(skip)
-            .Take(pageSize)
+        var produtos = await ProjectToDto(
+                query.OrderBy(p => p.Descricao)
+                     .Skip(skip)
+                     .Take(pageSize))
             .ToListAsync(ct);
-
         return new PagedResultDto<ProdutoDto>(
-            produtos.Select(MapToDto).ToList(),
+            produtos,
             page,
             pageSize,
             totalItems,
