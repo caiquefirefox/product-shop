@@ -17,49 +17,53 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                 type: "uuid",
                 nullable: true);
 
+            // Insere perfis de usuário que ainda não existem, a partir dos Pedidos
             migrationBuilder.Sql(@"
-                INSERT INTO \"Usuarios\" (\"Id\", \"MicrosoftId\", \"Cpf\", \"CriadoEm\", \"AtualizadoEm\")
+                INSERT INTO ""Usuarios"" (""Id"", ""MicrosoftId"", ""Cpf"", ""CriadoEm"", ""AtualizadoEm"")
                 SELECT
-                    md5(p.\"UsuarioId\")::uuid,
-                    p.\"UsuarioId\",
+                    md5(p.""UsuarioId"")::uuid,
+                    p.""UsuarioId"",
                     NULL,
                     NOW(),
                     NOW()
-                FROM \"Pedidos\" p
-                WHERE p.\"UsuarioId\" IS NOT NULL
+                FROM ""Pedidos"" p
+                WHERE p.""UsuarioId"" IS NOT NULL
                   AND NOT EXISTS (
-                      SELECT 1 FROM \"Usuarios\" u WHERE u.\"MicrosoftId\" = p.\"UsuarioId\"
+                      SELECT 1 FROM ""Usuarios"" u WHERE u.""MicrosoftId"" = p.""UsuarioId""
                   )
-                GROUP BY p.\"UsuarioId\";
+                GROUP BY p.""UsuarioId"";
             ");
 
+            // Completa/atualiza CPF quando vier dos pedidos
             migrationBuilder.Sql(@"
-                UPDATE \"Usuarios\" u
-                SET \"Cpf\" = COALESCE(u.\"Cpf\", src.\"UsuarioCpf\"),
-                    \"AtualizadoEm\" = CASE
-                        WHEN u.\"Cpf\" IS NULL AND src.\"UsuarioCpf\" IS NOT NULL THEN NOW()
-                        ELSE u.\"AtualizadoEm\"
+                UPDATE ""Usuarios"" u
+                SET ""Cpf"" = COALESCE(u.""Cpf"", NULLIF(TRIM(src.""UsuarioCpf""), '')),
+                    ""AtualizadoEm"" = CASE
+                        WHEN u.""Cpf"" IS NULL AND NULLIF(TRIM(src.""UsuarioCpf""), '') IS NOT NULL THEN NOW()
+                        ELSE u.""AtualizadoEm""
                     END
                 FROM (
-                    SELECT p.\"UsuarioId\", MAX(p.\"UsuarioCpf\") AS \"UsuarioCpf\"
-                    FROM \"Pedidos\" p
-                    WHERE p.\"UsuarioCpf\" IS NOT NULL AND p.\"UsuarioCpf\" <> ''
-                    GROUP BY p.\"UsuarioId\"
+                    SELECT p.""UsuarioId"", MAX(p.""UsuarioCpf"") AS ""UsuarioCpf""
+                    FROM ""Pedidos"" p
+                    WHERE p.""UsuarioCpf"" IS NOT NULL AND TRIM(p.""UsuarioCpf"") <> ''
+                    GROUP BY p.""UsuarioId""
                 ) src
-                WHERE u.\"MicrosoftId\" = src.\"UsuarioId\";
+                WHERE u.""MicrosoftId"" = src.""UsuarioId"";
             ");
 
+            // Preenche a FK nos pedidos com o Id do usuário correspondente
             migrationBuilder.Sql(@"
-                UPDATE \"Pedidos\" p
-                SET \"UsuarioPerfilId\" = u.\"Id\"
-                FROM \"Usuarios\" u
-                WHERE u.\"MicrosoftId\" = p.\"UsuarioId\";
+                UPDATE ""Pedidos"" p
+                SET ""UsuarioPerfilId"" = u.""Id""
+                FROM ""Usuarios"" u
+                WHERE u.""MicrosoftId"" = p.""UsuarioId"";
             ");
 
+            // Para qualquer registro remanescente, gera UUID determinístico com md5(UsuarioId)
             migrationBuilder.Sql(@"
-                UPDATE \"Pedidos\"
-                SET \"UsuarioPerfilId\" = md5(\"UsuarioId\")::uuid
-                WHERE \"UsuarioPerfilId\" IS NULL AND \"UsuarioId\" IS NOT NULL;
+                UPDATE ""Pedidos""
+                SET ""UsuarioPerfilId"" = md5(""UsuarioId"")::uuid
+                WHERE ""UsuarioPerfilId"" IS NULL AND ""UsuarioId"" IS NOT NULL;
             ");
 
             migrationBuilder.AlterColumn<Guid>(
@@ -71,6 +75,7 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                 oldType: "uuid",
                 oldNullable: true);
 
+            // Remove a antiga coluna string e renomeia a nova para UsuarioId (agora FK)
             migrationBuilder.DropColumn(
                 name: "UsuarioId",
                 table: "Pedidos");
@@ -105,6 +110,7 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                 name: "IX_Pedidos_UsuarioId",
                 table: "Pedidos");
 
+            // Volta a coluna antiga com o MicrosoftId (string)
             migrationBuilder.AddColumn<string>(
                 name: "UsuarioMicrosoftId",
                 table: "Pedidos",
@@ -113,10 +119,10 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                 nullable: true);
 
             migrationBuilder.Sql(@"
-                UPDATE \"Pedidos\" p
-                SET \"UsuarioMicrosoftId\" = u.\"MicrosoftId\"
-                FROM \"Usuarios\" u
-                WHERE u.\"Id\" = p.\"UsuarioId\";
+                UPDATE ""Pedidos"" p
+                SET ""UsuarioMicrosoftId"" = u.""MicrosoftId""
+                FROM ""Usuarios"" u
+                WHERE u.""Id"" = p.""UsuarioId"";
             ");
 
             migrationBuilder.AlterColumn<string>(

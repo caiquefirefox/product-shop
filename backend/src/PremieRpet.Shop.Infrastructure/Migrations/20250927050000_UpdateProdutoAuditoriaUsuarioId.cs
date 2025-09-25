@@ -23,44 +23,48 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                 type: "uuid",
                 nullable: true);
 
+            // Garante que existam Usuarios para todos os MicrosoftId referenciados nos produtos
             migrationBuilder.Sql(@"
-                INSERT INTO \"Usuarios\" (\"Id\", \"MicrosoftId\", \"Cpf\", \"CriadoEm\", \"AtualizadoEm\")
+                INSERT INTO ""Usuarios"" (""Id"", ""MicrosoftId"", ""Cpf"", ""CriadoEm"", ""AtualizadoEm"")
                 SELECT DISTINCT
-                    md5(src.\"MicrosoftId\")::uuid,
-                    src.\"MicrosoftId\",
+                    md5(src.""MicrosoftId"")::uuid,
+                    src.""MicrosoftId"",
                     NULL,
                     NOW(),
                     NOW()
                 FROM (
-                    SELECT p.\"CriadoPorUsuarioId\" AS \"MicrosoftId\"
-                    FROM \"Produtos\" p
-                    WHERE p.\"CriadoPorUsuarioId\" IS NOT NULL AND p.\"CriadoPorUsuarioId\" <> ''
+                    SELECT NULLIF(TRIM(p.""CriadoPorUsuarioId""), '') AS ""MicrosoftId""
+                    FROM ""Produtos"" p
+                    WHERE p.""CriadoPorUsuarioId"" IS NOT NULL AND TRIM(p.""CriadoPorUsuarioId"") <> ''
                     UNION
-                    SELECT p.\"AtualizadoPorUsuarioId\"
-                    FROM \"Produtos\" p
-                    WHERE p.\"AtualizadoPorUsuarioId\" IS NOT NULL AND p.\"AtualizadoPorUsuarioId\" <> ''
+                    SELECT NULLIF(TRIM(p.""AtualizadoPorUsuarioId""), '') AS ""MicrosoftId""
+                    FROM ""Produtos"" p
+                    WHERE p.""AtualizadoPorUsuarioId"" IS NOT NULL AND TRIM(p.""AtualizadoPorUsuarioId"") <> ''
                 ) src
-                WHERE NOT EXISTS (
-                    SELECT 1 FROM \"Usuarios\" u WHERE u.\"MicrosoftId\" = src.\"MicrosoftId\"
-                );
+                WHERE src.""MicrosoftId"" IS NOT NULL
+                  AND NOT EXISTS (
+                      SELECT 1 FROM ""Usuarios"" u WHERE u.""MicrosoftId"" = src.""MicrosoftId""
+                  );
+            ");
+
+            // Preenche FKs temporárias com o Id do usuário correspondente
+            migrationBuilder.Sql(@"
+                UPDATE ""Produtos"" p
+                SET ""CriadoPorUsuarioIdTemp"" = u.""Id""
+                FROM ""Usuarios"" u
+                WHERE NULLIF(TRIM(p.""CriadoPorUsuarioId""), '') IS NOT NULL
+                  AND u.""MicrosoftId"" = p.""CriadoPorUsuarioId"";
             ");
 
             migrationBuilder.Sql(@"
-                UPDATE \"Produtos\" p
-                SET \"CriadoPorUsuarioIdTemp\" = u.\"Id\"
-                FROM \"Usuarios\" u
-                WHERE p.\"CriadoPorUsuarioId\" IS NOT NULL
-                  AND p.\"CriadoPorUsuarioId\" = u.\"MicrosoftId\";
+                UPDATE ""Produtos"" p
+                SET ""AtualizadoPorUsuarioIdTemp"" = u.""Id""
+                FROM ""Usuarios"" u
+                WHERE NULLIF(TRIM(p.""AtualizadoPorUsuarioId""), '') IS NOT NULL
+                  AND u.""MicrosoftId"" = p.""AtualizadoPorUsuarioId"";
             ");
 
-            migrationBuilder.Sql(@"
-                UPDATE \"Produtos\" p
-                SET \"AtualizadoPorUsuarioIdTemp\" = u.\"Id\"
-                FROM \"Usuarios\" u
-                WHERE p.\"AtualizadoPorUsuarioId\" IS NOT NULL
-                  AND p.\"AtualizadoPorUsuarioId\" = u.\"MicrosoftId\";
-            ");
-
+            // Remove as antigas colunas string
             migrationBuilder.DropColumn(
                 name: "CriadoPorUsuarioId",
                 table: "Produtos");
@@ -69,6 +73,7 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                 name: "AtualizadoPorUsuarioId",
                 table: "Produtos");
 
+            // Renomeia as temporárias (Guid) para as definitivas
             migrationBuilder.RenameColumn(
                 name: "CriadoPorUsuarioIdTemp",
                 table: "Produtos",
@@ -125,6 +130,7 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                 name: "IX_Produtos_CriadoPorUsuarioId",
                 table: "Produtos");
 
+            // Recria colunas temporárias string para restaurar dados
             migrationBuilder.AddColumn<string>(
                 name: "AtualizadoPorUsuarioIdTemp",
                 table: "Produtos",
@@ -139,22 +145,24 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                 maxLength: 200,
                 nullable: true);
 
+            // Copia de volta o MicrosoftId a partir do Id do usuário
             migrationBuilder.Sql(@"
-                UPDATE \"Produtos\" p
-                SET \"CriadoPorUsuarioIdTemp\" = u.\"MicrosoftId\"
-                FROM \"Usuarios\" u
-                WHERE p.\"CriadoPorUsuarioId\" IS NOT NULL
-                  AND p.\"CriadoPorUsuarioId\" = u.\"Id\";
+                UPDATE ""Produtos"" p
+                SET ""CriadoPorUsuarioIdTemp"" = u.""MicrosoftId""
+                FROM ""Usuarios"" u
+                WHERE p.""CriadoPorUsuarioId"" IS NOT NULL
+                  AND u.""Id"" = p.""CriadoPorUsuarioId"";
             ");
 
             migrationBuilder.Sql(@"
-                UPDATE \"Produtos\" p
-                SET \"AtualizadoPorUsuarioIdTemp\" = u.\"MicrosoftId\"
-                FROM \"Usuarios\" u
-                WHERE p.\"AtualizadoPorUsuarioId\" IS NOT NULL
-                  AND p.\"AtualizadoPorUsuarioId\" = u.\"Id\";
+                UPDATE ""Produtos"" p
+                SET ""AtualizadoPorUsuarioIdTemp"" = u.""MicrosoftId""
+                FROM ""Usuarios"" u
+                WHERE p.""AtualizadoPorUsuarioId"" IS NOT NULL
+                  AND u.""Id"" = p.""AtualizadoPorUsuarioId"";
             ");
 
+            // Remove as colunas Guid
             migrationBuilder.DropColumn(
                 name: "AtualizadoPorUsuarioId",
                 table: "Produtos");
@@ -163,6 +171,7 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                 name: "CriadoPorUsuarioId",
                 table: "Produtos");
 
+            // Renomeia as string temporárias para os nomes originais
             migrationBuilder.RenameColumn(
                 name: "AtualizadoPorUsuarioIdTemp",
                 table: "Produtos",
