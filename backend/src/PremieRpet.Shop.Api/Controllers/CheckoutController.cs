@@ -1,3 +1,4 @@
+using System;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PremieRpet.Shop.Api.Security;
@@ -24,7 +25,14 @@ public class CheckoutController(IPedidoService pedidos, IHttpContextAccessor ctx
         if (string.IsNullOrWhiteSpace(usuarioNome))
             return Problem(title: "Token sem identificador de nome de usuário.", statusCode: StatusCodes.Status401Unauthorized);
 
-        var pedidoId = await pedidos.CriarPedidoAsync(usuarioId, usuarioNome, dto, ct);
-        return Ok(new { id = pedidoId });
+        try
+        {
+            var pedidoId = await pedidos.CriarPedidoAsync(usuarioId, usuarioNome, dto, ct);
+            return Ok(new { id = pedidoId });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Problem(detail: ex.Message, statusCode: StatusCodes.Status400BadRequest);
+        }
     }
 }

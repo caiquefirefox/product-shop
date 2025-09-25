@@ -10,6 +10,7 @@ public static class DependencyInjection
     {
         services.AddScoped<IProdutoService, ProdutoService>();
         services.AddScoped<IPedidoService, PedidoService>();
+        services.AddScoped<IUsuarioService, UsuarioService>();
         return services;
     }
 }

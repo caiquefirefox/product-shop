@@ -7,6 +7,7 @@ public sealed class Pedido
     public Guid Id { get; set; } = Guid.NewGuid();
     public required string UsuarioId { get; set; }
     public required string UsuarioNome { get; set; }
+    public string? UsuarioCpf { get; set; }
     public required string UnidadeEntrega { get; set; }
     public DateTimeOffset DataHora { get; set; } = DateTimeOffset.UtcNow;
     public List<PedidoItem> Itens { get; set; } = new();

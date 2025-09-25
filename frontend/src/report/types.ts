@@ -12,6 +12,7 @@ type PedidoDetalhe = {
   id: string;
   usuarioId: string;
   usuarioNome: string;
+  usuarioCpf: string | null;
   unidadeEntrega: string;
   dataHora: string; // ISO
   total: number;

@@ -14,6 +14,7 @@ public sealed class ShopDbContext : DbContext
     public DbSet<ProdutoTipoOpcao> ProdutoTipoOpcoes => Set<ProdutoTipoOpcao>();
     public DbSet<ProdutoFaixaEtariaOpcao> ProdutoFaixaEtariaOpcoes => Set<ProdutoFaixaEtariaOpcao>();
     public DbSet<ProdutoPorte> ProdutoPortes => Set<ProdutoPorte>();
+    public DbSet<Usuario> Usuarios => Set<Usuario>();
 
     public ShopDbContext(DbContextOptions<ShopDbContext> options) : base(options) { }
 
@@ -55,9 +56,21 @@ public sealed class ShopDbContext : DbContext
             e.HasKey(p => p.Id);
             e.Property(p => p.UsuarioId).HasMaxLength(200).IsRequired();
             e.Property(p => p.UsuarioNome).HasMaxLength(200).IsRequired();
+            e.Property(p => p.UsuarioCpf).HasMaxLength(11);
             e.Property(p => p.UnidadeEntrega).HasMaxLength(200).IsRequired();
             e.Property(p => p.DataHora);
             e.HasMany(p => p.Itens).WithOne(i => i.Pedido).HasForeignKey(i => i.PedidoId);
+        });
+
+        b.Entity<Usuario>(e =>
+        {
+            e.HasKey(u => u.Id);
+            e.Property(u => u.MicrosoftId).HasMaxLength(200).IsRequired();
+            e.HasIndex(u => u.MicrosoftId).IsUnique();
+            e.Property(u => u.Cpf).HasMaxLength(11);
+            e.HasIndex(u => u.Cpf).IsUnique();
+            e.Property(u => u.CriadoEm);
+            e.Property(u => u.AtualizadoEm);
         });
 
         b.Entity<PedidoItem>(e =>

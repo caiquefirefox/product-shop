@@ -12,12 +12,14 @@ public sealed class PedidoService : IPedidoService
 {
     private readonly IPedidoRepository _pedidos;
     private readonly IProdutoRepository _produtos;
+    private readonly IUsuarioService _usuarios;
     public const decimal LIMITE_KG_MES = 30m;
 
-    public PedidoService(IPedidoRepository ped, IProdutoRepository prod)
-    { 
-        _pedidos = ped; 
+    public PedidoService(IPedidoRepository ped, IProdutoRepository prod, IUsuarioService usuarios)
+    {
+        _pedidos = ped;
         _produtos = prod;
+        _usuarios = usuarios;
     }
 
     public async Task<PedidoResumoDto> CriarPedidoAsync(string usuarioId, string usuarioNome, PedidoCreateDto dto, CancellationToken ct)
@@ -27,11 +29,13 @@ public sealed class PedidoService : IPedidoService
 
         var agora = DateTimeOffset.UtcNow;
         var pesoAcumulado = await PesoAcumuladoMesEmKgAsync(usuarioId, agora, ct);
+        var cpf = await _usuarios.GarantirCpfAsync(usuarioId, dto.Cpf, ct);
 
         var pedido = new Pedido
         {
             UsuarioId = usuarioId,
             UsuarioNome = usuarioNome,
+            UsuarioCpf = cpf,
             UnidadeEntrega = dto.UnidadeEntrega,
         };
 
@@ -68,7 +72,7 @@ public sealed class PedidoService : IPedidoService
         await _pedidos.AddAsync(pedido, ct);
 
         return new PedidoResumoDto(
-            pedido.Id, pedido.UsuarioNome, pedido.UnidadeEntrega, pedido.DataHora,
+            pedido.Id, pedido.UsuarioNome, pedido.UsuarioCpf, pedido.UnidadeEntrega, pedido.DataHora,
             pedido.Total(),
             pedido.PesoTotalKg()
         );
@@ -95,7 +99,7 @@ public sealed class PedidoService : IPedidoService
         return await q.AsNoTracking()
             .OrderByDescending(p => p.DataHora)
             .Select(p => new PedidoResumoDto(
-                p.Id, p.UsuarioNome, p.UnidadeEntrega, p.DataHora,
+                p.Id, p.UsuarioNome, p.UsuarioCpf, p.UnidadeEntrega, p.DataHora,
                 p.Itens.Sum(i => i.Preco * i.Quantidade),
                 p.Itens.AsQueryable().Select(PesoRules.ItemTotalKgExpr).Sum()
             ))
@@ -116,6 +120,7 @@ public sealed class PedidoService : IPedidoService
                 p.Id,
                 p.UsuarioId,
                 p.UsuarioNome,
+                p.UsuarioCpf,
                 p.UnidadeEntrega,
                 p.DataHora,
                 p.Itens.Sum(i => i.Preco * i.Quantidade),
