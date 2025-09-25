@@ -1,4 +1,7 @@
+using System.Globalization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Localization;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using PremieRpet.Shop.Application;
 using PremieRpet.Shop.Infrastructure;
@@ -18,6 +21,18 @@ if (!builder.Environment.IsDevelopment())
 }
 
 builder.Services.AddHttpContextAccessor();
+
+var defaultCulture = new CultureInfo("pt-BR");
+CultureInfo.DefaultThreadCurrentCulture = defaultCulture;
+CultureInfo.DefaultThreadCurrentUICulture = defaultCulture;
+
+builder.Services.Configure<RequestLocalizationOptions>(options =>
+{
+    options.DefaultRequestCulture = new RequestCulture(defaultCulture);
+    options.SupportedCultures = new[] { defaultCulture };
+    options.SupportedUICultures = new[] { defaultCulture };
+    options.ApplyCurrentCultureToResponseHeaders = true;
+});
 
 // Layers
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -68,6 +83,9 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
+var localizationOptions = app.Services.GetRequiredService<IOptions<RequestLocalizationOptions>>().Value;
+
+app.UseRequestLocalization(localizationOptions);
 app.UseHttpsRedirection();
 app.UseCors();
 app.UseAuthentication();
