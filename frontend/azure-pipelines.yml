@@ -1,0 +1,53 @@
+trigger:
+- main
+
+variables:
+  nodeVersion: '20.x'
+  frontendImageName: 'premierpet-adm-pedidos-internos-web'
+  imageTag: 'ci-test'
+
+stages:
+- stage: BuildAndPush
+  jobs:
+  - job: Build
+    pool:
+      vmImage: ubuntu-latest
+    steps:
+    - task: NodeTool@0
+      inputs:
+        versionSpec: '$(nodeVersion)'
+      displayName: 'Usar Node 20'
+
+    - script: npm ci
+      displayName: 'Instalar dependências'
+
+    - script: npm run build
+      displayName: 'Build SPA'
+
+    - task: Docker@2
+      displayName: 'Build imagem frontend'
+      inputs:
+        repository: '$(frontendImageName)'
+        command: 'build'
+        Dockerfile: 'Dockerfile'
+        buildContext: '.'
+        tags: |
+          $(imageTag)
+        arguments: |
+          --build-arg VITE_API_BASE_URL=$(VITE_API_BASE_URL)
+
+    - task: CopyFiles@2
+      displayName: 'Copiar dist + Dockerfile para Staging'
+      inputs:
+        contents: |
+          **
+          !**/node_modules/**
+          !**/dist/**
+        targetFolder: '$(Build.DefaultWorkingDirectory)/drop'
+
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: '$(Build.DefaultWorkingDirectory)/drop'
+        ArtifactName: 'drop'
+        publishLocation: 'Container'
+      displayName: 'Publicar artefato para Release'

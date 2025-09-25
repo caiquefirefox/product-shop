@@ -7,4 +7,3 @@ Dockerfile
 .gitignore
 coverage
 *.local
-*.env
