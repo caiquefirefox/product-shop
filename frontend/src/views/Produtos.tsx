@@ -783,17 +783,17 @@ export default function Produtos() {
 
               return (
                 <div key={p.codigo} className={productCardClasses}>
-                  <div className="flex flex-wrap items-start gap-4">
+                  <div className="flex flex-col gap-4 md:grid md:grid-cols-[auto,1fr] md:items-start md:gap-6">
                     {p.imagemUrl && (
-                      <div className="flex h-20 max-w-[160px] flex-none items-center justify-center overflow-hidden rounded-xl border border-gray-100 bg-white/80 p-2 shadow-inner">
+                      <div className="flex aspect-square w-full max-w-[132px] flex-none items-center justify-center overflow-hidden rounded-2xl border border-gray-100 bg-white/80 p-3 shadow-inner md:w-[132px] md:self-stretch">
                         <img
                           src={p.imagemUrl}
                           alt={`Imagem do produto ${p.descricao}`}
-                          className="max-h-full w-auto object-contain"
+                          className="h-full w-full object-contain"
                         />
                       </div>
                     )}
-                    <div className="flex min-w-0 flex-1 flex-col gap-2">
+                    <div className="flex min-w-0 flex-1 flex-col gap-4">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
@@ -827,23 +827,23 @@ export default function Produtos() {
                           </button>
                         </div>
                       </div>
+
+                      <dl className={detailsGridClasses}>
+                        <DetailItem label="Espécie" value={p.especieNome} />
+                        <DetailItem label="Faixa etária" value={p.faixaEtariaNome} />
+                        <DetailItem
+                          label="Portes atendidos"
+                          value={formattedPortes || "Sem porte definido"}
+                          muted={!portesList.length}
+                        />
+                        <DetailItem
+                          label="Sabores"
+                          value={formattedSabores || "Nenhum sabor informado"}
+                          muted={!saboresList.length}
+                        />
+                      </dl>
                     </div>
                   </div>
-
-                  <dl className={detailsGridClasses}>
-                    <DetailItem label="Espécie" value={p.especieNome} />
-                    <DetailItem label="Faixa etária" value={p.faixaEtariaNome} />
-                    <DetailItem
-                      label="Portes atendidos"
-                      value={formattedPortes || "Sem porte definido"}
-                      muted={!portesList.length}
-                    />
-                    <DetailItem
-                      label="Sabores"
-                      value={formattedSabores || "Nenhum sabor informado"}
-                      muted={!saboresList.length}
-                    />
-                  </dl>
                 </div>
               );
             })
