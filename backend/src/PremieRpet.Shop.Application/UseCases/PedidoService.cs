@@ -5,6 +5,7 @@ using PremieRpet.Shop.Application.Interfaces.Repositories;
 using PremieRpet.Shop.Application.Interfaces.UseCases;
 using PremieRpet.Shop.Domain.Constants;
 using PremieRpet.Shop.Domain.Entities;
+using PremieRpet.Shop.Domain.Enums;
 using PremieRpet.Shop.Domain.Rules;
 
 namespace PremieRpet.Shop.Application.UseCases;
@@ -43,8 +44,21 @@ public sealed class PedidoService : IPedidoService
         foreach (var item in dto.Itens)
         {
             var prod = await _produtos.Query().AsNoTracking()
-                .FirstOrDefaultAsync(p => p.Codigo == item.ProdutoCodigo, ct)
+                .Where(p => p.Codigo == item.ProdutoCodigo)
+                .Select(p => new ProdutoParaPedido(
+                    EF.Property<string>(p, nameof(Produto.Id)),
+                    p.Codigo,
+                    p.Descricao,
+                    p.Peso,
+                    p.TipoPeso,
+                    p.Preco,
+                    p.QuantidadeMinimaDeCompra
+                ))
+                .FirstOrDefaultAsync(ct)
                 ?? throw new InvalidOperationException($"Produto {item.ProdutoCodigo} não encontrado");
+
+            if (!Guid.TryParse(prod.Id, out var produtoId))
+                throw new InvalidOperationException($"Produto {item.ProdutoCodigo} possui identificador inválido.");
 
             if (item.Quantidade < prod.QuantidadeMinimaDeCompra)
                 throw new InvalidOperationException($"Quantidade mínima para {prod.Descricao} é {prod.QuantidadeMinimaDeCompra} unidade(s).");
@@ -60,7 +74,7 @@ public sealed class PedidoService : IPedidoService
 
             pedido.Itens.Add(new PedidoItem
             {
-                ProdutoId = prod.Id,
+                ProdutoId = produtoId,
                 ProdutoCodigo = prod.Codigo,
                 Descricao = prod.Descricao,
                 Preco = prod.Preco,
@@ -138,4 +152,13 @@ public sealed class PedidoService : IPedidoService
             ))
             .ToListAsync(ct);
     }
+    private sealed record ProdutoParaPedido(
+        string Id,
+        string Codigo,
+        string Descricao,
+        decimal Peso,
+        TipoPeso TipoPeso,
+        decimal Preco,
+        int QuantidadeMinimaDeCompra
+    );
 }
