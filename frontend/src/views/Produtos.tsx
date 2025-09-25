@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import Select, { MultiValue, StylesConfig } from "react-select";
 import api from "../lib/api";
 
@@ -18,6 +18,7 @@ type Produto = {
   faixaEtariaNome: string;
   preco: number;
   quantidadeMinimaDeCompra: number;
+  imagemUrl?: string | null;
 };
 
 type ProdutoOpcao = {
@@ -137,6 +138,18 @@ const saveButtonClasses = classNames(
   "focus:outline-none focus:ring-4 focus:ring-indigo-200 focus:ring-offset-1 focus:ring-offset-white",
 );
 
+const uploadButtonClasses = classNames(
+  "inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white",
+  "shadow-sm transition hover:bg-indigo-500",
+  "focus:outline-none focus:ring-4 focus:ring-indigo-200 focus:ring-offset-1 focus:ring-offset-white",
+);
+
+const removeImageButtonClasses = classNames(
+  "inline-flex items-center justify-center rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-600",
+  "bg-white transition hover:bg-gray-100",
+  "focus:outline-none focus:ring-4 focus:ring-gray-200 focus:ring-offset-1 focus:ring-offset-white",
+);
+
 const cancelButtonClasses = classNames(
   "inline-flex items-center justify-center rounded-xl border border-gray-300 px-5 py-3 text-sm font-semibold text-gray-600",
   "bg-white transition hover:bg-gray-100",
@@ -219,6 +232,10 @@ export default function Produtos() {
   const [opcoesCarregando, setOpcoesCarregando] = useState(true);
   const [produtoEmEdicao, setProdutoEmEdicao] = useState<Produto | null>(null);
   const [formAberto, setFormAberto] = useState(false);
+  const [imagemOriginalUrl, setImagemOriginalUrl] = useState<string | null>(null);
+  const [imagemPreview, setImagemPreview] = useState<string | null>(null);
+  const [imagemSelecionada, setImagemSelecionada] = useState<File | null>(null);
+  const [removerImagem, setRemoverImagem] = useState(false);
 
   const editando = produtoEmEdicao !== null;
 
@@ -270,6 +287,30 @@ export default function Produtos() {
     return `${before}${separator}${after}`;
   };
 
+  const atualizarPreview = (value: string | null) => {
+    setImagemPreview(prev => {
+      if (prev && prev !== value && prev.startsWith("blob:")) {
+        URL.revokeObjectURL(prev);
+      }
+      return value;
+    });
+  };
+
+  useEffect(() => {
+    return () => {
+      if (imagemPreview && imagemPreview.startsWith("blob:")) {
+        URL.revokeObjectURL(imagemPreview);
+      }
+    };
+  }, [imagemPreview]);
+
+  const resetImagemCampos = () => {
+    setImagemSelecionada(null);
+    setImagemOriginalUrl(null);
+    setRemoverImagem(false);
+    atualizarPreview(null);
+  };
+
   const loadProdutos = async () => {
     const response = await api.get<ProdutosListResponse>("/produtos");
     const data = response.data;
@@ -295,6 +336,7 @@ export default function Produtos() {
     setFaixaEtariaId(faixasEtarias[0]?.id ?? "");
     setPreco("0");
     setQuantidadeMinimaDeCompra("1");
+    resetImagemCampos();
   };
 
   const fecharFormulario = () => {
@@ -321,6 +363,10 @@ export default function Produtos() {
     setFaixaEtariaId(produto.faixaEtariaOpcaoId);
     setPreco(produto.preco.toFixed(2).replace(".", ","));
     setQuantidadeMinimaDeCompra(produto.quantidadeMinimaDeCompra.toString());
+    setImagemOriginalUrl(produto.imagemUrl ?? null);
+    setImagemSelecionada(null);
+    setRemoverImagem(false);
+    atualizarPreview(produto.imagemUrl ?? null);
   };
 
   const cancelarFormulario = () => {
@@ -391,6 +437,39 @@ export default function Produtos() {
     setPorteIds(values.map(option => option.value));
   };
 
+  const handleImagemChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    if (!file) return;
+
+    const objectUrl = URL.createObjectURL(file);
+    setImagemSelecionada(file);
+    setRemoverImagem(false);
+    atualizarPreview(objectUrl);
+    event.target.value = "";
+  };
+
+  const removerImagemAtual = () => {
+    if (imagemSelecionada) {
+      setImagemSelecionada(null);
+      setRemoverImagem(false);
+      atualizarPreview(imagemOriginalUrl);
+      return;
+    }
+
+    if (imagemOriginalUrl) {
+      if (removerImagem) {
+        setRemoverImagem(false);
+        atualizarPreview(imagemOriginalUrl);
+      } else {
+        setRemoverImagem(true);
+        atualizarPreview(null);
+      }
+      return;
+    }
+
+    atualizarPreview(null);
+  };
+
   const salvar = async () => {
     const especieSelecionada = especieId || especies[0]?.id || "";
     const tipoSelecionado = tipoProdutoId || tiposProduto[0]?.id || "";
@@ -400,22 +479,31 @@ export default function Produtos() {
     const codigoParaSalvar = editando ? produtoEmEdicao!.codigo : codigo.trim();
     if (!codigoParaSalvar) return;
 
-    const dto = {
-      descricao,
-      peso: parseDecimalInput(peso),
-      tipoPeso,
-      sabores,
-      especieOpcaoId: especieSelecionada,
-      porteOpcaoIds: porteIds,
-      tipoProdutoOpcaoId: tipoSelecionado,
-      faixaEtariaOpcaoId: faixaSelecionada,
-      preco: parseDecimalInput(preco),
-      quantidadeMinimaDeCompra: Math.max(1, parseIntegerInput(quantidadeMinimaDeCompra)),
-    };
+    const precoNormalizado = parseDecimalInput(preco);
+    const pesoNormalizado = parseDecimalInput(peso);
+    const quantidadeNormalizada = Math.max(1, parseIntegerInput(quantidadeMinimaDeCompra));
+
+    const formData = new FormData();
+    formData.append("Descricao", descricao);
+    formData.append("Peso", pesoNormalizado.toString());
+    formData.append("TipoPeso", tipoPeso.toString());
+    formData.append("Sabores", sabores);
+    formData.append("EspecieOpcaoId", especieSelecionada);
+    porteIds.forEach(id => formData.append("PorteOpcaoIds", id));
+    formData.append("TipoProdutoOpcaoId", tipoSelecionado);
+    formData.append("FaixaEtariaOpcaoId", faixaSelecionada);
+    formData.append("Preco", precoNormalizado.toString());
+    formData.append("QuantidadeMinimaDeCompra", quantidadeNormalizada.toString());
+    formData.append("ImagemUrl", imagemOriginalUrl ?? "");
+    formData.append("RemoverImagem", removerImagem ? "true" : "false");
+    if (imagemSelecionada) {
+      formData.append("Imagem", imagemSelecionada);
+    }
+
     if (editando) {
-      await api.put(`/produtos/${codigoParaSalvar}`, dto);
+      await api.put(`/produtos/${codigoParaSalvar}`, formData);
     } else {
-      await api.post(`/produtos/${codigoParaSalvar}`, dto);
+      await api.post(`/produtos/${codigoParaSalvar}`, formData);
     }
     await loadProdutos();
     fecharFormulario();
@@ -516,6 +604,37 @@ export default function Produtos() {
                 onChange={e => setSabores(e.target.value)}
                 className={baseInputClasses}
               />
+            </div>
+
+            <div className="flex flex-col gap-2 md:col-span-2 xl:col-span-3">
+              <span className="text-sm font-medium text-gray-700">Imagem do produto</span>
+              <div className="flex flex-col gap-3 rounded-2xl border border-dashed border-gray-300 bg-gray-50/70 p-4">
+                {imagemPreview ? (
+                  <img
+                    src={imagemPreview}
+                    alt={descricao ? `Imagem do produto ${descricao}` : "Imagem do produto"}
+                    className="h-44 w-full rounded-xl object-cover shadow-sm"
+                  />
+                ) : (
+                  <div className="flex h-44 items-center justify-center rounded-xl border border-gray-200 bg-white/60 text-sm font-medium text-gray-400">
+                    Nenhuma imagem selecionada
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-3">
+                  <label className={uploadButtonClasses}>
+                    Selecionar imagem
+                    <input type="file" accept="image/*" className="sr-only" onChange={handleImagemChange} />
+                  </label>
+                  {(imagemPreview || imagemOriginalUrl) && (
+                    <button type="button" onClick={removerImagemAtual} className={removeImageButtonClasses}>
+                      {removerImagem ? "Desfazer remoção" : "Remover imagem"}
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500">
+                  Utilize imagens nos formatos JPG, PNG ou WEBP com até 5&nbsp;MB.
+                </p>
+              </div>
             </div>
 
             <div className="flex flex-col gap-2">
@@ -658,6 +777,15 @@ export default function Produtos() {
 
               return (
                 <div key={p.codigo} className={productCardClasses}>
+                  {p.imagemUrl && (
+                    <div className="overflow-hidden rounded-2xl border border-gray-100 bg-slate-50">
+                      <img
+                        src={p.imagemUrl}
+                        alt={`Imagem do produto ${p.descricao}`}
+                        className="h-44 w-full object-cover"
+                      />
+                    </div>
+                  )}
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">

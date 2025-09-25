@@ -16,6 +16,7 @@ export type Produto = {
   faixaEtariaNome: string;
   preco: number;
   quantidadeMinimaDeCompra: number; // UNIDADES
+  imagemUrl?: string | null;
 };
 
 export type CartItem = {

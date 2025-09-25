@@ -20,5 +20,6 @@ public sealed class Produto
     public ICollection<ProdutoPorte> Portes { get; set; } = new List<ProdutoPorte>();
     public required decimal Preco { get; set; }
     public int QuantidadeMinimaDeCompra { get; set; } = 1;
+    public string? ImagemUrl { get; set; }
     public decimal PesoKg() => TipoPeso == TipoPeso.Grama ? Peso / 1000m : Peso;
 }

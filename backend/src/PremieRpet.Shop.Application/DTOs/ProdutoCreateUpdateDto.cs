@@ -13,4 +13,5 @@ public record ProdutoCreateUpdateDto(
     Guid TipoProdutoOpcaoId,
     Guid FaixaEtariaOpcaoId,
     decimal Preco,
-    int QuantidadeMinimaDeCompra);
+    int QuantidadeMinimaDeCompra,
+    string? ImagemUrl);

@@ -116,6 +116,10 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                     b.Property<Guid>("FaixaEtariaOpcaoId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("ImagemUrl")
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)");
+
                     b.Property<decimal>("Peso")
                         .HasColumnType("decimal(18,4)");
 

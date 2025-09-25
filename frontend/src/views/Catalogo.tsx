@@ -447,6 +447,17 @@ export default function Catalogo() {
                     </div>
                   </div>
 
+                  {p.imagemUrl && (
+                    <div className="overflow-hidden border-t border-slate-100">
+                      <img
+                        src={p.imagemUrl}
+                        alt={`Imagem ilustrativa do produto ${p.descricao}`}
+                        className="h-48 w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                        loading="lazy"
+                      />
+                    </div>
+                  )}
+
                   <div className="flex flex-1 flex-col gap-4 p-5">
                     <span className="text-[11px] font-mono uppercase tracking-wide text-slate-400">SKU #{p.codigo}</span>
 

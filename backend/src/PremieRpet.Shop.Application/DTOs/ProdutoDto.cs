@@ -18,4 +18,5 @@ public record ProdutoDto(
     Guid FaixaEtariaOpcaoId,
     string FaixaEtariaNome,
     decimal Preco,
-    int QuantidadeMinimaDeCompra);
+    int QuantidadeMinimaDeCompra,
+    string? ImagemUrl);
