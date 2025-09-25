@@ -18,17 +18,6 @@ public sealed class ShopDbContext : DbContext
 
     public ShopDbContext(DbContextOptions<ShopDbContext> options) : base(options) { }
 
-    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
-    {
-        configurationBuilder.Properties<Guid>()
-            .HaveConversion<string>()
-            .HaveColumnType("character varying(36)");
-
-        configurationBuilder.Properties<Guid?>()
-            .HaveConversion<string?>()
-            .HaveColumnType("character varying(36)");
-    }
-
     protected override void OnModelCreating(ModelBuilder b)
     {
         b.Entity<Produto>(e =>
