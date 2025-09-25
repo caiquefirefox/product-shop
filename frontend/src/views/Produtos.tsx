@@ -275,6 +275,17 @@ export default function Produtos() {
     return parsed;
   };
 
+  const formatDecimalForSubmission = (
+    value: number,
+    minimumFractionDigits: number,
+    maximumFractionDigits: number,
+  ) =>
+    value.toLocaleString("pt-BR", {
+      useGrouping: false,
+      minimumFractionDigits,
+      maximumFractionDigits,
+    });
+
   const sanitizeDecimalInput = (value: string) => {
     const cleaned = value.replace(/[^0-9.,]/g, "");
     const lastComma = cleaned.lastIndexOf(",");
@@ -485,14 +496,14 @@ export default function Produtos() {
 
     const formData = new FormData();
     formData.append("Descricao", descricao);
-    formData.append("Peso", pesoNormalizado.toString());
+    formData.append("Peso", formatDecimalForSubmission(pesoNormalizado, 0, 3));
     formData.append("TipoPeso", tipoPeso.toString());
     formData.append("Sabores", sabores);
     formData.append("EspecieOpcaoId", especieSelecionada);
     porteIds.forEach(id => formData.append("PorteOpcaoIds", id));
     formData.append("TipoProdutoOpcaoId", tipoSelecionado);
     formData.append("FaixaEtariaOpcaoId", faixaSelecionada);
-    formData.append("Preco", precoNormalizado.toString());
+    formData.append("Preco", formatDecimalForSubmission(precoNormalizado, 2, 2));
     formData.append("QuantidadeMinimaDeCompra", quantidadeNormalizada.toString());
     formData.append("ImagemUrl", imagemOriginalUrl ?? "");
     formData.append("RemoverImagem", removerImagem ? "true" : "false");
