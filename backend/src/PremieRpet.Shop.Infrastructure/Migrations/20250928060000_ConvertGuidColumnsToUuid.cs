@@ -42,13 +42,9 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                 name: "FK_Produtos_ProdutoTipoOpcoes_TipoProdutoOpcaoId",
                 table: "Produtos");
 
-            migrationBuilder.DropForeignKey(
-                name: "FK_Produtos_Usuarios_AtualizadoPorUsuarioId",
-                table: "Produtos");
+            migrationBuilder.Sql("ALTER TABLE \"Produtos\" DROP CONSTRAINT IF EXISTS \"FK_Produtos_Usuarios_AtualizadoPorUsuarioId\";");
 
-            migrationBuilder.DropForeignKey(
-                name: "FK_Produtos_Usuarios_CriadoPorUsuarioId",
-                table: "Produtos");
+            migrationBuilder.Sql("ALTER TABLE \"Produtos\" DROP CONSTRAINT IF EXISTS \"FK_Produtos_Usuarios_CriadoPorUsuarioId\";");
 
             migrationBuilder.DropPrimaryKey(
                 name: "PK_ProdutoPortes",
@@ -271,13 +267,9 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                 name: "FK_Produtos_ProdutoTipoOpcoes_TipoProdutoOpcaoId",
                 table: "Produtos");
 
-            migrationBuilder.DropForeignKey(
-                name: "FK_Produtos_Usuarios_AtualizadoPorUsuarioId",
-                table: "Produtos");
+            migrationBuilder.Sql("ALTER TABLE \"Produtos\" DROP CONSTRAINT IF EXISTS \"FK_Produtos_Usuarios_AtualizadoPorUsuarioId\";");
 
-            migrationBuilder.DropForeignKey(
-                name: "FK_Produtos_Usuarios_CriadoPorUsuarioId",
-                table: "Produtos");
+            migrationBuilder.Sql("ALTER TABLE \"Produtos\" DROP CONSTRAINT IF EXISTS \"FK_Produtos_Usuarios_CriadoPorUsuarioId\";");
 
             migrationBuilder.DropPrimaryKey(
                 name: "PK_ProdutoPortes",
