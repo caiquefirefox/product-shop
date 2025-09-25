@@ -52,7 +52,7 @@ public sealed class ProdutoService : IProdutoService
         return ids.Where(id => id != Guid.Empty).Distinct().ToList();
     }
 
-    public async Task CreateAsync(string codigo, ProdutoCreateUpdateDto dto, CancellationToken ct)
+    public async Task CreateAsync(string codigo, ProdutoCreateUpdateDto dto, string usuarioMicrosoftId, CancellationToken ct)
     {
         if (await _repo.ExistsAsync(codigo, ct))
             throw new InvalidOperationException($"Produto {codigo} já existe.");
@@ -69,6 +69,8 @@ public sealed class ProdutoService : IProdutoService
         if (porteIds.Count != portes.Count)
             throw new InvalidOperationException("Um ou mais portes são inválidos.");
 
+        var agora = DateTimeOffset.UtcNow;
+
         var prod = new Produto
         {
             Codigo = codigo,
@@ -82,7 +84,11 @@ public sealed class ProdutoService : IProdutoService
             Preco = dto.Preco,
             QuantidadeMinimaDeCompra = Math.Max(1, dto.QuantidadeMinimaDeCompra),
             ImagemUrl = string.IsNullOrWhiteSpace(dto.ImagemUrl) ? null : dto.ImagemUrl,
-            Portes = portes.Select(p => new ProdutoPorte { PorteOpcaoId = p.Id }).ToList()
+            Portes = portes.Select(p => new ProdutoPorte { PorteOpcaoId = p.Id }).ToList(),
+            CriadoEm = agora,
+            AtualizadoEm = agora,
+            CriadoPorUsuarioId = usuarioMicrosoftId,
+            AtualizadoPorUsuarioId = usuarioMicrosoftId
         };
         await _repo.AddAsync(prod, ct);
     }
@@ -191,7 +197,7 @@ public sealed class ProdutoService : IProdutoService
             .Select(o => new ProdutoOpcaoDto(o.Id, o.Nome))
             .ToList();
 
-    public async Task UpdateAsync(string codigo, ProdutoCreateUpdateDto dto, CancellationToken ct)
+    public async Task UpdateAsync(string codigo, ProdutoCreateUpdateDto dto, string usuarioMicrosoftId, CancellationToken ct)
     {
         var prod = await _repo.GetAsync(codigo, ct) ?? throw new InvalidOperationException("Produto não encontrado.");
         var especie = await _repo.ObterEspecieAsync(dto.EspecieOpcaoId, ct)
@@ -221,6 +227,9 @@ public sealed class ProdutoService : IProdutoService
         prod.Portes.Clear();
         foreach (var porte in portes)
             prod.Portes.Add(new ProdutoPorte { ProdutoId = prod.Id, PorteOpcaoId = porte.Id });
+
+        prod.AtualizadoEm = DateTimeOffset.UtcNow;
+        prod.AtualizadoPorUsuarioId = usuarioMicrosoftId;
 
         await _repo.UpdateAsync(prod, ct);
     }

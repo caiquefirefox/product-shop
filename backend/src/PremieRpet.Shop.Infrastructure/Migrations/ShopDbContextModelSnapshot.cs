@@ -156,6 +156,13 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                         .HasMaxLength(1024)
                         .HasColumnType("character varying(1024)");
 
+                    b.Property<DateTimeOffset?>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("AtualizadoPorUsuarioId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<decimal>("Peso")
                         .HasColumnType("decimal(18,4)");
 
@@ -176,6 +183,13 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
 
                     b.Property<Guid>("TipoProdutoOpcaoId")
                         .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CriadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CriadoPorUsuarioId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.HasKey("Id");
 

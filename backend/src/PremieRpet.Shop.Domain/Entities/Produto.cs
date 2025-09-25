@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using PremieRpet.Shop.Domain.Enums;
 
@@ -21,5 +22,9 @@ public sealed class Produto
     public required decimal Preco { get; set; }
     public int QuantidadeMinimaDeCompra { get; set; } = 1;
     public string? ImagemUrl { get; set; }
+    public DateTimeOffset CriadoEm { get; set; } = DateTimeOffset.UtcNow;
+    public string? CriadoPorUsuarioId { get; set; }
+    public DateTimeOffset? AtualizadoEm { get; set; } = DateTimeOffset.UtcNow;
+    public string? AtualizadoPorUsuarioId { get; set; }
     public decimal PesoKg() => TipoPeso == TipoPeso.Grama ? Peso / 1000m : Peso;
 }
