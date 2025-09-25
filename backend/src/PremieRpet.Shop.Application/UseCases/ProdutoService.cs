@@ -13,7 +13,13 @@ namespace PremieRpet.Shop.Application.UseCases;
 public sealed class ProdutoService : IProdutoService
 {
     private readonly IProdutoRepository _repo;
-    public ProdutoService(IProdutoRepository repo) => _repo = repo;
+    private readonly IUsuarioService _usuarios;
+
+    public ProdutoService(IProdutoRepository repo, IUsuarioService usuarios)
+    {
+        _repo = repo;
+        _usuarios = usuarios;
+    }
 
     private static ProdutoDto MapToDto(Produto p)
     {
@@ -70,6 +76,7 @@ public sealed class ProdutoService : IProdutoService
             throw new InvalidOperationException("Um ou mais portes são inválidos.");
 
         var agora = DateTimeOffset.UtcNow;
+        var usuario = await _usuarios.ObterOuCriarAsync(usuarioMicrosoftId, ct);
 
         var prod = new Produto
         {
@@ -87,8 +94,8 @@ public sealed class ProdutoService : IProdutoService
             Portes = portes.Select(p => new ProdutoPorte { PorteOpcaoId = p.Id }).ToList(),
             CriadoEm = agora,
             AtualizadoEm = agora,
-            CriadoPorUsuarioId = usuarioMicrosoftId,
-            AtualizadoPorUsuarioId = usuarioMicrosoftId
+            CriadoPorUsuarioId = usuario.Id,
+            AtualizadoPorUsuarioId = usuario.Id
         };
         await _repo.AddAsync(prod, ct);
     }
@@ -228,8 +235,10 @@ public sealed class ProdutoService : IProdutoService
         foreach (var porte in portes)
             prod.Portes.Add(new ProdutoPorte { ProdutoId = prod.Id, PorteOpcaoId = porte.Id });
 
+        var usuario = await _usuarios.ObterOuCriarAsync(usuarioMicrosoftId, ct);
+
         prod.AtualizadoEm = DateTimeOffset.UtcNow;
-        prod.AtualizadoPorUsuarioId = usuarioMicrosoftId;
+        prod.AtualizadoPorUsuarioId = usuario.Id;
 
         await _repo.UpdateAsync(prod, ct);
     }

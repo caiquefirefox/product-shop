@@ -165,9 +165,8 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                     b.Property<DateTimeOffset?>("AtualizadoEm")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("AtualizadoPorUsuarioId")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
+                    b.Property<Guid?>("AtualizadoPorUsuarioId")
+                        .HasColumnType("uuid");
 
                     b.Property<decimal>("Peso")
                         .HasColumnType("decimal(18,4)");
@@ -193,11 +192,12 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                     b.Property<DateTimeOffset>("CriadoEm")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("CriadoPorUsuarioId")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
+                    b.Property<Guid?>("CriadoPorUsuarioId")
+                        .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AtualizadoPorUsuarioId");
 
                     b.HasIndex("Codigo")
                         .IsUnique();
@@ -205,6 +205,8 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                     b.HasIndex("EspecieOpcaoId");
 
                     b.HasIndex("FaixaEtariaOpcaoId");
+
+                    b.HasIndex("CriadoPorUsuarioId");
 
                     b.HasIndex("TipoProdutoOpcaoId");
 
@@ -406,6 +408,18 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
 
             modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.Produto", b =>
                 {
+                    b.HasOne("PremieRpet.Shop.Domain.Entities.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("AtualizadoPorUsuarioId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("FK_Produtos_Usuarios_AtualizadoPorUsuarioId");
+
+                    b.HasOne("PremieRpet.Shop.Domain.Entities.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("CriadoPorUsuarioId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("FK_Produtos_Usuarios_CriadoPorUsuarioId");
+
                     b.HasOne("PremieRpet.Shop.Domain.Entities.ProdutoEspecieOpcao", "EspecieOpcao")
                         .WithMany("Produtos")
                         .HasForeignKey("EspecieOpcaoId")

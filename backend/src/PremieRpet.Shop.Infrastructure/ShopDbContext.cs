@@ -34,10 +34,24 @@ public sealed class ShopDbContext : DbContext
             e.Property(p => p.TipoPeso).HasColumnType("int");
             e.Property(x => x.QuantidadeMinimaDeCompra).HasDefaultValue(1);
             e.Property(p => p.ImagemUrl).HasMaxLength(1024);
-            e.Property(p => p.CriadoPorUsuarioId).HasMaxLength(200);
-            e.Property(p => p.AtualizadoPorUsuarioId).HasMaxLength(200);
+            e.Property(p => p.CriadoPorUsuarioId);
+            e.Property(p => p.AtualizadoPorUsuarioId);
             e.Property(p => p.CriadoEm);
             e.Property(p => p.AtualizadoEm);
+            e.HasIndex(p => p.CriadoPorUsuarioId);
+            e.HasIndex(p => p.AtualizadoPorUsuarioId);
+
+            e.HasOne<Usuario>()
+                .WithMany()
+                .HasForeignKey(p => p.CriadoPorUsuarioId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_Produtos_Usuarios_CriadoPorUsuarioId");
+
+            e.HasOne<Usuario>()
+                .WithMany()
+                .HasForeignKey(p => p.AtualizadoPorUsuarioId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_Produtos_Usuarios_AtualizadoPorUsuarioId");
 
             e.HasOne(p => p.EspecieOpcao)
                 .WithMany(e => e.Produtos)
