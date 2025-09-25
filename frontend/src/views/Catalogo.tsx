@@ -426,7 +426,17 @@ export default function Catalogo() {
                   key={p.codigo}
                   className="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
                 >
-                  <div className={`relative overflow-hidden bg-gradient-to-br ${gradient} px-5 py-6`}>
+                  <div className={`relative flex flex-col gap-5 overflow-hidden bg-gradient-to-br ${gradient} px-5 pb-5 pt-6`}>
+                    {p.imagemUrl && (
+                      <div className="mx-auto flex h-44 w-full max-w-[260px] items-center justify-center overflow-hidden rounded-2xl border border-white/70 bg-white/70 p-4 shadow-inner">
+                        <img
+                          src={p.imagemUrl}
+                          alt={`Imagem ilustrativa do produto ${p.descricao}`}
+                          className="max-h-full w-auto object-contain transition-transform duration-300 group-hover:scale-[1.02]"
+                          loading="lazy"
+                        />
+                      </div>
+                    )}
                     <div className="flex items-center justify-between gap-3">
                       <span className="inline-flex items-center rounded-full bg-white/70 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700">
                         {p.tipoProdutoNome}
@@ -437,8 +447,8 @@ export default function Catalogo() {
                         </span>
                       )}
                     </div>
-                    <h3 className="mt-4 text-lg font-semibold text-slate-900">{p.descricao}</h3>
-                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-700">
+                    <h3 className="text-lg font-semibold text-slate-900">{p.descricao}</h3>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-700">
                       <span className="font-medium uppercase tracking-wide text-slate-600">Sabor:</span>
                       <span>{p.sabores || "variedades"}</span>
                       <span className="inline-flex items-center rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-700">
@@ -446,19 +456,6 @@ export default function Catalogo() {
                       </span>
                     </div>
                   </div>
-
-                  {p.imagemUrl && (
-                    <div className="border-t border-slate-100 bg-white">
-                      <div className="relative aspect-[368/368] w-full overflow-hidden">
-                        <img
-                          src={p.imagemUrl}
-                          alt={`Imagem ilustrativa do produto ${p.descricao}`}
-                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-                          loading="lazy"
-                        />
-                      </div>
-                    </div>
-                  )}
 
                   <div className="flex flex-1 flex-col gap-4 p-5">
                     <span className="text-[11px] font-mono uppercase tracking-wide text-slate-400">SKU #{p.codigo}</span>

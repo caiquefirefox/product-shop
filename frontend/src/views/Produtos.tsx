@@ -537,12 +537,12 @@ export default function Produtos() {
               <span className="text-sm font-medium text-gray-700">Imagem do produto</span>
               <div className="w-full max-w-[368px]">
                 <div className="flex flex-col gap-3 rounded-2xl border border-dashed border-gray-300 bg-gray-50/70 p-4">
-                  <div className="aspect-[368/368] overflow-hidden rounded-xl border border-gray-200 bg-white/70 shadow-sm">
+                  <div className="flex aspect-[368/368] items-center justify-center overflow-hidden rounded-xl border border-gray-200 bg-white/70 shadow-sm">
                     {imagemPreview ? (
                       <img
                         src={imagemPreview}
                         alt={descricao ? `Imagem do produto ${descricao}` : "Imagem do produto"}
-                        className="h-full w-full object-cover"
+                        className="max-h-full max-w-full object-contain"
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center text-sm font-medium text-gray-400">
@@ -783,48 +783,50 @@ export default function Produtos() {
 
               return (
                 <div key={p.codigo} className={productCardClasses}>
-                  {p.imagemUrl && (
-                    <div className="overflow-hidden rounded-2xl border border-gray-100 bg-slate-50">
-                      <div className="aspect-[368/368] w-full overflow-hidden">
+                  <div className="flex flex-wrap items-start gap-4">
+                    {p.imagemUrl && (
+                      <div className="flex h-20 max-w-[160px] flex-none items-center justify-center overflow-hidden rounded-xl border border-gray-100 bg-white/80 p-2 shadow-inner">
                         <img
                           src={p.imagemUrl}
                           alt={`Imagem do produto ${p.descricao}`}
-                          className="h-full w-full object-cover"
+                          className="max-h-full w-auto object-contain"
                         />
                       </div>
-                    </div>
-                  )}
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="truncate text-base font-semibold text-gray-900">{p.codigo} - {p.descricao}</h3>
-                        <span className={codeBadgeClasses}>Preço: {currencyFormatter.format(p.preco)}</span>
-                        <span className={infoBadgeClasses}>Mínimo {minimo} un.</span>
+                    )}
+                    <div className="flex min-w-0 flex-1 flex-col gap-2">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="truncate text-base font-semibold text-gray-900">{p.codigo} - {p.descricao}</h3>
+                            <span className={codeBadgeClasses}>Preço: {currencyFormatter.format(p.preco)}</span>
+                            <span className={infoBadgeClasses}>Mínimo {minimo} un.</span>
+                          </div>
+                          <div className={headerMetaClasses}>
+                            <span>
+                              Peso:
+                              <span className="ml-1 font-medium text-gray-600">{pesoComUnidade}</span>
+                            </span>
+                            <span className="hidden sm:inline text-slate-300">•</span>
+                            <span>
+                              Unidade:
+                              <span className="ml-1 font-medium text-gray-600">{tipoPesoLabel}</span>
+                            </span>
+                            <span className="hidden sm:inline text-slate-300">•</span>
+                            <span>
+                              Tipo:
+                              <span className="ml-1 font-medium text-gray-600">{p.tipoProdutoNome}</span>
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3 text-sm">
+                          <button onClick={() => iniciarEdicao(p)} className={editButtonClasses}>
+                            Editar
+                          </button>
+                          <button onClick={() => remover(p.codigo)} className={deleteButtonClasses}>
+                            Excluir
+                          </button>
+                        </div>
                       </div>
-                      <div className={headerMetaClasses}>
-                        <span>
-                          Peso:
-                          <span className="ml-1 font-medium text-gray-600">{pesoComUnidade}</span>
-                        </span>
-                        <span className="hidden sm:inline text-slate-300">•</span>
-                        <span>
-                          Unidade:
-                          <span className="ml-1 font-medium text-gray-600">{tipoPesoLabel}</span>
-                        </span>
-                        <span className="hidden sm:inline text-slate-300">•</span>
-                        <span>
-                          Tipo:
-                          <span className="ml-1 font-medium text-gray-600">{p.tipoProdutoNome}</span>
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3 text-sm">
-                      <button onClick={() => iniciarEdicao(p)} className={editButtonClasses}>
-                        Editar
-                      </button>
-                      <button onClick={() => remover(p.codigo)} className={deleteButtonClasses}>
-                        Excluir
-                      </button>
                     </div>
                   </div>
 
