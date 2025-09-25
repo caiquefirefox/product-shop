@@ -39,7 +39,7 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                 table: "Produtos");
 
             migrationBuilder.DropForeignKey(
-                name: "FK_Produtos_ProdutoTipoProdutoOpcoes_TipoProdutoOpcaoId",
+                name: "FK_Produtos_ProdutoTipoOpcoes_TipoProdutoOpcaoId",
                 table: "Produtos");
 
             migrationBuilder.DropForeignKey(
@@ -212,7 +212,7 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                 onDelete: ReferentialAction.Restrict);
 
             migrationBuilder.AddForeignKey(
-                name: "FK_Produtos_ProdutoTipoProdutoOpcoes_TipoProdutoOpcaoId",
+                name: "FK_Produtos_ProdutoTipoOpcoes_TipoProdutoOpcaoId",
                 table: "Produtos",
                 column: "TipoProdutoOpcaoId",
                 principalTable: "ProdutoTipoOpcoes",
@@ -268,7 +268,7 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                 table: "Produtos");
 
             migrationBuilder.DropForeignKey(
-                name: "FK_Produtos_ProdutoTipoProdutoOpcoes_TipoProdutoOpcaoId",
+                name: "FK_Produtos_ProdutoTipoOpcoes_TipoProdutoOpcaoId",
                 table: "Produtos");
 
             migrationBuilder.DropForeignKey(
@@ -441,7 +441,7 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                 onDelete: ReferentialAction.Restrict);
 
             migrationBuilder.AddForeignKey(
-                name: "FK_Produtos_ProdutoTipoProdutoOpcoes_TipoProdutoOpcaoId",
+                name: "FK_Produtos_ProdutoTipoOpcoes_TipoProdutoOpcaoId",
                 table: "Produtos",
                 column: "TipoProdutoOpcaoId",
                 principalTable: "ProdutoTipoOpcoes",
