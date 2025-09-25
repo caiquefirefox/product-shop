@@ -12,14 +12,26 @@ const router = createBrowserRouter([
   { path: "/*", element: <App /> }
 ]);
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <MsalProvider instance={pca}>
-      <CartProvider>
-        <ToastProvider>
-          <RouterProvider router={router} />
-        </ToastProvider>
-      </CartProvider>
-    </MsalProvider>
-  </React.StrictMode>
-);
+(async () => {
+  await pca.initialize();
+
+  try {
+    await pca.handleRedirectPromise();
+  } catch (e: any) {
+    if (e?.errorCode !== "hash_empty_error") {
+      console.error("MSAL redirect error:", e);
+    }
+  }
+
+  ReactDOM.createRoot(document.getElementById("root")!).render(
+    <React.StrictMode>
+      <MsalProvider instance={pca}>
+        <CartProvider>
+          <ToastProvider>
+            <RouterProvider router={router} />
+          </ToastProvider>
+        </CartProvider>
+      </MsalProvider>
+    </React.StrictMode>
+  );
+})();

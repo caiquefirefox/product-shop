@@ -5,6 +5,12 @@ import { useEffect, useState } from "react";
 type LocState = { returnTo?: string } | null;
 
 export default function Login() {
+
+  function requireEnv(name: string, value: string | undefined) {
+    if (!value) throw new Error(`Config faltando: ${name}`);
+    return value;
+  }
+
   const { instance } = useMsal();
   const isAuth = useIsAuthenticated();
   const navigate = useNavigate();
@@ -12,6 +18,7 @@ export default function Login() {
   const state = (location.state as LocState) ?? null;
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const SCOPE = requireEnv('VITE_API_SCOPE', import.meta.env.VITE_API_SCOPE);
 
   const returnTo = state?.returnTo || "/"; // padrão: catálogo
 
@@ -24,7 +31,7 @@ export default function Login() {
     setErr(null);
     setLoading(true);
     try {
-      await instance.loginPopup({ scopes: [import.meta.env.VITE_API_SCOPE as string] });
+      await instance.loginPopup({ scopes: [SCOPE] });
       navigate(returnTo, { replace: true });
     } catch (e: any) {
       setErr(e?.message ?? "Falha no login");
