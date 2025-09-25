@@ -1,6 +1,5 @@
 using System;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PremieRpet.Shop.Domain.Entities;
 
 namespace PremieRpet.Shop.Infrastructure;
@@ -21,20 +20,12 @@ public sealed class ShopDbContext : DbContext
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
-        var guidConverter = new ValueConverter<Guid, string>(
-            guid => guid.ToString(),
-            value => Guid.Parse(value));
-
         configurationBuilder.Properties<Guid>()
-            .HaveConversion(guidConverter)
+            .HaveConversion<string>()
             .HaveColumnType("character varying(36)");
 
-        var nullableGuidConverter = new ValueConverter<Guid?, string?>(
-            guid => guid.HasValue ? guid.Value.ToString() : null,
-            value => string.IsNullOrWhiteSpace(value) ? null : Guid.Parse(value));
-
         configurationBuilder.Properties<Guid?>()
-            .HaveConversion(nullableGuidConverter)
+            .HaveConversion<string?>()
             .HaveColumnType("character varying(36)");
     }
 
