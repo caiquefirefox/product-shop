@@ -414,7 +414,7 @@ export default function Catalogo() {
 
       {hasProdutos ? (
         <div className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-2">
             {produtos.map((p, index) => {
               const minimo = minQtyFor(p);
               const gradient = gradientClasses[index % gradientClasses.length];
@@ -449,11 +449,11 @@ export default function Catalogo() {
                         <span className="inline-flex items-center rounded-full bg-indigo-600/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-indigo-700">
                           {p.tipoProdutoNome}
                         </span>
-                        <span className="inline-flex items-center rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700">
+                        <span className="inline-flex items-center rounded-full bg-cyan-600/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700">
                           {p.especieNome}
                         </span>
                         {p.faixaEtariaNome && (
-                          <span className="inline-flex items-center rounded-full bg-white/60 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+                          <span className="inline-flex items-center rounded-full bg-lime-600/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
                             {p.faixaEtariaNome}
                           </span>
                         )}
