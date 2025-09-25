@@ -75,7 +75,7 @@ public sealed class UsuarioService : IUsuarioService
         return new UsuarioDto(usuario.Id, usuario.MicrosoftId, usuario.Cpf);
     }
 
-    public async Task<string> GarantirCpfAsync(string microsoftId, string? cpf, CancellationToken ct)
+    public async Task<UsuarioDto> GarantirCpfAsync(string microsoftId, string? cpf, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(microsoftId))
             throw new InvalidOperationException("Identificador de usuário inválido.");
@@ -87,7 +87,7 @@ public sealed class UsuarioService : IUsuarioService
                 throw new InvalidOperationException("CPF obrigatório.");
 
             var perfil = await RegistrarCpfAsync(microsoftId, cpf, ct);
-            return perfil.Cpf!;
+            return perfil;
         }
 
         if (!string.IsNullOrWhiteSpace(usuario.Cpf))
@@ -99,13 +99,13 @@ public sealed class UsuarioService : IUsuarioService
                     throw new InvalidOperationException("CPF já cadastrado e não pode ser alterado.");
             }
 
-            return usuario.Cpf!;
+            return new UsuarioDto(usuario.Id, usuario.MicrosoftId, usuario.Cpf);
         }
 
         if (string.IsNullOrWhiteSpace(cpf))
             throw new InvalidOperationException("CPF obrigatório.");
 
         var atualizado = await RegistrarCpfAsync(microsoftId, cpf, ct);
-        return atualizado.Cpf!;
+        return atualizado;
     }
 }

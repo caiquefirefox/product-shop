@@ -1,3 +1,4 @@
+using System;
 using Microsoft.EntityFrameworkCore;
 using PremieRpet.Shop.Application.DTOs;
 using PremieRpet.Shop.Application.Interfaces.Repositories;
@@ -22,20 +23,20 @@ public sealed class PedidoService : IPedidoService
         _usuarios = usuarios;
     }
 
-    public async Task<PedidoResumoDto> CriarPedidoAsync(string usuarioId, string usuarioNome, PedidoCreateDto dto, CancellationToken ct)
+    public async Task<PedidoResumoDto> CriarPedidoAsync(string usuarioMicrosoftId, string usuarioNome, PedidoCreateDto dto, CancellationToken ct)
     {
         if (!UnidadesEntrega.Todas.Contains(dto.UnidadeEntrega))
             throw new InvalidOperationException("Unidade de entrega inválida.");
 
         var agora = DateTimeOffset.UtcNow;
-        var pesoAcumulado = await PesoAcumuladoMesEmKgAsync(usuarioId, agora, ct);
-        var cpf = await _usuarios.GarantirCpfAsync(usuarioId, dto.Cpf, ct);
+        var perfil = await _usuarios.GarantirCpfAsync(usuarioMicrosoftId, dto.Cpf, ct);
+        var pesoAcumulado = await PesoAcumuladoMesEmKgAsync(perfil.Id, agora, ct);
 
         var pedido = new Pedido
         {
-            UsuarioId = usuarioId,
+            UsuarioId = perfil.Id,
             UsuarioNome = usuarioNome,
-            UsuarioCpf = cpf,
+            UsuarioCpf = perfil.Cpf,
             UnidadeEntrega = dto.UnidadeEntrega,
         };
 
@@ -78,7 +79,7 @@ public sealed class PedidoService : IPedidoService
         );
     }
 
-    public async Task<decimal> PesoAcumuladoMesEmKgAsync(string usuarioId, DateTimeOffset referencia, CancellationToken ct)
+    public async Task<decimal> PesoAcumuladoMesEmKgAsync(Guid usuarioId, DateTimeOffset referencia, CancellationToken ct)
     {
         var inicio = new DateTimeOffset(new DateTime(referencia.Year, referencia.Month, 1, 0, 0, 0, DateTimeKind.Utc));
         var fim = inicio.AddMonths(1);
@@ -106,13 +107,13 @@ public sealed class PedidoService : IPedidoService
             .ToListAsync(ct);
     }
     public async Task<IReadOnlyList<PedidoDetalheDto>> ListarPedidosDetalhadosAsync(
-        DateTimeOffset? de, DateTimeOffset? ate, string? usuarioId, CancellationToken ct)
+        DateTimeOffset? de, DateTimeOffset? ate, Guid? usuarioId, CancellationToken ct)
     {
         var q = _pedidos.Query();
 
         if (de is not null) q = q.Where(p => p.DataHora >= de);
         if (ate is not null) q = q.Where(p => p.DataHora <= ate);
-        if (!string.IsNullOrWhiteSpace(usuarioId)) q = q.Where(p => p.UsuarioId == usuarioId);
+        if (usuarioId is not null) q = q.Where(p => p.UsuarioId == usuarioId);
 
         return await q.AsNoTracking()
             .OrderByDescending(p => p.DataHora)

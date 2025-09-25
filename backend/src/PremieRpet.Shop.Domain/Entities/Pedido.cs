@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using PremieRpet.Shop.Domain.Rules;
 
 namespace PremieRpet.Shop.Domain.Entities;
@@ -5,7 +7,7 @@ namespace PremieRpet.Shop.Domain.Entities;
 public sealed class Pedido
 {
     public Guid Id { get; set; } = Guid.NewGuid();
-    public required string UsuarioId { get; set; }
+    public Guid UsuarioId { get; set; }
     public required string UsuarioNome { get; set; }
     public string? UsuarioCpf { get; set; }
     public required string UnidadeEntrega { get; set; }

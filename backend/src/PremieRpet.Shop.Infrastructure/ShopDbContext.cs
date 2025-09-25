@@ -58,12 +58,17 @@ public sealed class ShopDbContext : DbContext
         b.Entity<Pedido>(e =>
         {
             e.HasKey(p => p.Id);
-            e.Property(p => p.UsuarioId).HasMaxLength(200).IsRequired();
+            e.Property(p => p.UsuarioId).IsRequired();
             e.Property(p => p.UsuarioNome).HasMaxLength(200).IsRequired();
             e.Property(p => p.UsuarioCpf).HasMaxLength(11);
             e.Property(p => p.UnidadeEntrega).HasMaxLength(200).IsRequired();
             e.Property(p => p.DataHora);
             e.HasMany(p => p.Itens).WithOne(i => i.Pedido).HasForeignKey(i => i.PedidoId);
+
+            e.HasOne<Usuario>()
+                .WithMany()
+                .HasForeignKey(p => p.UsuarioId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         b.Entity<Usuario>(e =>

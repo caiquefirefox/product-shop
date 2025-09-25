@@ -17,8 +17,8 @@ public class CheckoutController(IPedidoService pedidos, IHttpContextAccessor ctx
     [Authorize]
     public async Task<IActionResult> Criar([FromBody] PedidoCreateDto dto, CancellationToken ct)
     {
-        var usuarioId = User.GetUserId();
-        if (string.IsNullOrWhiteSpace(usuarioId))
+        var usuarioMicrosoftId = User.GetUserId();
+        if (string.IsNullOrWhiteSpace(usuarioMicrosoftId))
             return Problem(title: "Token sem identificador de usuário (oid/sub).", statusCode: StatusCodes.Status401Unauthorized);
 
         var usuarioNome = User.GetDisplayName();
@@ -27,8 +27,8 @@ public class CheckoutController(IPedidoService pedidos, IHttpContextAccessor ctx
 
         try
         {
-            var pedidoId = await pedidos.CriarPedidoAsync(usuarioId, usuarioNome, dto, ct);
-            return Ok(new { id = pedidoId });
+            var pedido = await pedidos.CriarPedidoAsync(usuarioMicrosoftId, usuarioNome, dto, ct);
+            return Ok(new { id = pedido.Id });
         }
         catch (InvalidOperationException ex)
         {
