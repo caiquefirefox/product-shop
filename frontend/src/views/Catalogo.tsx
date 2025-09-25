@@ -414,7 +414,7 @@ export default function Catalogo() {
 
       {hasProdutos ? (
         <div className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-2">
             {produtos.map((p, index) => {
               const minimo = minQtyFor(p);
               const gradient = gradientClasses[index % gradientClasses.length];
@@ -424,68 +424,86 @@ export default function Catalogo() {
               return (
                 <article
                   key={p.codigo}
-                  className="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
+                  className="group flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white/90 shadow-sm ring-1 ring-transparent transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:ring-indigo-100"
                 >
-                  <div className={`relative overflow-hidden bg-gradient-to-br ${gradient} px-5 py-6`}>
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="inline-flex items-center rounded-full bg-white/70 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700">
-                        {p.tipoProdutoNome}
-                      </span>
-                      {minimo > 1 && (
-                        <span className="rounded-full bg-slate-900/10 px-2.5 py-1 text-[10px] font-semibold text-slate-700">
-                          Mínimo {minimo} un.
-                        </span>
-                      )}
+                  <div className="flex flex-1 flex-col gap-5 p-5 sm:flex-row sm:items-stretch">
+                    <div
+                      className={`flex w-full flex-shrink-0 flex-col justify-center rounded-2xl border border-indigo-50 bg-gradient-to-br ${gradient} p-4 sm:w-[220px] lg:w-[240px]`}
+                    >
+                      <div className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl border border-white/70 bg-white/80 shadow-inner">
+                        {p.imagemUrl ? (
+                          <img
+                            src={p.imagemUrl}
+                            alt={`Imagem ilustrativa do produto ${p.descricao}`}
+                            className="h-full w-full object-contain"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Sem imagem</span>
+                        )}
+                      </div>
                     </div>
-                    <h3 className="mt-4 text-lg font-semibold text-slate-900">{p.descricao}</h3>
-                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-700">
-                      <span className="font-medium uppercase tracking-wide text-slate-600">Sabor:</span>
-                      <span>{p.sabores || "variedades"}</span>
-                      <span className="inline-flex items-center rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-700">
-                        {p.especieNome}
-                      </span>
+
+                    <div className="flex flex-1 flex-col gap-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center rounded-full bg-indigo-600/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-indigo-700">
+                          {p.tipoProdutoNome}
+                        </span>
+                        <span className="inline-flex items-center rounded-full bg-cyan-600/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700">
+                          {p.especieNome}
+                        </span>
+                        {p.faixaEtariaNome && (
+                          <span className="inline-flex items-center rounded-full bg-lime-600/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+                            {p.faixaEtariaNome}
+                          </span>
+                        )}
+                        {minimo > 1 && (
+                          <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-600">
+                            Mín. {minimo} un.
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">SKU #{p.codigo}</span>
+                        <h3 className="text-base font-semibold text-slate-900 sm:text-lg">
+                          {p.descricao}
+                        </h3>
+                        <p className="text-sm text-slate-600">
+                          {p.sabores || "Variedade não informada"}
+                        </p>
+                      </div>
+
+                      <dl className="grid gap-x-4 gap-y-2 text-[13px] text-slate-600 sm:grid-cols-2">
+                        <div className="space-y-0.5">
+                          <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Peso</dt>
+                          <dd className="font-medium text-slate-900">{formatPeso(p.peso, p.tipoPeso)}</dd>
+                        </div>
+                        <div className="space-y-0.5">
+                          <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Categoria</dt>
+                          <dd className="font-medium text-slate-900">{p.tipoProdutoNome}</dd>
+                        </div>
+                        <div className="space-y-0.5">
+                          <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Porte indicado</dt>
+                          <dd className="font-medium text-slate-900">{portes}</dd>
+                        </div>
+                      </dl>
                     </div>
                   </div>
 
-                  <div className="flex flex-1 flex-col gap-4 p-5">
-                    <span className="text-[11px] font-mono uppercase tracking-wide text-slate-400">SKU #{p.codigo}</span>
-
-                    <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-[13px] text-slate-600">
-                      <div className="space-y-0.5">
-                        <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Peso</dt>
-                        <dd className="text-sm text-slate-900">{formatPeso(p.peso, p.tipoPeso)}</dd>
-                      </div>
-                      <div className="space-y-0.5">
-                        <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Faixa etária</dt>
-                        <dd className="text-sm text-slate-900">{p.faixaEtariaNome}</dd>
-                      </div>
-                      <div className="space-y-0.5">
-                        <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Sabores</dt>
-                        <dd className="text-sm text-slate-900">{p.sabores || "Não informado"}</dd>
-                      </div>
-                      <div className="space-y-0.5">
-                        <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Porte indicado</dt>
-                        <dd className="text-sm text-slate-900">{portes}</dd>
-                      </div>
-                      <div className="col-span-2 space-y-0.5">
-                        <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Categoria</dt>
-                        <dd className="text-sm text-slate-900">{p.tipoProdutoNome}</dd>
-                      </div>
-                    </dl>
-
-                    <div className="mt-auto flex items-center justify-between gap-3">
-                      <div>
-                        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Preço</span>
-                        <p className="text-xl font-semibold text-slate-900">{precoFormatado}</p>
-                      </div>
-                      <button
-                        className="inline-flex items-center gap-1.5 rounded-full bg-indigo-600 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-white shadow-sm transition-colors duration-200 hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-                        onClick={() => handleAdd(p)}
-                      >
-                        <ShoppingCart className="h-3.5 w-3.5" aria-hidden="true" />
-                        Adicionar
-                      </button>
+                  <div className="flex flex-col gap-3 border-t border-slate-100 bg-white/85 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Preço unitário</span>
+                      <p className="text-xl font-semibold text-slate-900 sm:text-2xl">{precoFormatado}</p>
                     </div>
+
+                    <button
+                      className="inline-flex items-center justify-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white shadow-sm transition-colors duration-200 hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                      onClick={() => handleAdd(p)}
+                    >
+                      <ShoppingCart className="h-4 w-4" aria-hidden="true" />
+                      Adicionar ao carrinho
+                    </button>
                   </div>
                 </article>
               );

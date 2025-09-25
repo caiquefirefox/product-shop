@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import Select, { MultiValue, StylesConfig } from "react-select";
 import api from "../lib/api";
 
@@ -18,6 +18,7 @@ type Produto = {
   faixaEtariaNome: string;
   preco: number;
   quantidadeMinimaDeCompra: number;
+  imagemUrl?: string | null;
 };
 
 type ProdutoOpcao = {
@@ -137,6 +138,18 @@ const saveButtonClasses = classNames(
   "focus:outline-none focus:ring-4 focus:ring-indigo-200 focus:ring-offset-1 focus:ring-offset-white",
 );
 
+const uploadButtonClasses = classNames(
+  "inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white",
+  "shadow-sm transition hover:bg-indigo-500",
+  "focus:outline-none focus:ring-4 focus:ring-indigo-200 focus:ring-offset-1 focus:ring-offset-white",
+);
+
+const removeImageButtonClasses = classNames(
+  "inline-flex items-center justify-center rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-600",
+  "bg-white transition hover:bg-gray-100",
+  "focus:outline-none focus:ring-4 focus:ring-gray-200 focus:ring-offset-1 focus:ring-offset-white",
+);
+
 const cancelButtonClasses = classNames(
   "inline-flex items-center justify-center rounded-xl border border-gray-300 px-5 py-3 text-sm font-semibold text-gray-600",
   "bg-white transition hover:bg-gray-100",
@@ -219,6 +232,10 @@ export default function Produtos() {
   const [opcoesCarregando, setOpcoesCarregando] = useState(true);
   const [produtoEmEdicao, setProdutoEmEdicao] = useState<Produto | null>(null);
   const [formAberto, setFormAberto] = useState(false);
+  const [imagemOriginalUrl, setImagemOriginalUrl] = useState<string | null>(null);
+  const [imagemPreview, setImagemPreview] = useState<string | null>(null);
+  const [imagemSelecionada, setImagemSelecionada] = useState<File | null>(null);
+  const [removerImagem, setRemoverImagem] = useState(false);
 
   const editando = produtoEmEdicao !== null;
 
@@ -258,6 +275,17 @@ export default function Produtos() {
     return parsed;
   };
 
+  const formatDecimalForSubmission = (
+    value: number,
+    minimumFractionDigits: number,
+    maximumFractionDigits: number,
+  ) =>
+    value.toLocaleString("pt-BR", {
+      useGrouping: false,
+      minimumFractionDigits,
+      maximumFractionDigits,
+    });
+
   const sanitizeDecimalInput = (value: string) => {
     const cleaned = value.replace(/[^0-9.,]/g, "");
     const lastComma = cleaned.lastIndexOf(",");
@@ -268,6 +296,30 @@ export default function Produtos() {
     const before = cleaned.slice(0, separatorIndex).replace(/[.,]/g, "");
     const after = cleaned.slice(separatorIndex + 1).replace(/[.,]/g, "");
     return `${before}${separator}${after}`;
+  };
+
+  const atualizarPreview = (value: string | null) => {
+    setImagemPreview(prev => {
+      if (prev && prev !== value && prev.startsWith("blob:")) {
+        URL.revokeObjectURL(prev);
+      }
+      return value;
+    });
+  };
+
+  useEffect(() => {
+    return () => {
+      if (imagemPreview && imagemPreview.startsWith("blob:")) {
+        URL.revokeObjectURL(imagemPreview);
+      }
+    };
+  }, [imagemPreview]);
+
+  const resetImagemCampos = () => {
+    setImagemSelecionada(null);
+    setImagemOriginalUrl(null);
+    setRemoverImagem(false);
+    atualizarPreview(null);
   };
 
   const loadProdutos = async () => {
@@ -295,6 +347,7 @@ export default function Produtos() {
     setFaixaEtariaId(faixasEtarias[0]?.id ?? "");
     setPreco("0");
     setQuantidadeMinimaDeCompra("1");
+    resetImagemCampos();
   };
 
   const fecharFormulario = () => {
@@ -321,6 +374,10 @@ export default function Produtos() {
     setFaixaEtariaId(produto.faixaEtariaOpcaoId);
     setPreco(produto.preco.toFixed(2).replace(".", ","));
     setQuantidadeMinimaDeCompra(produto.quantidadeMinimaDeCompra.toString());
+    setImagemOriginalUrl(produto.imagemUrl ?? null);
+    setImagemSelecionada(null);
+    setRemoverImagem(false);
+    atualizarPreview(produto.imagemUrl ?? null);
   };
 
   const cancelarFormulario = () => {
@@ -391,6 +448,39 @@ export default function Produtos() {
     setPorteIds(values.map(option => option.value));
   };
 
+  const handleImagemChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    if (!file) return;
+
+    const objectUrl = URL.createObjectURL(file);
+    setImagemSelecionada(file);
+    setRemoverImagem(false);
+    atualizarPreview(objectUrl);
+    event.target.value = "";
+  };
+
+  const removerImagemAtual = () => {
+    if (imagemSelecionada) {
+      setImagemSelecionada(null);
+      setRemoverImagem(false);
+      atualizarPreview(imagemOriginalUrl);
+      return;
+    }
+
+    if (imagemOriginalUrl) {
+      if (removerImagem) {
+        setRemoverImagem(false);
+        atualizarPreview(imagemOriginalUrl);
+      } else {
+        setRemoverImagem(true);
+        atualizarPreview(null);
+      }
+      return;
+    }
+
+    atualizarPreview(null);
+  };
+
   const salvar = async () => {
     const especieSelecionada = especieId || especies[0]?.id || "";
     const tipoSelecionado = tipoProdutoId || tiposProduto[0]?.id || "";
@@ -400,22 +490,31 @@ export default function Produtos() {
     const codigoParaSalvar = editando ? produtoEmEdicao!.codigo : codigo.trim();
     if (!codigoParaSalvar) return;
 
-    const dto = {
-      descricao,
-      peso: parseDecimalInput(peso),
-      tipoPeso,
-      sabores,
-      especieOpcaoId: especieSelecionada,
-      porteOpcaoIds: porteIds,
-      tipoProdutoOpcaoId: tipoSelecionado,
-      faixaEtariaOpcaoId: faixaSelecionada,
-      preco: parseDecimalInput(preco),
-      quantidadeMinimaDeCompra: Math.max(1, parseIntegerInput(quantidadeMinimaDeCompra)),
-    };
+    const precoNormalizado = parseDecimalInput(preco);
+    const pesoNormalizado = parseDecimalInput(peso);
+    const quantidadeNormalizada = Math.max(1, parseIntegerInput(quantidadeMinimaDeCompra));
+
+    const formData = new FormData();
+    formData.append("Descricao", descricao);
+    formData.append("Peso", formatDecimalForSubmission(pesoNormalizado, 0, 3));
+    formData.append("TipoPeso", tipoPeso.toString());
+    formData.append("Sabores", sabores);
+    formData.append("EspecieOpcaoId", especieSelecionada);
+    porteIds.forEach(id => formData.append("PorteOpcaoIds", id));
+    formData.append("TipoProdutoOpcaoId", tipoSelecionado);
+    formData.append("FaixaEtariaOpcaoId", faixaSelecionada);
+    formData.append("Preco", formatDecimalForSubmission(precoNormalizado, 2, 2));
+    formData.append("QuantidadeMinimaDeCompra", quantidadeNormalizada.toString());
+    formData.append("ImagemUrl", imagemOriginalUrl ?? "");
+    formData.append("RemoverImagem", removerImagem ? "true" : "false");
+    if (imagemSelecionada) {
+      formData.append("Imagem", imagemSelecionada);
+    }
+
     if (editando) {
-      await api.put(`/produtos/${codigoParaSalvar}`, dto);
+      await api.put(`/produtos/${codigoParaSalvar}`, formData);
     } else {
-      await api.post(`/produtos/${codigoParaSalvar}`, dto);
+      await api.post(`/produtos/${codigoParaSalvar}`, formData);
     }
     await loadProdutos();
     fecharFormulario();
@@ -444,182 +543,219 @@ export default function Produtos() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-            <div className="flex flex-col gap-2">
-              <label htmlFor="codigo" className="text-sm font-medium text-gray-700">Código</label>
-              <input
-                id="codigo"
-                placeholder="Ex: R128"
-                value={codigo}
-                onChange={e => setCodigo(e.target.value)}
-                className={baseInputClasses}
-                disabled={editando}
-              />
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-[368px_minmax(0,1fr)] xl:grid-cols-[368px_minmax(0,1fr)]">
+            <div className="flex flex-col gap-3">
+              <span className="text-sm font-medium text-gray-700">Imagem do produto</span>
+              <div className="w-full max-w-[368px]">
+                <div className="flex flex-col gap-3 rounded-2xl border border-dashed border-gray-300 bg-gray-50/70 p-4">
+                  <div className="flex aspect-[368/368] items-center justify-center overflow-hidden rounded-xl border border-gray-200 bg-white/70 shadow-sm">
+                    {imagemPreview ? (
+                      <img
+                        src={imagemPreview}
+                        alt={descricao ? `Imagem do produto ${descricao}` : "Imagem do produto"}
+                        className="max-h-full max-w-full object-contain"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-sm font-medium text-gray-400">
+                        Nenhuma imagem selecionada
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    <label className={uploadButtonClasses}>
+                      Selecionar imagem
+                      <input type="file" accept="image/*" className="sr-only" onChange={handleImagemChange} />
+                    </label>
+                    {(imagemPreview || imagemOriginalUrl) && (
+                      <button type="button" onClick={removerImagemAtual} className={removeImageButtonClasses}>
+                        {removerImagem ? "Desfazer remoção" : "Remover imagem"}
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Utilize imagens nos formatos JPG, PNG ou WEBP com até 5&nbsp;MB.
+                  </p>
+                </div>
+              </div>
             </div>
 
-            <div className="flex flex-col gap-2 md:col-span-2 xl:col-span-2">
-              <label htmlFor="descricao" className="text-sm font-medium text-gray-700">Descrição</label>
-              <input
-                id="descricao"
-                placeholder="Nome do produto"
-                value={descricao}
-                onChange={e => setDescricao(e.target.value)}
-                className={baseInputClasses}
-              />
-            </div>
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+              <div className="flex flex-col gap-2">
+                <label htmlFor="codigo" className="text-sm font-medium text-gray-700">Código</label>
+                <input
+                  id="codigo"
+                  placeholder="Ex: R128"
+                  value={codigo}
+                  onChange={e => setCodigo(e.target.value)}
+                  className={baseInputClasses}
+                  disabled={editando}
+                />
+              </div>
 
-            <div className="flex flex-col gap-2">
-              <label htmlFor="peso" className="text-sm font-medium text-gray-700">Peso</label>
-              <input
-                id="peso"
-                type="text"
-                inputMode="decimal"
-                placeholder="0,00"
-                value={peso}
-                onChange={e => setPeso(sanitizeDecimalInput(e.target.value))}
-                className={baseInputClasses}
-              />
-            </div>
+              <div className="flex flex-col gap-2 md:col-span-2 xl:col-span-2">
+                <label htmlFor="descricao" className="text-sm font-medium text-gray-700">Descrição</label>
+                <input
+                  id="descricao"
+                  placeholder="Nome do produto"
+                  value={descricao}
+                  onChange={e => setDescricao(e.target.value)}
+                  className={baseInputClasses}
+                />
+              </div>
 
-            <div className="flex flex-col gap-2">
-              <label htmlFor="tipoPeso" className="text-sm font-medium text-gray-700">Tipo de peso</label>
-              <select
-                id="tipoPeso"
-                value={tipoPeso}
-                onChange={e => setTipoPeso(parseInt(e.target.value, 10))}
-                className={baseInputClasses}
-              >
-                <option value={0}>Grama</option>
-                <option value={1}>Quilo</option>
-              </select>
-            </div>
+              <div className="flex flex-col gap-2">
+                <label htmlFor="peso" className="text-sm font-medium text-gray-700">Peso</label>
+                <input
+                  id="peso"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="0,00"
+                  value={peso}
+                  onChange={e => setPeso(sanitizeDecimalInput(e.target.value))}
+                  className={baseInputClasses}
+                />
+              </div>
 
-            <div className="flex flex-col gap-2">
-              <label htmlFor="qtdMin" className="text-sm font-medium text-gray-700">Qtd mínima (unidades)</label>
-              <input
-                id="qtdMin"
-                type="text"
-                inputMode="numeric"
-                placeholder="1"
-                value={quantidadeMinimaDeCompra}
-                onChange={e => setQuantidadeMinimaDeCompra(e.target.value.replace(/[^0-9]/g, ""))}
-                className={baseInputClasses}
-              />
-            </div>
+              <div className="flex flex-col gap-2">
+                <label htmlFor="tipoPeso" className="text-sm font-medium text-gray-700">Tipo de peso</label>
+                <select
+                  id="tipoPeso"
+                  value={tipoPeso}
+                  onChange={e => setTipoPeso(parseInt(e.target.value, 10))}
+                  className={baseInputClasses}
+                >
+                  <option value={0}>Grama</option>
+                  <option value={1}>Quilo</option>
+                </select>
+              </div>
 
-            <div className="flex flex-col gap-2 md:col-span-2 xl:col-span-2">
-              <label htmlFor="sabores" className="text-sm font-medium text-gray-700">Sabores</label>
-              <input
-                id="sabores"
-                placeholder="Informe os sabores separados por vírgula"
-                value={sabores}
-                onChange={e => setSabores(e.target.value)}
-                className={baseInputClasses}
-              />
-            </div>
+              <div className="flex flex-col gap-2">
+                <label htmlFor="qtdMin" className="text-sm font-medium text-gray-700">Qtd mínima (unidades)</label>
+                <input
+                  id="qtdMin"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="1"
+                  value={quantidadeMinimaDeCompra}
+                  onChange={e => setQuantidadeMinimaDeCompra(e.target.value.replace(/[^0-9]/g, ""))}
+                  className={baseInputClasses}
+                />
+              </div>
 
-            <div className="flex flex-col gap-2">
-              <label htmlFor="especie" className="text-sm font-medium text-gray-700">Espécie</label>
-              <select
-                id="especie"
-                value={especieId}
-                onChange={e => setEspecieId(e.target.value)}
-                className={baseInputClasses}
-                disabled={!especies.length}
-              >
-                {especies.length === 0 ? (
-                  <option value="" disabled>Carregando...</option>
-                ) : (
-                  especies.map(opcao => (
-                    <option key={opcao.id} value={opcao.id}>{opcao.nome}</option>
-                  ))
-                )}
-              </select>
-            </div>
+              <div className="flex flex-col gap-2 md:col-span-2 xl:col-span-2">
+                <label htmlFor="sabores" className="text-sm font-medium text-gray-700">Sabores</label>
+                <input
+                  id="sabores"
+                  placeholder="Informe os sabores separados por vírgula"
+                  value={sabores}
+                  onChange={e => setSabores(e.target.value)}
+                  className={baseInputClasses}
+                />
+              </div>
 
-            <div className="flex flex-col gap-2 md:col-span-2 xl:col-span-2">
-              <label htmlFor="tipoProduto" className="text-sm font-medium text-gray-700">Tipo do Produto</label>
-              <select
-                id="tipoProduto"
-                value={tipoProdutoId}
-                onChange={e => setTipoProdutoId(e.target.value)}
-                className={baseInputClasses}
-                disabled={!tiposProduto.length}
-              >
-                {tiposProduto.length === 0 ? (
-                  <option value="" disabled>Carregando...</option>
-                ) : (
-                  tiposProduto.map(opcao => (
-                    <option key={opcao.id} value={opcao.id}>{opcao.nome}</option>
-                  ))
-                )}
-              </select>
-            </div>
+              <div className="flex flex-col gap-2">
+                <label htmlFor="especie" className="text-sm font-medium text-gray-700">Espécie</label>
+                <select
+                  id="especie"
+                  value={especieId}
+                  onChange={e => setEspecieId(e.target.value)}
+                  className={baseInputClasses}
+                  disabled={!especies.length}
+                >
+                  {especies.length === 0 ? (
+                    <option value="" disabled>Carregando...</option>
+                  ) : (
+                    especies.map(opcao => (
+                      <option key={opcao.id} value={opcao.id}>{opcao.nome}</option>
+                    ))
+                  )}
+                </select>
+              </div>
 
-            <div className="flex flex-col gap-2">
-              <label htmlFor="faixaEtaria" className="text-sm font-medium text-gray-700">Faixa etária</label>
-              <select
-                id="faixaEtaria"
-                value={faixaEtariaId}
-                onChange={e => setFaixaEtariaId(e.target.value)}
-                className={baseInputClasses}
-                disabled={!faixasEtarias.length}
-              >
-                {faixasEtarias.length === 0 ? (
-                  <option value="" disabled>Carregando...</option>
-                ) : (
-                  faixasEtarias.map(opcao => (
-                    <option key={opcao.id} value={opcao.id}>{opcao.nome}</option>
-                  ))
-                )}
-              </select>
-            </div>
+              <div className="flex flex-col gap-2 md:col-span-2 xl:col-span-2">
+                <label htmlFor="tipoProduto" className="text-sm font-medium text-gray-700">Tipo do Produto</label>
+                <select
+                  id="tipoProduto"
+                  value={tipoProdutoId}
+                  onChange={e => setTipoProdutoId(e.target.value)}
+                  className={baseInputClasses}
+                  disabled={!tiposProduto.length}
+                >
+                  {tiposProduto.length === 0 ? (
+                    <option value="" disabled>Carregando...</option>
+                  ) : (
+                    tiposProduto.map(opcao => (
+                      <option key={opcao.id} value={opcao.id}>{opcao.nome}</option>
+                    ))
+                  )}
+                </select>
+              </div>
 
-            <div className="flex flex-col gap-2 md:col-span-2 xl:col-span-2">
-              <label htmlFor="portes" className="text-sm font-medium text-gray-700">Porte</label>
-              <Select
-                inputId="portes"
-                isMulti
-                isDisabled={opcoesCarregando || !porteSelectOptions.length}
-                isLoading={opcoesCarregando}
-                menuPortalTarget={document.body}
-                menuPosition="fixed"
-                value={selectedPorteOptions}
-                onChange={handlePorteChange}
-                options={porteSelectOptions}
-                placeholder={opcoesCarregando ? "Carregando..." : "Selecione os portes"}
-                closeMenuOnSelect={false}
-                noOptionsMessage={() => (opcoesCarregando ? "Carregando..." : "Nenhuma opção disponível")}
-                className="text-sm"
-                styles={porteSelectStyles}
-              />
-              <span className="text-xs text-gray-500">Escolha um ou mais portes que melhor representam o produto.</span>
-            </div>
+              <div className="flex flex-col gap-2">
+                <label htmlFor="faixaEtaria" className="text-sm font-medium text-gray-700">Faixa etária</label>
+                <select
+                  id="faixaEtaria"
+                  value={faixaEtariaId}
+                  onChange={e => setFaixaEtariaId(e.target.value)}
+                  className={baseInputClasses}
+                  disabled={!faixasEtarias.length}
+                >
+                  {faixasEtarias.length === 0 ? (
+                    <option value="" disabled>Carregando...</option>
+                  ) : (
+                    faixasEtarias.map(opcao => (
+                      <option key={opcao.id} value={opcao.id}>{opcao.nome}</option>
+                    ))
+                  )}
+                </select>
+              </div>
 
-            <div className="flex flex-col gap-2">
-              <label htmlFor="preco" className="text-sm font-medium text-gray-700">Preço (R$)</label>
-              <input
-                id="preco"
-                type="text"
-                inputMode="decimal"
-                placeholder="0,00"
-                value={preco}
-                onChange={e => setPreco(sanitizeDecimalInput(e.target.value))}
-                className={baseInputClasses}
-              />
-            </div>
+              <div className="flex flex-col gap-2 md:col-span-2 xl:col-span-2">
+                <label htmlFor="portes" className="text-sm font-medium text-gray-700">Porte</label>
+                <Select
+                  inputId="portes"
+                  isMulti
+                  isDisabled={opcoesCarregando || !porteSelectOptions.length}
+                  isLoading={opcoesCarregando}
+                  menuPortalTarget={document.body}
+                  menuPosition="fixed"
+                  value={selectedPorteOptions}
+                  onChange={handlePorteChange}
+                  options={porteSelectOptions}
+                  placeholder={opcoesCarregando ? "Carregando..." : "Selecione os portes"}
+                  closeMenuOnSelect={false}
+                  noOptionsMessage={() => (opcoesCarregando ? "Carregando..." : "Nenhuma opção disponível")}
+                  className="text-sm"
+                  styles={porteSelectStyles}
+                />
+                <span className="text-xs text-gray-500">Escolha um ou mais portes que melhor representam o produto.</span>
+              </div>
 
-            <div className="flex justify-end gap-3 md:col-span-2 xl:col-span-3">
-              <button onClick={cancelarFormulario} className={cancelButtonClasses}>
-                {editando ? "Cancelar edição" : "Cancelar"}
-              </button>
-              <button
-                onClick={salvar}
-                className={saveButtonClasses}
-                disabled={!editando && !codigo.trim()}
-              >
-                {editando ? "Salvar alterações" : "Salvar produto"}
-              </button>
+              <div className="flex flex-col gap-2">
+                <label htmlFor="preco" className="text-sm font-medium text-gray-700">Preço (R$)</label>
+                <input
+                  id="preco"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="0,00"
+                  value={preco}
+                  onChange={e => setPreco(sanitizeDecimalInput(e.target.value))}
+                  className={baseInputClasses}
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 md:col-span-2 xl:col-span-3">
+                <button onClick={cancelarFormulario} className={cancelButtonClasses}>
+                  {editando ? "Cancelar edição" : "Cancelar"}
+                </button>
+                <button
+                  onClick={salvar}
+                  className={saveButtonClasses}
+                  disabled={!editando && !codigo.trim()}
+                >
+                  {editando ? "Salvar alterações" : "Salvar produto"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -658,54 +794,67 @@ export default function Produtos() {
 
               return (
                 <div key={p.codigo} className={productCardClasses}>
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="truncate text-base font-semibold text-gray-900">{p.codigo} - {p.descricao}</h3>
-                        <span className={codeBadgeClasses}>Preço: {currencyFormatter.format(p.preco)}</span>
-                        <span className={infoBadgeClasses}>Mínimo {minimo} un.</span>
+                  <div className="flex flex-col gap-4 md:grid md:grid-cols-[auto,1fr] md:items-start md:gap-6">
+                    {p.imagemUrl && (
+                      <div className="flex aspect-square w-full max-w-[132px] flex-none items-center justify-center overflow-hidden rounded-2xl border border-gray-100 bg-white/80 p-3 shadow-inner md:w-[132px] md:self-stretch">
+                        <img
+                          src={p.imagemUrl}
+                          alt={`Imagem do produto ${p.descricao}`}
+                          className="h-full w-full object-contain"
+                        />
                       </div>
-                      <div className={headerMetaClasses}>
-                        <span>
-                          Peso:
-                          <span className="ml-1 font-medium text-gray-600">{pesoComUnidade}</span>
-                        </span>
-                        <span className="hidden sm:inline text-slate-300">•</span>
-                        <span>
-                          Unidade:
-                          <span className="ml-1 font-medium text-gray-600">{tipoPesoLabel}</span>
-                        </span>
-                        <span className="hidden sm:inline text-slate-300">•</span>
-                        <span>
-                          Tipo:
-                          <span className="ml-1 font-medium text-gray-600">{p.tipoProdutoNome}</span>
-                        </span>
+                    )}
+                    <div className="flex min-w-0 flex-1 flex-col gap-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="truncate text-base font-semibold text-gray-900">{p.codigo} - {p.descricao}</h3>
+                            <span className={codeBadgeClasses}>Preço: {currencyFormatter.format(p.preco)}</span>
+                            <span className={infoBadgeClasses}>Mínimo {minimo} un.</span>
+                          </div>
+                          <div className={headerMetaClasses}>
+                            <span>
+                              Peso:
+                              <span className="ml-1 font-medium text-gray-600">{pesoComUnidade}</span>
+                            </span>
+                            <span className="hidden sm:inline text-slate-300">•</span>
+                            <span>
+                              Unidade:
+                              <span className="ml-1 font-medium text-gray-600">{tipoPesoLabel}</span>
+                            </span>
+                            <span className="hidden sm:inline text-slate-300">•</span>
+                            <span>
+                              Tipo:
+                              <span className="ml-1 font-medium text-gray-600">{p.tipoProdutoNome}</span>
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3 text-sm">
+                          <button onClick={() => iniciarEdicao(p)} className={editButtonClasses}>
+                            Editar
+                          </button>
+                          <button onClick={() => remover(p.codigo)} className={deleteButtonClasses}>
+                            Excluir
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3 text-sm">
-                      <button onClick={() => iniciarEdicao(p)} className={editButtonClasses}>
-                        Editar
-                      </button>
-                      <button onClick={() => remover(p.codigo)} className={deleteButtonClasses}>
-                        Excluir
-                      </button>
+
+                      <dl className={detailsGridClasses}>
+                        <DetailItem label="Espécie" value={p.especieNome} />
+                        <DetailItem label="Faixa etária" value={p.faixaEtariaNome} />
+                        <DetailItem
+                          label="Portes atendidos"
+                          value={formattedPortes || "Sem porte definido"}
+                          muted={!portesList.length}
+                        />
+                        <DetailItem
+                          label="Sabores"
+                          value={formattedSabores || "Nenhum sabor informado"}
+                          muted={!saboresList.length}
+                        />
+                      </dl>
                     </div>
                   </div>
-
-                  <dl className={detailsGridClasses}>
-                    <DetailItem label="Espécie" value={p.especieNome} />
-                    <DetailItem label="Faixa etária" value={p.faixaEtariaNome} />
-                    <DetailItem
-                      label="Portes atendidos"
-                      value={formattedPortes || "Sem porte definido"}
-                      muted={!portesList.length}
-                    />
-                    <DetailItem
-                      label="Sabores"
-                      value={formattedSabores || "Nenhum sabor informado"}
-                      muted={!saboresList.length}
-                    />
-                  </dl>
                 </div>
               );
             })

@@ -41,7 +41,8 @@ public sealed class ProdutoService : IProdutoService
             p.FaixaEtariaOpcaoId,
             p.FaixaEtariaOpcao?.Nome ?? string.Empty,
             p.Preco,
-            p.QuantidadeMinimaDeCompra);
+            p.QuantidadeMinimaDeCompra,
+            p.ImagemUrl);
     }
 
     private static IReadOnlyList<Guid> NormalizarPortes(IReadOnlyList<Guid> ids)
@@ -80,6 +81,7 @@ public sealed class ProdutoService : IProdutoService
             FaixaEtariaOpcaoId = faixaEtaria.Id,
             Preco = dto.Preco,
             QuantidadeMinimaDeCompra = Math.Max(1, dto.QuantidadeMinimaDeCompra),
+            ImagemUrl = string.IsNullOrWhiteSpace(dto.ImagemUrl) ? null : dto.ImagemUrl,
             Portes = portes.Select(p => new ProdutoPorte { PorteOpcaoId = p.Id }).ToList()
         };
         await _repo.AddAsync(prod, ct);
@@ -213,6 +215,7 @@ public sealed class ProdutoService : IProdutoService
         prod.FaixaEtariaOpcaoId = faixaEtaria.Id;
         prod.Preco = dto.Preco;
         prod.QuantidadeMinimaDeCompra = Math.Max(1, dto.QuantidadeMinimaDeCompra);
+        prod.ImagemUrl = string.IsNullOrWhiteSpace(dto.ImagemUrl) ? null : dto.ImagemUrl;
 
         prod.Portes ??= new List<ProdutoPorte>();
         prod.Portes.Clear();

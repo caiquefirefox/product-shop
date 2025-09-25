@@ -2,7 +2,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PremieRpet.Shop.Application.Interfaces.Repositories;
+using PremieRpet.Shop.Application.Interfaces.Services;
 using PremieRpet.Shop.Infrastructure.Repositories;
+using PremieRpet.Shop.Infrastructure.Options;
+using PremieRpet.Shop.Infrastructure.Services;
 
 namespace PremieRpet.Shop.Infrastructure;
 
@@ -14,6 +17,8 @@ public static class DependencyInjection
             o.UseNpgsql(configuration.GetConnectionString("Postgres")));
         services.AddScoped<IProdutoRepository, ProdutoRepository>();
         services.AddScoped<IPedidoRepository, PedidoRepository>();
+        services.Configure<AzureBlobStorageOptions>(configuration.GetSection("AzureStorage"));
+        services.AddSingleton<IProdutoImagemStorageService, AzureProdutoImagemStorageService>();
         return services;
     }
 }
