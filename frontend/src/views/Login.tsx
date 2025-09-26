@@ -27,14 +27,46 @@ export default function Login() {
     if (isAuth) navigate(returnTo, { replace: true });
   }, [isAuth, navigate, returnTo]);
 
+  const asAuthError = (error: unknown): { errorCode?: string; message?: string } => {
+    if (error && typeof error === "object") {
+      const maybeError = error as { errorCode?: string; message?: string };
+      return {
+        errorCode: maybeError.errorCode,
+        message: maybeError.message
+      };
+    }
+
+    return {};
+  };
+
   const doLogin = async () => {
     setErr(null);
     setLoading(true);
+
+    const scopes = { scopes: [SCOPE] };
+
     try {
-      await instance.loginPopup({ scopes: [SCOPE] });
+      const result = await instance.loginPopup(scopes);
+      if (result?.account) {
+        instance.setActiveAccount(result.account);
+      }
       navigate(returnTo, { replace: true });
-    } catch (e: any) {
-      setErr(e?.message ?? "Falha no login");
+    } catch (error: unknown) {
+      const { errorCode, message } = asAuthError(error);
+      const fallbackMessage = message ?? "Falha no login";
+
+      if (errorCode === "hash_empty_error") {
+        setErr(fallbackMessage);
+        try {
+          await instance.loginRedirect(scopes);
+          return;
+        } catch (redirectErr: unknown) {
+          const { message: redirectMessage } = asAuthError(redirectErr);
+          setErr(redirectMessage ?? fallbackMessage);
+        }
+      } else {
+        setErr(fallbackMessage);
+      }
     } finally {
       setLoading(false);
     }
