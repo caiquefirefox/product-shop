@@ -46,21 +46,26 @@ export default function Login() {
     const scopes = { scopes: [SCOPE] };
 
     try {
-      await instance.loginPopup(scopes);
+      const result = await instance.loginPopup(scopes);
+      if (result?.account) {
+        instance.setActiveAccount(result.account);
+      }
       navigate(returnTo, { replace: true });
     } catch (error: unknown) {
       const { errorCode, message } = asAuthError(error);
+      const fallbackMessage = message ?? "Falha no login";
 
       if (errorCode === "hash_empty_error") {
+        setErr(fallbackMessage);
         try {
           await instance.loginRedirect(scopes);
           return;
         } catch (redirectErr: unknown) {
           const { message: redirectMessage } = asAuthError(redirectErr);
-          setErr(redirectMessage ?? "Falha no login");
+          setErr(redirectMessage ?? fallbackMessage);
         }
       } else {
-        setErr(message ?? "Falha no login");
+        setErr(fallbackMessage);
       }
     } finally {
       setLoading(false);
