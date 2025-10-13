@@ -1,4 +1,11 @@
-import { PublicClientApplication, EventType, type Configuration } from "@azure/msal-browser";
+import {
+  PublicClientApplication,
+  EventType,
+  type Configuration,
+  type EventMessage,
+  type AuthenticationResult,
+  BrowserCacheLocation,
+} from "@azure/msal-browser";
 
 function requireEnv(name: string, value: string | undefined) {
   if (!value) throw new Error(`Config faltando: ${name}`);
@@ -16,13 +23,40 @@ export const msalConfig: Configuration = {
     authority: `https://login.microsoftonline.com/${TENANT}`,
     redirectUri: REDIRECT,
     postLogoutRedirectUri: REDIRECT,
-  }
+  },
+  cache: {
+    cacheLocation: BrowserCacheLocation.LocalStorage,
+    storeAuthStateInCookie: false,
+  },
 };
 
 export const pca = new PublicClientApplication(msalConfig);
 
-pca.addEventCallback((e) => {
-  if (e.eventType === EventType.LOGIN_SUCCESS) {
-    // noop
+pca.enableAccountStorageEvents();
+
+function setActiveAccountFromEvent(event: EventMessage) {
+  const account = (event.payload as AuthenticationResult | undefined)?.account;
+  if (account) {
+    pca.setActiveAccount(account);
+  }
+}
+
+pca.addEventCallback((event) => {
+  switch (event.eventType) {
+    case EventType.LOGIN_SUCCESS:
+    case EventType.ACQUIRE_TOKEN_SUCCESS:
+      setActiveAccountFromEvent(event);
+      break;
+    default:
+      break;
   }
 });
+
+export function ensureActiveAccount() {
+  if (!pca.getActiveAccount()) {
+    const [firstAccount] = pca.getAllAccounts();
+    if (firstAccount) {
+      pca.setActiveAccount(firstAccount);
+    }
+  }
+}

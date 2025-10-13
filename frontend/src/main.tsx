@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { MsalProvider } from "@azure/msal-react";
-import { pca } from "./auth/msal";
+import { ensureActiveAccount, pca } from "./auth/msal";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import App from "./shell/App";
 import "./index.css";
@@ -16,14 +16,14 @@ const router = createBrowserRouter([
   await pca.initialize();
 
   try {
-    if (window.location.hash) {
-      await pca.handleRedirectPromise();
-    }
+    await pca.handleRedirectPromise();
   } catch (e: any) {
     if (e?.errorCode !== "hash_empty_error") {
       console.error("MSAL redirect error:", e);
     }
   }
+
+  ensureActiveAccount();
 
   ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
