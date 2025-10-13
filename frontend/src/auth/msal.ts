@@ -4,6 +4,7 @@ import {
   type Configuration,
   type EventMessage,
   type AuthenticationResult,
+  BrowserCacheLocation,
 } from "@azure/msal-browser";
 
 function requireEnv(name: string, value: string | undefined) {
@@ -22,10 +23,16 @@ export const msalConfig: Configuration = {
     authority: `https://login.microsoftonline.com/${TENANT}`,
     redirectUri: REDIRECT,
     postLogoutRedirectUri: REDIRECT,
-  }
+  },
+  cache: {
+    cacheLocation: BrowserCacheLocation.LocalStorage,
+    storeAuthStateInCookie: false,
+  },
 };
 
 export const pca = new PublicClientApplication(msalConfig);
+
+pca.enableAccountStorageEvents();
 
 function setActiveAccountFromEvent(event: EventMessage) {
   const account = (event.payload as AuthenticationResult | undefined)?.account;
