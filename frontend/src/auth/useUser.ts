@@ -18,7 +18,7 @@ function decodeJwt<T = any>(jwt: string): T {
 
 export function useUser() {
   const { accounts } = useMsal();
-  const account = accounts[0];
+  const account = accounts[0] ?? pca.getActiveAccount() ?? pca.getAllAccounts()[0];
 
   // 1) carrega do cache p/ evitar "flash" após F5
   const cached = useMemo<string[]>(

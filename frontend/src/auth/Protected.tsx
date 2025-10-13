@@ -8,7 +8,7 @@ export default function Protected({
   children,
   requiredRole,
 }: { children: ReactElement; requiredRole?: "Admin" | "Colaborador" }) {
-  const { inProgress } = useMsal();
+  const { instance, inProgress } = useMsal();
   const isAuth = useIsAuthenticated();
   const { roles, isLoading } = useUser();
   const location = useLocation();
@@ -19,7 +19,16 @@ export default function Protected({
 
   if (isInitializing) return null;
 
-  if (!isAuth) return <Navigate to="/login" replace state={{ returnTo }} />;
+  const cachedAccounts = instance.getAllAccounts();
+  const hasAnyAccount = isAuth || cachedAccounts.length > 0;
+
+  if (!hasAnyAccount) {
+    return <Navigate to="/login" replace state={{ returnTo }} />;
+  }
+
+  if (!instance.getActiveAccount() && cachedAccounts.length > 0) {
+    instance.setActiveAccount(cachedAccounts[0]);
+  }
 
   // Evita "flicker" de 403 enquanto ainda buscamos roles
   if (requiredRole && isLoading) return null; // ou um skeleton/spinner

@@ -16,9 +16,7 @@ const router = createBrowserRouter([
   await pca.initialize();
 
   try {
-    if (window.location.hash) {
-      await pca.handleRedirectPromise();
-    }
+    await pca.handleRedirectPromise();
   } catch (e: any) {
     if (e?.errorCode !== "hash_empty_error") {
       console.error("MSAL redirect error:", e);
