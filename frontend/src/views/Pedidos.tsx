@@ -89,6 +89,8 @@ export default function Pedidos() {
   const [resumo, setResumo] = useState<PedidoResumoMensal | null>(null);
   const [resumoLoading, setResumoLoading] = useState(false);
   const [resumoError, setResumoError] = useState<string | null>(null);
+  const [resumoUsuarioId, setResumoUsuarioId] = useState<string | null>(null);
+  const resumoRequestIdRef = useRef(0);
 
   const [selectedPedidoId, setSelectedPedidoId] = useState<string | null>(null);
   const [detalhe, setDetalhe] = useState<PedidoDetalheCompleto | null>(null);
@@ -274,6 +276,9 @@ export default function Pedidos() {
   }, [appliedDe, appliedAte, appliedStatusFiltro, appliedUsuarioFiltro, isAdmin, page, pageSize]);
 
   const loadResumo = useCallback(async () => {
+    const requestId = resumoRequestIdRef.current + 1;
+    resumoRequestIdRef.current = requestId;
+
     setResumoLoading(true);
     setResumoError(null);
 
@@ -281,16 +286,20 @@ export default function Pedidos() {
     const ateIso = endOfDayISO_BR(appliedAte);
 
     if (!deIso || !ateIso) {
-      setResumoError("Datas inválidas. Use o formato dd/mm/aaaa.");
-      setResumo(null);
-      setResumoLoading(false);
+      if (requestId === resumoRequestIdRef.current) {
+        setResumoError("Datas inválidas. Use o formato dd/mm/aaaa.");
+        setResumo(null);
+        setResumoLoading(false);
+      }
       return;
     }
 
     if (new Date(deIso) > new Date(ateIso)) {
-      setResumoError("A data inicial não pode ser posterior à data final.");
-      setResumo(null);
-      setResumoLoading(false);
+      if (requestId === resumoRequestIdRef.current) {
+        setResumoError("A data inicial não pode ser posterior à data final.");
+        setResumo(null);
+        setResumoLoading(false);
+      }
       return;
     }
 
@@ -304,16 +313,23 @@ export default function Pedidos() {
         params.statusId = appliedStatusFiltro;
       }
 
+      if (isAdmin && resumoUsuarioId) {
+        params.usuarioId = resumoUsuarioId;
+      }
+
       const response = await api.get<PedidoResumoMensal>("/pedidos/resumo-mensal", { params });
+      if (requestId !== resumoRequestIdRef.current) return;
       setResumo(response.data);
     } catch (error: any) {
+      if (requestId !== resumoRequestIdRef.current) return;
       const msg = error?.response?.data?.detail || error?.message || "Não foi possível carregar o resumo do período.";
       setResumoError(msg);
       setResumo(null);
     } finally {
+      if (requestId !== resumoRequestIdRef.current) return;
       setResumoLoading(false);
     }
-  }, [appliedDe, appliedAte, appliedStatusFiltro]);
+  }, [appliedDe, appliedAte, appliedStatusFiltro, isAdmin, resumoUsuarioId]);
 
   const aplicarFiltros = useCallback(() => {
     setListError(null);
@@ -357,6 +373,26 @@ export default function Pedidos() {
   useEffect(() => {
     loadResumo();
   }, [loadResumo]);
+
+  useEffect(() => {
+    if (!isAdmin) {
+      setResumoUsuarioId(null);
+      return;
+    }
+
+    const usuarioBusca = appliedUsuarioFiltro.trim();
+    if (!usuarioBusca || listLoading) {
+      setResumoUsuarioId(null);
+      return;
+    }
+
+    const uniqueUsuarios = Array.from(new Set(pedidos.map((pedido) => pedido.usuarioId)));
+    if (uniqueUsuarios.length === 1) {
+      setResumoUsuarioId(uniqueUsuarios[0]);
+    } else {
+      setResumoUsuarioId(null);
+    }
+  }, [appliedUsuarioFiltro, isAdmin, listLoading, pedidos]);
 
   useEffect(() => {
     if (!selectedPedidoId) return;
