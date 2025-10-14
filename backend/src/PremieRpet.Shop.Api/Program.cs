@@ -37,7 +37,7 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
 
 // Layers
 builder.Services.AddInfrastructure(builder.Configuration);
-builder.Services.AddApplication();
+builder.Services.AddApplication(builder.Configuration);
 
 // Auth
 var tenantId = builder.Configuration["Auth:TenantId"]!;

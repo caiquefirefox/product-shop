@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using PremieRpet.Shop.Application.Configuration;
 using PremieRpet.Shop.Application.DTOs;
 using PremieRpet.Shop.Application.Interfaces.Repositories;
 using PremieRpet.Shop.Application.Interfaces.UseCases;
@@ -22,14 +24,38 @@ public sealed class PedidoService : IPedidoService
     private readonly IPedidoRepository _pedidos;
     private readonly IProdutoRepository _produtos;
     private readonly IUsuarioService _usuarios;
+    private readonly PedidoSettings _settings;
     public const decimal LIMITE_KG_MES = 30m;
-    public const int LIMITE_PEDIDOS_MES = 1;
 
-    public PedidoService(IPedidoRepository ped, IProdutoRepository prod, IUsuarioService usuarios)
+    public PedidoService(
+        IPedidoRepository ped,
+        IProdutoRepository prod,
+        IUsuarioService usuarios,
+        IOptions<PedidoSettings> settings)
     {
         _pedidos = ped;
         _produtos = prod;
         _usuarios = usuarios;
+        _settings = Normalizar(settings?.Value ?? new PedidoSettings());
+    }
+
+    private static PedidoSettings Normalizar(PedidoSettings settings)
+    {
+        var normalized = new PedidoSettings
+        {
+            EditWindowOpeningDay = Math.Clamp(settings.EditWindowOpeningDay, 1, 31),
+            EditWindowClosingDay = Math.Clamp(settings.EditWindowClosingDay, 1, 31),
+            MaxOrdersPerUserPerMonth = Math.Max(0, settings.MaxOrdersPerUserPerMonth),
+            InitialStatusId = settings.InitialStatusId > 0 ? settings.InitialStatusId : PedidoStatusIds.Solicitado
+        };
+
+        if (normalized.EditWindowClosingDay < normalized.EditWindowOpeningDay)
+            normalized.EditWindowClosingDay = normalized.EditWindowOpeningDay;
+
+        if (normalized.InitialStatusId is not (PedidoStatusIds.Solicitado or PedidoStatusIds.Aprovado))
+            normalized.InitialStatusId = PedidoStatusIds.Solicitado;
+
+        return normalized;
     }
 
     private static PedidoDetalheDto MapToDetalhe(Pedido pedido)
@@ -134,7 +160,7 @@ public sealed class PedidoService : IPedidoService
         return agrupados;
     }
 
-    private static bool EstaDentroJanelaEdicao(DateTimeOffset momentoUtc)
+    private bool EstaDentroJanelaEdicao(DateTimeOffset momentoUtc)
     {
         DateTimeOffset referencia = momentoUtc;
         foreach (var tzId in TimeZoneCandidates)
@@ -154,7 +180,7 @@ public sealed class PedidoService : IPedidoService
         }
 
         var dia = referencia.Day;
-        return dia >= 15 && dia <= 20;
+        return dia >= _settings.EditWindowOpeningDay && dia <= _settings.EditWindowClosingDay;
     }
 
     private static DateTimeOffset InicioMesUtc(int ano, int mes)
@@ -182,8 +208,8 @@ public sealed class PedidoService : IPedidoService
             .Where(p => PedidoStatusIds.ContaParaLimite.Contains(p.StatusId))
             .CountAsync(ct);
 
-        if (pedidosMes > 0)
-            throw new InvalidOperationException("Você já possui um pedido ativo neste mês.");
+        if (_settings.MaxOrdersPerUserPerMonth > 0 && pedidosMes >= _settings.MaxOrdersPerUserPerMonth)
+            throw new InvalidOperationException($"Você já atingiu o limite de {_settings.MaxOrdersPerUserPerMonth} pedido(s) neste mês.");
 
         var pedido = new Pedido
         {
@@ -191,7 +217,7 @@ public sealed class PedidoService : IPedidoService
             UsuarioNome = usuarioNome,
             UsuarioCpf = perfil.Cpf,
             UnidadeEntrega = dto.UnidadeEntrega,
-            StatusId = PedidoStatusIds.Solicitado,
+            StatusId = _settings.InitialStatusId,
             AtualizadoEm = agora,
             AtualizadoPorUsuarioId = perfil.Id
         };
@@ -406,7 +432,7 @@ public sealed class PedidoService : IPedidoService
 
         var agora = DateTimeOffset.UtcNow;
         if (!isAdmin && !EstaDentroJanelaEdicao(agora))
-            throw new InvalidOperationException("As edições estão disponíveis apenas entre os dias 15 e 20 de cada mês.");
+            throw new InvalidOperationException($"As edições estão disponíveis apenas entre os dias {_settings.EditWindowOpeningDay} e {_settings.EditWindowClosingDay} de cada mês.");
 
         if (!UnidadesEntrega.Todas.Contains(dto.UnidadeEntrega))
             throw new InvalidOperationException("Unidade de entrega inválida.");
@@ -609,7 +635,7 @@ public sealed class PedidoService : IPedidoService
             totalValor,
             totalItens,
             totalPedidos,
-            LIMITE_PEDIDOS_MES,
+            _settings.MaxOrdersPerUserPerMonth,
             pedidosUtilizados
         );
     }
@@ -673,7 +699,7 @@ public sealed class PedidoService : IPedidoService
         var agora = DateTimeOffset.UtcNow;
 
         if (!isAdmin && !EstaDentroJanelaEdicao(agora))
-            throw new InvalidOperationException("Pedidos só podem ser cancelados entre os dias 15 e 20 de cada mês.");
+            throw new InvalidOperationException($"Pedidos só podem ser cancelados entre os dias {_settings.EditWindowOpeningDay} e {_settings.EditWindowClosingDay} de cada mês.");
 
         var statusAnterior = ObterNomeStatus(pedido);
 
