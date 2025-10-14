@@ -4,14 +4,22 @@ namespace PremieRpet.Shop.Api.Contracts;
 
 public sealed class PedidoResumoMensalQuery
 {
-    public int? Ano { get; set; }
-    public int? Mes { get; set; }
+    public DateTimeOffset? De { get; set; }
+    public DateTimeOffset? Ate { get; set; }
     public Guid? UsuarioId { get; set; }
+    public int? StatusId { get; set; }
 
-    public (int Ano, int Mes, Guid? UsuarioId) Normalize(DateTimeOffset referencia)
+    public (DateTimeOffset De, DateTimeOffset Ate, Guid? UsuarioId, int? StatusId) Normalize(DateTimeOffset referencia)
     {
-        var ano = Ano is int a && a >= 1 && a <= 9999 ? a : referencia.Year;
-        var mes = Mes is int m && m >= 1 && m <= 12 ? m : referencia.Month;
-        return (ano, mes, UsuarioId);
+        var inicioReferencia = new DateTimeOffset(new DateTime(referencia.Year, referencia.Month, 1, 0, 0, 0, DateTimeKind.Utc));
+        var inicio = De ?? inicioReferencia;
+        var fim = Ate ?? inicio.AddMonths(1).AddTicks(-1);
+
+        if (fim < inicio)
+            (inicio, fim) = (fim, inicio);
+
+        var status = StatusId is int valor && valor > 0 ? valor : null;
+
+        return (inicio, fim, UsuarioId, status);
     }
 }

@@ -5,5 +5,7 @@ namespace PremieRpet.Shop.Application.DTOs;
 public sealed record PedidoHistoricoDetalhesDto(
     string? UnidadeEntregaAnterior,
     string? UnidadeEntregaAtual,
-    IReadOnlyList<PedidoHistoricoAlteracaoItemDto> Itens
+    IReadOnlyList<PedidoHistoricoAlteracaoItemDto> Itens,
+    string? StatusAnterior,
+    string? StatusAtual
 );

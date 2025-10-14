@@ -3,6 +3,7 @@ type PedidoItemDetalhe = {
   descricao: string;
   preco: number;
   quantidade: number;
+  quantidadeMinima: number;
   subtotal: number;
   pesoKg: number;
   pesoTotalKg: number;
@@ -14,6 +15,8 @@ type PedidoDetalhe = {
   usuarioNome: string;
   usuarioCpf: string | null;
   unidadeEntrega: string;
+  statusId: number;
+  statusNome: string;
   dataHora: string;
   total: number;
   pesoTotalKg: number;
@@ -31,6 +34,8 @@ type PedidoHistoricoDetalhes = {
   unidadeEntregaAnterior: string | null;
   unidadeEntregaAtual: string | null;
   itens: PedidoHistoricoAlteracao[];
+  statusAnterior: string | null;
+  statusAtual: string | null;
 };
 
 type PedidoHistorico = {

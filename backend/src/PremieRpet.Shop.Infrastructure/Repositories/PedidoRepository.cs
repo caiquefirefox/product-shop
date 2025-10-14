@@ -27,7 +27,9 @@ public sealed class PedidoRepository : IPedidoRepository
 
     public async Task<Pedido?> GetWithItensAsync(Guid id, CancellationToken ct)
         => await _db.Pedidos
+            .Include(p => p.Status)
             .Include(p => p.Itens)
+                .ThenInclude(i => i.Produto)
             .Include(p => p.Historicos)
                 .ThenInclude(h => h.Usuario)
             .FirstOrDefaultAsync(p => p.Id == id, ct);
@@ -38,5 +40,11 @@ public sealed class PedidoRepository : IPedidoRepository
         await _db.SaveChangesAsync(ct);
     }
 
-    public IQueryable<Pedido> Query() => _db.Pedidos.Include(p => p.Itens).AsQueryable();
+    public IQueryable<Pedido> Query() => _db.Pedidos
+        .Include(p => p.Status)
+        .Include(p => p.Itens)
+            .ThenInclude(i => i.Produto)
+        .AsQueryable();
+
+    public IQueryable<PedidoStatus> StatusQuery() => _db.PedidoStatus.AsQueryable();
 }

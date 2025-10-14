@@ -16,6 +16,7 @@ public sealed class PedidoService : IPedidoService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private const string HistoricoTipoAtualizacao = "Atualizacao";
+    private const string HistoricoTipoStatus = "Status";
     private static readonly string[] TimeZoneCandidates = new[] { "America/Sao_Paulo", "E. South America Standard Time" };
 
     private readonly IPedidoRepository _pedidos;
@@ -37,11 +38,13 @@ public sealed class PedidoService : IPedidoService
             .Select(i =>
             {
                 var pesoUnitKg = PesoRules.ToKg(i.Peso, i.TipoPeso);
+                var quantidadeMinima = Math.Max(1, i.Produto?.QuantidadeMinimaDeCompra ?? 1);
                 return new PedidoDetalheItemDto(
                     i.ProdutoCodigo,
                     i.Descricao,
                     i.Preco,
                     i.Quantidade,
+                    quantidadeMinima,
                     i.Preco * i.Quantidade,
                     pesoUnitKg,
                     pesoUnitKg * i.Quantidade
@@ -51,6 +54,7 @@ public sealed class PedidoService : IPedidoService
 
         var total = itens.Sum(i => i.Subtotal);
         var pesoTotal = itens.Sum(i => i.PesoTotalKg);
+        var statusNome = ObterNomeStatus(pedido);
 
         return new PedidoDetalheDto(
             pedido.Id,
@@ -58,6 +62,8 @@ public sealed class PedidoService : IPedidoService
             pedido.UsuarioNome,
             pedido.UsuarioCpf,
             pedido.UnidadeEntrega,
+            pedido.StatusId,
+            statusNome,
             pedido.DataHora,
             total,
             pesoTotal,
@@ -92,6 +98,25 @@ public sealed class PedidoService : IPedidoService
             detalhes
         );
     }
+
+    private static PedidoHistoricoDetalhesDto CriarDetalhesStatus(string? anterior, string? atual)
+        => new(null, null, Array.Empty<PedidoHistoricoAlteracaoItemDto>(), anterior, atual);
+
+    private static string ObterNomeStatus(int statusId, PedidoStatus? status = null)
+    {
+        if (status is not null && status.Id == statusId && !string.IsNullOrWhiteSpace(status.Nome))
+            return status!.Nome;
+
+        return statusId switch
+        {
+            PedidoStatusIds.Solicitado => "Solicitado",
+            PedidoStatusIds.Aprovado => "Aprovado",
+            PedidoStatusIds.Cancelado => "Cancelado",
+            _ => string.Empty
+        };
+    }
+
+    private static string ObterNomeStatus(Pedido pedido) => ObterNomeStatus(pedido.StatusId, pedido.Status);
 
     private static IReadOnlyList<PedidoUpdateItemDto> NormalizarItensAtualizacao(IReadOnlyList<PedidoUpdateItemDto> itens)
     {
@@ -147,12 +172,25 @@ public sealed class PedidoService : IPedidoService
         var perfil = await _usuarios.GarantirCpfAsync(usuarioMicrosoftId, dto.Cpf, ct);
         var pesoAcumulado = await PesoAcumuladoMesEmKgAsync(perfil.Id, agora, ct);
 
+        var inicioMes = InicioMesUtc(agora.Year, agora.Month);
+        var fimMes = inicioMes.AddMonths(1);
+
+        var pedidosMes = await _pedidos.Query()
+            .Where(p => p.UsuarioId == perfil.Id)
+            .Where(p => p.DataHora >= inicioMes && p.DataHora < fimMes)
+            .Where(p => PedidoStatusIds.ContaParaLimite.Contains(p.StatusId))
+            .CountAsync(ct);
+
+        if (pedidosMes > 0)
+            throw new InvalidOperationException("Você já possui um pedido ativo neste mês.");
+
         var pedido = new Pedido
         {
             UsuarioId = perfil.Id,
             UsuarioNome = usuarioNome,
             UsuarioCpf = perfil.Cpf,
             UnidadeEntrega = dto.UnidadeEntrega,
+            StatusId = PedidoStatusIds.Solicitado,
             AtualizadoEm = agora,
             AtualizadoPorUsuarioId = perfil.Id
         };
@@ -192,7 +230,13 @@ public sealed class PedidoService : IPedidoService
         await _pedidos.AddAsync(pedido, ct);
 
         return new PedidoResumoDto(
-            pedido.Id, pedido.UsuarioNome, pedido.UsuarioCpf, pedido.UnidadeEntrega, pedido.DataHora,
+            pedido.Id,
+            pedido.UsuarioNome,
+            pedido.UsuarioCpf,
+            pedido.UnidadeEntrega,
+            pedido.StatusId,
+            "Solicitado",
+            pedido.DataHora,
             pedido.Total(),
             pedido.PesoTotalKg()
         );
@@ -205,6 +249,7 @@ public sealed class PedidoService : IPedidoService
 
         return await _pedidos.Query()
             .Where(p => p.UsuarioId == usuarioId && p.DataHora >= inicio && p.DataHora < fim)
+            .Where(p => PedidoStatusIds.ContaParaLimite.Contains(p.StatusId))
             .SelectMany(p => p.Itens)
             .Select(PesoRules.ItemTotalKgExpr)
             .SumAsync(ct);
@@ -219,20 +264,35 @@ public sealed class PedidoService : IPedidoService
         return await q.AsNoTracking()
             .OrderByDescending(p => p.DataHora)
             .Select(p => new PedidoResumoDto(
-                p.Id, p.UsuarioNome, p.UsuarioCpf, p.UnidadeEntrega, p.DataHora,
+                p.Id,
+                p.UsuarioNome,
+                p.UsuarioCpf,
+                p.UnidadeEntrega,
+                p.StatusId,
+                p.Status != null && p.Status.Nome != null
+                    ? p.Status.Nome
+                    : p.StatusId == PedidoStatusIds.Solicitado
+                        ? "Solicitado"
+                        : p.StatusId == PedidoStatusIds.Aprovado
+                            ? "Aprovado"
+                            : p.StatusId == PedidoStatusIds.Cancelado
+                                ? "Cancelado"
+                                : string.Empty,
+                p.DataHora,
                 p.Itens.Sum(i => i.Preco * i.Quantidade),
                 p.Itens.AsQueryable().Select(PesoRules.ItemTotalKgExpr).Sum()
             ))
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<PedidoDetalheDto>> ListarPedidosDetalhadosAsync(DateTimeOffset? de, DateTimeOffset? ate, Guid? usuarioId, CancellationToken ct)
+    public async Task<IReadOnlyList<PedidoDetalheDto>> ListarPedidosDetalhadosAsync(DateTimeOffset? de, DateTimeOffset? ate, Guid? usuarioId, int? statusId, CancellationToken ct)
     {
         var q = _pedidos.Query();
 
         if (de is not null) q = q.Where(p => p.DataHora >= de);
         if (ate is not null) q = q.Where(p => p.DataHora <= ate);
         if (usuarioId is not null) q = q.Where(p => p.UsuarioId == usuarioId);
+        if (statusId is int status && status > 0) q = q.Where(p => p.StatusId == status);
 
         var pedidos = await q.AsNoTracking()
             .OrderByDescending(p => p.DataHora)
@@ -252,11 +312,31 @@ public sealed class PedidoService : IPedidoService
             query = query.Where(p => p.DataHora >= de);
         if (filtro.Ate is DateTimeOffset ate)
             query = query.Where(p => p.DataHora <= ate);
+        if (filtro.StatusId is int status && status > 0)
+            query = query.Where(p => p.StatusId == status);
 
         if (isAdmin)
         {
             if (filtro.UsuarioId is Guid usuarioFiltro && usuarioFiltro != Guid.Empty)
                 query = query.Where(p => p.UsuarioId == usuarioFiltro);
+
+            if (!string.IsNullOrWhiteSpace(filtro.UsuarioBusca))
+            {
+                var termo = filtro.UsuarioBusca.Trim();
+                var termoLower = termo.ToLowerInvariant();
+                var termoDigitos = new string(termo.Where(char.IsDigit).ToArray());
+
+                query = query.Where(p =>
+                    (p.UsuarioNome != null && p.UsuarioNome.ToLower().Contains(termoLower)) ||
+                    (!string.IsNullOrEmpty(p.UsuarioCpf) &&
+                        (p.UsuarioCpf.ToLower().Contains(termoLower) ||
+                        (termoDigitos.Length > 0 && p.UsuarioCpf
+                            .Replace(".", string.Empty)
+                            .Replace("-", string.Empty)
+                            .Replace(" ", string.Empty)
+                            .Contains(termoDigitos))))
+                );
+            }
         }
         else
         {
@@ -315,6 +395,9 @@ public sealed class PedidoService : IPedidoService
 
         if (!isAdmin && pedido.UsuarioId != usuarioAtualId)
             throw new InvalidOperationException("Você não tem permissão para editar este pedido.");
+
+        if (pedido.StatusId == PedidoStatusIds.Cancelado)
+            throw new InvalidOperationException("Pedidos cancelados não podem ser editados.");
 
         var agora = DateTimeOffset.UtcNow;
         if (!isAdmin && !EstaDentroJanelaEdicao(agora))
@@ -420,7 +503,9 @@ public sealed class PedidoService : IPedidoService
             var detalhes = new PedidoHistoricoDetalhesDto(
                 unidadeAnterior,
                 dto.UnidadeEntrega,
-                historicoAlteracoes
+                historicoAlteracoes,
+                null,
+                null
             );
 
             historicoRegistro = new PedidoHistorico
@@ -441,13 +526,22 @@ public sealed class PedidoService : IPedidoService
         return MapToDetalhe(pedido);
     }
 
-    public async Task<PedidoResumoMensalDto> ObterResumoMensalAsync(int ano, int mes, Guid usuarioAtualId, bool isAdmin, Guid? usuarioFiltroId, CancellationToken ct)
+    public async Task<PedidoResumoMensalDto> ObterResumoAsync(DateTimeOffset de, DateTimeOffset ate, Guid usuarioAtualId, bool isAdmin, Guid? usuarioFiltroId, int? statusFiltroId, CancellationToken ct)
     {
-        var inicio = InicioMesUtc(ano, mes);
-        var fim = inicio.AddMonths(1);
+        if (ate < de)
+            (de, ate) = (ate, de);
 
         var query = _pedidos.Query().AsNoTracking()
-            .Where(p => p.DataHora >= inicio && p.DataHora < fim);
+            .Where(p => p.DataHora >= de && p.DataHora <= ate);
+
+        if (statusFiltroId is int statusFiltro && statusFiltro > 0)
+        {
+            query = query.Where(p => p.StatusId == statusFiltro);
+        }
+        else
+        {
+            query = query.Where(p => PedidoStatusIds.ContaParaLimite.Contains(p.StatusId));
+        }
 
         if (isAdmin)
         {
@@ -473,5 +567,87 @@ public sealed class PedidoService : IPedidoService
             totalItens,
             totalPedidos
         );
+    }
+
+    public async Task<IReadOnlyList<PedidoStatusDto>> ListarStatusAsync(CancellationToken ct)
+        => await _pedidos.StatusQuery()
+            .AsNoTracking()
+            .OrderBy(s => s.Id)
+            .Select(s => new PedidoStatusDto(s.Id, s.Nome))
+            .ToListAsync(ct);
+
+    public async Task<PedidoDetalheDto> AprovarPedidoAsync(Guid pedidoId, Guid usuarioAtualId, string usuarioNome, CancellationToken ct)
+    {
+        var pedido = await _pedidos.GetWithItensAsync(pedidoId, ct)
+            ?? throw new InvalidOperationException("Pedido não encontrado.");
+
+        if (pedido.StatusId == PedidoStatusIds.Cancelado)
+            throw new InvalidOperationException("Não é possível aprovar um pedido cancelado.");
+
+        if (pedido.StatusId == PedidoStatusIds.Aprovado)
+            return MapToDetalhe(pedido);
+
+        if (pedido.StatusId != PedidoStatusIds.Solicitado)
+            throw new InvalidOperationException("Somente pedidos solicitados podem ser aprovados.");
+
+        var agora = DateTimeOffset.UtcNow;
+        var statusAnterior = ObterNomeStatus(pedido);
+
+        pedido.StatusId = PedidoStatusIds.Aprovado;
+        pedido.AtualizadoEm = agora;
+        pedido.AtualizadoPorUsuarioId = usuarioAtualId;
+
+        var detalhes = CriarDetalhesStatus(statusAnterior, "Aprovado");
+        pedido.Historicos.Add(new PedidoHistorico
+        {
+            PedidoId = pedido.Id,
+            UsuarioId = usuarioAtualId,
+            UsuarioNome = usuarioNome,
+            Tipo = HistoricoTipoStatus,
+            Detalhes = JsonSerializer.Serialize(detalhes, JsonOptions),
+            DataHora = agora
+        });
+
+        await _pedidos.UpdateAsync(pedido, ct);
+
+        return MapToDetalhe(pedido);
+    }
+
+    public async Task<PedidoDetalheDto> CancelarPedidoAsync(Guid pedidoId, Guid usuarioAtualId, string usuarioNome, bool isAdmin, CancellationToken ct)
+    {
+        var pedido = await _pedidos.GetWithItensAsync(pedidoId, ct)
+            ?? throw new InvalidOperationException("Pedido não encontrado.");
+
+        if (!isAdmin && pedido.UsuarioId != usuarioAtualId)
+            throw new InvalidOperationException("Você não tem permissão para cancelar este pedido.");
+
+        if (pedido.StatusId == PedidoStatusIds.Cancelado)
+            return MapToDetalhe(pedido);
+
+        var agora = DateTimeOffset.UtcNow;
+
+        if (!isAdmin && !EstaDentroJanelaEdicao(agora))
+            throw new InvalidOperationException("Pedidos só podem ser cancelados entre os dias 15 e 20 de cada mês.");
+
+        var statusAnterior = ObterNomeStatus(pedido);
+
+        pedido.StatusId = PedidoStatusIds.Cancelado;
+        pedido.AtualizadoEm = agora;
+        pedido.AtualizadoPorUsuarioId = usuarioAtualId;
+
+        var detalhes = CriarDetalhesStatus(statusAnterior, "Cancelado");
+        pedido.Historicos.Add(new PedidoHistorico
+        {
+            PedidoId = pedido.Id,
+            UsuarioId = usuarioAtualId,
+            UsuarioNome = usuarioNome,
+            Tipo = HistoricoTipoStatus,
+            Detalhes = JsonSerializer.Serialize(detalhes, JsonOptions),
+            DataHora = agora
+        });
+
+        await _pedidos.UpdateAsync(pedido, ct);
+
+        return MapToDetalhe(pedido);
     }
 }

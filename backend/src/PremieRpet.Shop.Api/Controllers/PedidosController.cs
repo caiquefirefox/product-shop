@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PremieRpet.Shop.Api.Contracts;
@@ -21,7 +22,15 @@ public sealed class PedidosController(IPedidoService pedidos, IUsuarioService us
             return Problem(title: "Token sem identificador de usuário (oid/sub).", statusCode: StatusCodes.Status401Unauthorized);
 
         var usuario = await usuarios.ObterOuCriarAsync(usuarioMicrosoftId, ct);
-        var filtro = query?.ToDto() ?? new PedidoListFiltroDto(PedidoListFiltroDto.DefaultPage, PedidoListFiltroDto.DefaultPageSize, null, null, null);
+        var filtro = query?.ToDto() ?? new PedidoListFiltroDto(
+            PedidoListFiltroDto.DefaultPage,
+            PedidoListFiltroDto.DefaultPageSize,
+            null,
+            null,
+            null,
+            null,
+            null
+        );
 
         var resultado = await pedidos.ListarPedidosGerenciaveisAsync(filtro, usuario.Id, User.IsInRole("Admin"), ct);
         return Ok(resultado);
@@ -36,15 +45,71 @@ public sealed class PedidosController(IPedidoService pedidos, IUsuarioService us
             return Problem(title: "Token sem identificador de usuário (oid/sub).", statusCode: StatusCodes.Status401Unauthorized);
 
         var usuario = await usuarios.ObterOuCriarAsync(usuarioMicrosoftId, ct);
-        var (ano, mes, usuarioIdFiltro) = query?.Normalize(DateTimeOffset.UtcNow) ?? (DateTimeOffset.UtcNow.Year, DateTimeOffset.UtcNow.Month, (Guid?)null);
+        var agora = DateTimeOffset.UtcNow;
+        var inicioPadrao = new DateTimeOffset(new DateTime(agora.Year, agora.Month, 1, 0, 0, 0, DateTimeKind.Utc));
+        var fimPadrao = inicioPadrao.AddMonths(1).AddTicks(-1);
+        var (de, ate, usuarioIdFiltro, statusIdFiltro) = query?.Normalize(agora) ?? (inicioPadrao, fimPadrao, (Guid?)null, (int?)null);
 
-        if (!User.IsInRole("Admin"))
+        var isAdmin = User.IsInRole("Admin");
+        if (!isAdmin)
         {
             usuarioIdFiltro = null;
         }
 
-        var resumo = await pedidos.ObterResumoMensalAsync(ano, mes, usuario.Id, User.IsInRole("Admin"), usuarioIdFiltro, ct);
+        var resumo = await pedidos.ObterResumoAsync(de, ate, usuario.Id, isAdmin, usuarioIdFiltro, statusIdFiltro, ct);
         return Ok(resumo);
+    }
+
+    [HttpGet("status")]
+    [Authorize]
+    public async Task<ActionResult<IReadOnlyList<PedidoStatusDto>>> Status(CancellationToken ct)
+    {
+        var lista = await pedidos.ListarStatusAsync(ct);
+        return Ok(lista);
+    }
+
+    [HttpPost("{id:guid}/aprovar")]
+    [Authorize("Admin")]
+    public async Task<ActionResult<PedidoDetalheDto>> Aprovar(Guid id, CancellationToken ct)
+    {
+        var usuarioMicrosoftId = User.GetUserId();
+        if (string.IsNullOrWhiteSpace(usuarioMicrosoftId))
+            return Problem(title: "Token sem identificador de usuário (oid/sub).", statusCode: StatusCodes.Status401Unauthorized);
+
+        var usuarioNome = User.GetDisplayName() ?? string.Empty;
+        var usuario = await usuarios.ObterOuCriarAsync(usuarioMicrosoftId, ct);
+
+        try
+        {
+            var atualizado = await pedidos.AprovarPedidoAsync(id, usuario.Id, usuarioNome, ct);
+            return Ok(atualizado);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Problem(detail: ex.Message, statusCode: StatusCodes.Status400BadRequest);
+        }
+    }
+
+    [HttpPost("{id:guid}/cancelar")]
+    [Authorize]
+    public async Task<ActionResult<PedidoDetalheDto>> Cancelar(Guid id, CancellationToken ct)
+    {
+        var usuarioMicrosoftId = User.GetUserId();
+        if (string.IsNullOrWhiteSpace(usuarioMicrosoftId))
+            return Problem(title: "Token sem identificador de usuário (oid/sub).", statusCode: StatusCodes.Status401Unauthorized);
+
+        var usuarioNome = User.GetDisplayName() ?? string.Empty;
+        var usuario = await usuarios.ObterOuCriarAsync(usuarioMicrosoftId, ct);
+
+        try
+        {
+            var atualizado = await pedidos.CancelarPedidoAsync(id, usuario.Id, usuarioNome, User.IsInRole("Admin"), ct);
+            return Ok(atualizado);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Problem(detail: ex.Message, statusCode: StatusCodes.Status400BadRequest);
+        }
     }
 
     [HttpGet("{id:guid}")]

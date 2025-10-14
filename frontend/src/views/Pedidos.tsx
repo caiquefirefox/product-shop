@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import api from "../lib/api";
-import { formatCurrencyBRL, formatPeso } from "../lib/format";
+import { formatCurrencyBRL, formatPeso, startOfDayISO_BR, endOfDayISO_BR, formatDateBR } from "../lib/format";
+import { DateUserFilters, type SimpleOption } from "../components/DateUserFilters";
 import { ProductFilters, type ProductFilterChangeHandler, type ProductFilterOptions, type ProductFilterSelectOption, type ProductFilterValues } from "../components/ProductFilters";
 import type { Produto } from "../cart/types";
 import { minQtyFor, toKg } from "../cart/calc";
+const STATUS_SOLICITADO = 1;
+const STATUS_APROVADO = 2;
+const STATUS_CANCELADO = 3;
+
 import type {
   PedidoDetalhe,
   PedidoDetalheCompleto,
@@ -32,32 +37,6 @@ type CatalogoResponse = {
   totalPages: number;
 };
 
-function currentMonthValue() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-}
-
-function parseMonth(value: string) {
-  const [yearStr, monthStr] = value.split("-");
-  const year = Number(yearStr) || new Date().getFullYear();
-  const monthIndex = (Number(monthStr) || 1) - 1;
-  return {
-    year,
-    monthIndex: Math.min(Math.max(monthIndex, 0), 11),
-    monthNumber: Math.min(Math.max(Number(monthStr) || 1, 1), 12),
-  };
-}
-
-function monthDateRange(value: string) {
-  const { year, monthIndex } = parseMonth(value);
-  const start = new Date(Date.UTC(year, monthIndex, 1, 0, 0, 0));
-  const end = new Date(Date.UTC(year, monthIndex + 1, 0, 23, 59, 59, 999));
-  return {
-    de: start.toISOString(),
-    ate: end.toISOString(),
-  };
-}
-
 function formatDateTimePtBr(iso: string) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
@@ -74,7 +53,26 @@ export default function Pedidos() {
   const { isAdmin } = useUser();
   const { success, error: toastError } = useToast();
 
-  const [selectedMonth, setSelectedMonth] = useState(currentMonthValue());
+  const [de, setDe] = useState(() => {
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    return formatDateBR(thirtyDaysAgo);
+  });
+  const [ate, setAte] = useState(() => formatDateBR(new Date()));
+  const [appliedDe, setAppliedDe] = useState(() => {
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    return formatDateBR(thirtyDaysAgo);
+  });
+  const [appliedAte, setAppliedAte] = useState(() => formatDateBR(new Date()));
+  const [usuarioFiltro, setUsuarioFiltro] = useState("");
+  const [appliedUsuarioFiltro, setAppliedUsuarioFiltro] = useState("");
+  const [statusFiltro, setStatusFiltro] = useState("");
+  const [appliedStatusFiltro, setAppliedStatusFiltro] = useState("");
+  const [statusOptions, setStatusOptions] = useState<SimpleOption[]>([]);
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const [pedidos, setPedidos] = useState<PedidoDetalhe[]>([]);
@@ -91,6 +89,7 @@ export default function Pedidos() {
   const [detalhe, setDetalhe] = useState<PedidoDetalheCompleto | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
+  const [loadingPedidoId, setLoadingPedidoId] = useState<string | null>(null);
 
   const [editorItens, setEditorItens] = useState<EditorItem[]>([]);
   const [unidadeEntrega, setUnidadeEntrega] = useState("");
@@ -151,9 +150,6 @@ export default function Pedidos() {
     return day >= 15 && day <= 20;
   }, [isAdmin]);
 
-  const monthRange = useMemo(() => monthDateRange(selectedMonth), [selectedMonth]);
-  const parsedMonth = useMemo(() => parseMonth(selectedMonth), [selectedMonth]);
-
   const editorTotals = useMemo(() => {
     const totalItensCalc = editorItens.reduce((acc, item) => acc + item.quantidade, 0);
     const totalValorCalc = editorItens.reduce((acc, item) => acc + item.preco * item.quantidade, 0);
@@ -165,6 +161,14 @@ export default function Pedidos() {
     };
   }, [editorItens]);
 
+  const pedidoSelecionado = detalhe?.pedido;
+
+  const canEditPedido = useMemo(() => {
+    if (!pedidoSelecionado) return false;
+    if (pedidoSelecionado.statusId === STATUS_CANCELADO) return false;
+    return isAdmin || editWindowActive;
+  }, [pedidoSelecionado, isAdmin, editWindowActive]);
+
   const progressPerc = useMemo(() => {
     if (!resumo || resumo.limiteKg <= 0) return 0;
     return Math.min(100, Math.round((resumo.totalConsumidoKg / resumo.limiteKg) * 100));
@@ -173,13 +177,44 @@ export default function Pedidos() {
   const loadPedidos = useCallback(async () => {
     setListLoading(true);
     setListError(null);
+
+    const deIso = startOfDayISO_BR(appliedDe);
+    const ateIso = endOfDayISO_BR(appliedAte);
+
+    if (!deIso || !ateIso) {
+      setListError("Datas inválidas. Use o formato dd/mm/aaaa.");
+      setPedidos([]);
+      setTotalItems(0);
+      setTotalPages(0);
+      setListLoading(false);
+      return;
+    }
+
+    if (new Date(deIso) > new Date(ateIso)) {
+      setListError("A data inicial não pode ser posterior à data final.");
+      setPedidos([]);
+      setTotalItems(0);
+      setTotalPages(0);
+      setListLoading(false);
+      return;
+    }
+
     try {
-      const params = {
+      const params: Record<string, string | number> = {
         page,
         pageSize,
-        de: monthRange.de,
-        ate: monthRange.ate,
+        de: deIso,
+        ate: ateIso,
       };
+
+      if (appliedStatusFiltro) {
+        params.statusId = appliedStatusFiltro;
+      }
+
+      if (isAdmin && appliedUsuarioFiltro.trim()) {
+        params.usuarioBusca = appliedUsuarioFiltro.trim();
+      }
+
       const response = await api.get<PedidoPaginadoResponse>("/pedidos", { params });
       const data = response.data;
       setPedidos(data.items);
@@ -194,27 +229,78 @@ export default function Pedidos() {
     } finally {
       setListLoading(false);
     }
-  }, [page, pageSize, monthRange.de, monthRange.ate]);
+  }, [appliedDe, appliedAte, appliedStatusFiltro, appliedUsuarioFiltro, isAdmin, page, pageSize]);
 
   const loadResumo = useCallback(async () => {
     setResumoLoading(true);
     setResumoError(null);
+
+    const deIso = startOfDayISO_BR(appliedDe);
+    const ateIso = endOfDayISO_BR(appliedAte);
+
+    if (!deIso || !ateIso) {
+      setResumoError("Datas inválidas. Use o formato dd/mm/aaaa.");
+      setResumo(null);
+      setResumoLoading(false);
+      return;
+    }
+
+    if (new Date(deIso) > new Date(ateIso)) {
+      setResumoError("A data inicial não pode ser posterior à data final.");
+      setResumo(null);
+      setResumoLoading(false);
+      return;
+    }
+
     try {
-      const response = await api.get<PedidoResumoMensal>("/pedidos/resumo-mensal", {
-        params: {
-          ano: parsedMonth.year,
-          mes: parsedMonth.monthNumber,
-        },
-      });
+      const params: Record<string, string> = {
+        de: deIso,
+        ate: ateIso,
+      };
+
+      if (appliedStatusFiltro) {
+        params.statusId = appliedStatusFiltro;
+      }
+
+      const response = await api.get<PedidoResumoMensal>("/pedidos/resumo-mensal", { params });
       setResumo(response.data);
     } catch (error: any) {
-      const msg = error?.response?.data?.detail || error?.message || "Não foi possível carregar o resumo do mês.";
+      const msg = error?.response?.data?.detail || error?.message || "Não foi possível carregar o resumo do período.";
       setResumoError(msg);
       setResumo(null);
     } finally {
       setResumoLoading(false);
     }
-  }, [parsedMonth.year, parsedMonth.monthNumber]);
+  }, [appliedDe, appliedAte, appliedStatusFiltro]);
+
+  const aplicarFiltros = useCallback(() => {
+    setListError(null);
+    setResumoError(null);
+    setPage(1);
+    setAppliedDe(de);
+    setAppliedAte(ate);
+    setAppliedUsuarioFiltro(usuarioFiltro);
+    setAppliedStatusFiltro(statusFiltro);
+  }, [ate, de, statusFiltro, usuarioFiltro]);
+
+  const limparFiltros = useCallback(() => {
+    const agora = new Date();
+    const trintaDiasAtras = new Date(agora.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const dePadrao = formatDateBR(trintaDiasAtras);
+    const atePadrao = formatDateBR(agora);
+
+    setDe(dePadrao);
+    setAte(atePadrao);
+    setUsuarioFiltro("");
+    setStatusFiltro("");
+    setPage(1);
+    setAppliedDe(dePadrao);
+    setAppliedAte(atePadrao);
+    setAppliedUsuarioFiltro("");
+    setAppliedStatusFiltro("");
+    setListError(null);
+    setResumoError(null);
+  }, []);
 
   useEffect(() => {
     loadPedidos();
@@ -234,6 +320,36 @@ export default function Pedidos() {
   useEffect(() => {
     loadResumo();
   }, [loadResumo]);
+
+  useEffect(() => {
+    let alive = true;
+    setStatusLoading(true);
+
+    type PedidoStatusResponse = { id: number; nome: string };
+
+    api
+      .get<PedidoStatusResponse[]>("/pedidos/status")
+      .then((response) => {
+        if (!alive) return;
+        const options = (response.data || []).map((status) => ({
+          value: String(status.id),
+          label: status.nome,
+        }));
+        setStatusOptions(options);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setStatusOptions([]);
+      })
+      .finally(() => {
+        if (!alive) return;
+        setStatusLoading(false);
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -289,11 +405,12 @@ export default function Pedidos() {
     setDetailLoading(true);
     setDetailError(null);
     setSaveError(null);
+    setLoadingPedidoId(id);
+    setSelectedPedidoId(id);
     try {
       const response = await api.get<PedidoDetalheCompleto>(`/pedidos/${id}`);
       const data = response.data;
       setDetalhe(data);
-      setSelectedPedidoId(id);
       setEditorItens(
         data.pedido.itens.map((item) => ({
           codigo: item.produtoCodigo,
@@ -301,6 +418,7 @@ export default function Pedidos() {
           preco: item.preco,
           quantidade: item.quantidade,
           pesoKg: item.pesoKg,
+          minQty: Math.max(1, item.quantidadeMinima ?? 1),
         }))
       );
       setUnidadeEntrega(data.pedido.unidadeEntrega);
@@ -312,8 +430,53 @@ export default function Pedidos() {
       setSelectedPedidoId(null);
     } finally {
       setDetailLoading(false);
+      setLoadingPedidoId((current) => (current === id ? null : current));
     }
   }, []);
+
+  const aposAlterarStatus = useCallback(
+    async (pedidoId: string) => {
+      await Promise.all([loadPedidos(), loadResumo()]);
+      if (selectedPedidoId === pedidoId) {
+        await loadPedidoDetalhe(pedidoId);
+      }
+    },
+    [loadPedidos, loadResumo, loadPedidoDetalhe, selectedPedidoId]
+  );
+
+  const aprovarPedido = useCallback(
+    async (pedidoId: string) => {
+      setApprovingId(pedidoId);
+      try {
+        await api.post<PedidoDetalhe>(`/pedidos/${pedidoId}/aprovar`);
+        success("Pedido aprovado", "O pedido foi aprovado com sucesso.");
+        await aposAlterarStatus(pedidoId);
+      } catch (err: any) {
+        const msg = err?.response?.data?.detail || err?.message || "Não foi possível aprovar o pedido.";
+        toastError("Falha ao aprovar pedido", msg);
+      } finally {
+        setApprovingId(null);
+      }
+    },
+    [aposAlterarStatus, success, toastError]
+  );
+
+  const cancelarPedido = useCallback(
+    async (pedidoId: string) => {
+      setCancellingId(pedidoId);
+      try {
+        await api.post<PedidoDetalhe>(`/pedidos/${pedidoId}/cancelar`);
+        success("Pedido cancelado", "O pedido foi cancelado com sucesso.");
+        await aposAlterarStatus(pedidoId);
+      } catch (err: any) {
+        const msg = err?.response?.data?.detail || err?.message || "Não foi possível cancelar o pedido.";
+        toastError("Falha ao cancelar pedido", msg);
+      } finally {
+        setCancellingId(null);
+      }
+    },
+    [aposAlterarStatus, success, toastError]
+  );
 
   const loadCatalogo = useCallback(async () => {
     if (!selectedPedidoId) return;
@@ -403,28 +566,29 @@ export default function Pedidos() {
     setDetalhe(null);
     setEditorItens([]);
     setDetailError(null);
-  }, [selectedMonth]);
+  }, [appliedDe, appliedAte, appliedUsuarioFiltro, appliedStatusFiltro]);
 
   const updateItemQuantity = (codigo: string, quantidade: number) => {
-    if (!editWindowActive) return;
+    if (!canEditPedido) return;
     setEditorItens((prev) => {
       return prev
-        .map((item) =>
-          item.codigo === codigo
-            ? { ...item, quantidade: Math.max(0, Math.floor(Number.isFinite(quantidade) ? quantidade : item.quantidade)) }
-            : item
-        )
+        .map((item) => {
+          if (item.codigo !== codigo) return item;
+          const minimo = item.minQty ?? 1;
+          const normalizado = Math.max(minimo, Math.floor(Number.isFinite(quantidade) ? quantidade : item.quantidade));
+          return { ...item, quantidade: normalizado };
+        })
         .filter((item) => item.quantidade > 0);
     });
   };
 
   const removeItem = (codigo: string) => {
-    if (!editWindowActive) return;
+    if (!canEditPedido) return;
     setEditorItens((prev) => prev.filter((item) => item.codigo !== codigo));
   };
 
   const addProduto = (produto: Produto) => {
-    if (!editWindowActive) return;
+    if (!canEditPedido) return;
     setEditorItens((prev) => {
       const min = minQtyFor(produto);
       const pesoKg = toKg(produto.peso, produto.tipoPeso);
@@ -455,7 +619,7 @@ export default function Pedidos() {
   };
 
   const salvarAlteracoes = async () => {
-    if (!selectedPedidoId) return;
+    if (!selectedPedidoId || !canEditPedido) return;
     setSaving(true);
     setSaveError(null);
     try {
@@ -472,9 +636,7 @@ export default function Pedidos() {
       await loadPedidoDetalhe(selectedPedidoId);
       await loadResumo();
       const atualizado = response.data;
-      setPedidos((prev) =>
-        prev.map((p) => (p.id === atualizado.id ? { ...p, ...atualizado } : p))
-      );
+      setPedidos((prev) => prev.map((p) => (p.id === atualizado.id ? { ...p, ...atualizado } : p)));
     } catch (error: any) {
       const msg = error?.response?.data?.detail || error?.message || "Falha ao salvar as alterações.";
       setSaveError(msg);
@@ -501,9 +663,19 @@ export default function Pedidos() {
 
     const limiteFormatado = formatPeso(resumo.limiteKg, "kg", { unit: "kg" });
     const consumoFormatado = formatPeso(resumo.totalConsumidoKg, "kg", { unit: "kg" });
+    const periodoDescricao = `${appliedDe} → ${appliedAte}`;
+    const statusSelecionado = appliedStatusFiltro
+      ? statusOptions.find((option) => option.value === appliedStatusFiltro)?.label ?? "(desconhecido)"
+      : "Todos os status";
 
     return (
       <div className="grid gap-4 md:grid-cols-3">
+        <div className="bg-white p-4 rounded-xl shadow border border-gray-100 md:col-span-3">
+          <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Resumo do período</div>
+          <div className="mt-2 text-sm text-gray-600">{periodoDescricao}</div>
+          <div className="text-sm text-gray-600">Status considerado: {statusSelecionado}</div>
+        </div>
+
         <div className="bg-white p-4 rounded-xl shadow border border-gray-100">
           <div className="text-sm text-gray-500">Consumo de peso (kg)</div>
           <div className="mt-1 text-2xl font-semibold">{consumoFormatado}</div>
@@ -519,7 +691,7 @@ export default function Pedidos() {
         </div>
 
         <div className="bg-white p-4 rounded-xl shadow border border-gray-100">
-          <div className="text-sm text-gray-500">Total em reais (mês)</div>
+          <div className="text-sm text-gray-500">Total em reais (período)</div>
           <div className="mt-1 text-2xl font-semibold">{formatCurrencyBRL(resumo.totalValor)}</div>
           <div className="mt-2 text-xs text-gray-500">{resumo.totalPedidos} pedido(s)</div>
         </div>
@@ -527,7 +699,7 @@ export default function Pedidos() {
         <div className="bg-white p-4 rounded-xl shadow border border-gray-100">
           <div className="text-sm text-gray-500">Total de itens</div>
           <div className="mt-1 text-2xl font-semibold">{resumo.totalItens}</div>
-          <div className="mt-2 text-xs text-gray-500">Incluindo todas as quantidades do mês selecionado</div>
+          <div className="mt-2 text-xs text-gray-500">Incluindo todas as quantidades do período selecionado</div>
         </div>
       </div>
     );
@@ -559,13 +731,23 @@ export default function Pedidos() {
           <div key={h.id} className="border border-gray-200 rounded-xl p-3 bg-white shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
               <span>{formatDateTimePtBr(h.dataHora)}</span>
-              <span>{h.usuarioNome || "Sistema"}</span>
+              <span className="flex items-center gap-2">
+                <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold uppercase text-indigo-600">
+                  {h.tipo}
+                </span>
+                <span>{h.usuarioNome || "Sistema"}</span>
+              </span>
             </div>
             {h.detalhes && (
               <div className="mt-2 space-y-2 text-sm text-gray-700">
                 {h.detalhes.unidadeEntregaAnterior !== h.detalhes.unidadeEntregaAtual && (
                   <div>
                     Unidade de entrega: <strong>{h.detalhes.unidadeEntregaAnterior || "—"}</strong> → <strong>{h.detalhes.unidadeEntregaAtual || "—"}</strong>
+                  </div>
+                )}
+                {h.detalhes.statusAnterior !== h.detalhes.statusAtual && (
+                  <div>
+                    Status: <strong>{h.detalhes.statusAnterior || "—"}</strong> → <strong>{h.detalhes.statusAtual || "—"}</strong>
                   </div>
                 )}
                 {h.detalhes.itens?.length ? (
@@ -581,32 +763,45 @@ export default function Pedidos() {
     );
   };
 
-  const pedidoSelecionado = detalhe?.pedido;
-
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Pedidos</h1>
-          <p className="text-sm text-gray-600">Visualize e edite os pedidos do mês selecionado.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <label htmlFor="mes" className="text-sm text-gray-600">Mês</label>
-          <input
-            id="mes"
-            type="month"
-            value={selectedMonth}
-            onChange={(event) => setSelectedMonth(event.target.value)}
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-          />
+          <p className="text-sm text-gray-600">Visualize e gerencie os pedidos do período selecionado.</p>
         </div>
       </div>
+
+      <DateUserFilters
+        de={de}
+        ate={ate}
+        onChangeDe={setDe}
+        onChangeAte={setAte}
+        showUsuario={isAdmin}
+        usuario={usuarioFiltro}
+        onChangeUsuario={isAdmin ? setUsuarioFiltro : undefined}
+        statusId={statusFiltro}
+        onChangeStatusId={setStatusFiltro}
+        statusOptions={statusOptions}
+        onApply={aplicarFiltros}
+        applyLabel={listLoading ? "Buscando..." : "Aplicar filtros"}
+        disabled={listLoading || statusLoading}
+      >
+        <button
+          type="button"
+          onClick={limparFiltros}
+          className="px-3 py-2 rounded-lg border border-gray-300 text-sm hover:bg-gray-50 disabled:opacity-50"
+          disabled={listLoading || statusLoading}
+        >
+          Limpar
+        </button>
+      </DateUserFilters>
 
       {resumoCards()}
 
       <div className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
         <div className="border-b border-gray-100 px-4 py-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Pedidos do mês</h2>
+          <h2 className="text-lg font-semibold">Pedidos do período</h2>
           <div className="text-xs text-gray-500">Total: {totalItems}</div>
         </div>
         {listLoading ? (
@@ -621,6 +816,7 @@ export default function Pedidos() {
                   <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Código</th>
                   <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Data</th>
                   <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Colaborador</th>
+                  <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
                   <th className="px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Peso (kg)</th>
                   <th className="px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Total</th>
                   <th className="px-4 py-2 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Ações</th>
@@ -629,32 +825,79 @@ export default function Pedidos() {
               <tbody className="divide-y divide-gray-100">
                 {pedidos.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-6 text-center text-sm text-gray-500">
+                    <td colSpan={7} className="px-4 py-6 text-center text-sm text-gray-500">
                       Nenhum pedido encontrado para o período selecionado.
                     </td>
                   </tr>
                 ) : (
-                  pedidos.map((pedido) => (
-                    <tr key={pedido.id} className={selectedPedidoId === pedido.id ? "bg-indigo-50/50" : "bg-white"}>
-                      <td className="px-4 py-3 text-sm font-medium text-gray-700">{pedido.id.slice(0, 8)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{formatDateTimePtBr(pedido.dataHora)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        <div>{pedido.usuarioNome}</div>
-                        {pedido.usuarioCpf && <div className="text-xs text-gray-400">CPF: {pedido.usuarioCpf}</div>}
-                      </td>
-                      <td className="px-4 py-3 text-right text-sm text-gray-600">{formatPeso(pedido.pesoTotalKg, "kg", { unit: "kg" })}</td>
-                      <td className="px-4 py-3 text-right text-sm text-gray-600">{formatCurrencyBRL(pedido.total)}</td>
-                      <td className="px-4 py-3 text-center">
-                        <button
-                          className="px-3 py-1.5 text-sm rounded-lg border border-indigo-200 text-indigo-600 hover:bg-indigo-50 disabled:opacity-50"
-                          onClick={() => loadPedidoDetalhe(pedido.id)}
-                          disabled={detailLoading && selectedPedidoId === pedido.id}
-                        >
-                          {detailLoading && selectedPedidoId === pedido.id ? "Abrindo..." : "Editar"}
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                  pedidos.map((pedido) => {
+                    const isSelecionado = selectedPedidoId === pedido.id;
+                    const isAbrindo = loadingPedidoId === pedido.id && detailLoading;
+                    const linhaClasse = isSelecionado
+                      ? "bg-indigo-50/50"
+                      : loadingPedidoId === pedido.id
+                        ? "bg-indigo-50/30"
+                        : "bg-white";
+                    const podeEditarConteudo = pedido.statusId !== STATUS_CANCELADO && (isAdmin || editWindowActive);
+                    const mostraAprovar = isAdmin && pedido.statusId === STATUS_SOLICITADO;
+                    const mostraCancelar = pedido.statusId !== STATUS_CANCELADO && (isAdmin || editWindowActive);
+                    const editLabel = isAbrindo
+                      ? "Abrindo..."
+                      : isSelecionado
+                        ? podeEditarConteudo
+                          ? "Editando"
+                          : "Visualizando"
+                        : podeEditarConteudo
+                          ? "Editar"
+                          : "Ver";
+
+                    return (
+                      <tr key={pedido.id} className={linhaClasse}>
+                        <td className="px-4 py-3 text-sm font-medium text-gray-700">{pedido.id.slice(0, 8)}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{formatDateTimePtBr(pedido.dataHora)}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          <div>{pedido.usuarioNome}</div>
+                          {pedido.usuarioCpf && <div className="text-xs text-gray-400">CPF: {pedido.usuarioCpf}</div>}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-gray-600">
+                            {pedido.statusNome}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right text-sm text-gray-600">{formatPeso(pedido.pesoTotalKg, "kg", { unit: "kg" })}</td>
+                        <td className="px-4 py-3 text-right text-sm text-gray-600">{formatCurrencyBRL(pedido.total)}</td>
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex flex-wrap items-center justify-center gap-2">
+                            <button
+                              className="px-3 py-1.5 text-sm rounded-lg border border-indigo-200 text-indigo-600 hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                              onClick={() => loadPedidoDetalhe(pedido.id)}
+                              disabled={isAbrindo}
+                            >
+                              {editLabel}
+                            </button>
+                            {mostraAprovar && (
+                              <button
+                                className="px-3 py-1.5 text-sm rounded-lg border border-green-200 text-green-600 hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                onClick={() => aprovarPedido(pedido.id)}
+                                disabled={approvingId === pedido.id || cancellingId === pedido.id}
+                              >
+                                {approvingId === pedido.id ? "Aprovando..." : "Aprovar"}
+                              </button>
+                            )}
+                            {mostraCancelar && (
+                              <button
+                                className="px-3 py-1.5 text-sm rounded-lg border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                onClick={() => cancelarPedido(pedido.id)}
+                                disabled={cancellingId === pedido.id || approvingId === pedido.id || (!isAdmin && !editWindowActive)}
+                              >
+                                {cancellingId === pedido.id ? "Cancelando..." : "Cancelar"}
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -693,9 +936,14 @@ export default function Pedidos() {
                   </p>
                 )}
               </div>
-              {!editWindowActive && (
+              {!isAdmin && !editWindowActive && pedidoSelecionado?.statusId !== STATUS_CANCELADO && (
                 <div className="px-3 py-2 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg text-sm max-w-md">
                   As edições estão disponíveis apenas entre os dias 15 e 20 de cada mês para colaboradores.
+                </div>
+              )}
+              {pedidoSelecionado?.statusId === STATUS_CANCELADO && (
+                <div className="px-3 py-2 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm max-w-md">
+                  Este pedido foi cancelado e está disponível apenas para consulta.
                 </div>
               )}
             </div>
@@ -712,7 +960,7 @@ export default function Pedidos() {
                     <select
                       value={unidadeEntrega}
                       onChange={(event) => setUnidadeEntrega(event.target.value)}
-                      disabled={unidadesLoading || !editWindowActive || saving}
+                      disabled={unidadesLoading || !canEditPedido || saving}
                       className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
                     >
                       {unidadesEntrega.map((unidade) => (
@@ -751,10 +999,11 @@ export default function Pedidos() {
                               <td className="px-3 py-2 text-right text-sm">
                                 <input
                                   type="number"
-                                  min={0}
+                                  min={item.minQty ?? 1}
+                                  step={1}
                                   value={item.quantidade}
                                   onChange={(event) => updateItemQuantity(item.codigo, Number(event.target.value))}
-                                  disabled={!editWindowActive || saving}
+                                  disabled={!canEditPedido || saving}
                                   className="w-24 rounded-lg border border-gray-200 px-2 py-1 text-sm text-right shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
                                 />
                               </td>
@@ -765,7 +1014,7 @@ export default function Pedidos() {
                                 <button
                                   className="text-xs px-2 py-1 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
                                   onClick={() => removeItem(item.codigo)}
-                                  disabled={!editWindowActive || saving}
+                                  disabled={!canEditPedido || saving}
                                 >
                                   Remover
                                 </button>
@@ -807,9 +1056,9 @@ export default function Pedidos() {
                       Cancelar
                     </button>
                     <button
-                      className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold shadow hover:bg-indigo-700 disabled:opacity-50"
+                      className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold shadow hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
                       onClick={salvarAlteracoes}
-                      disabled={!editWindowActive || saving || editorItens.length === 0 || !unidadeEntrega}
+                      disabled={!canEditPedido || saving || editorItens.length === 0 || !unidadeEntrega}
                     >
                       {saving ? "Salvando..." : "Salvar alterações"}
                     </button>
@@ -858,7 +1107,7 @@ export default function Pedidos() {
                                 <button
                                   className="px-3 py-1.5 rounded-lg border border-indigo-200 text-indigo-600 text-sm hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed"
                                   onClick={() => addProduto(produto)}
-                                  disabled={!editWindowActive || saving}
+                                  disabled={!canEditPedido || saving}
                                 >
                                   Adicionar
                                 </button>

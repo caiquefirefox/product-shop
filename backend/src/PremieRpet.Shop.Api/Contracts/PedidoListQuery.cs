@@ -10,12 +10,16 @@ public sealed class PedidoListQuery
     public DateTimeOffset? De { get; set; }
     public DateTimeOffset? Ate { get; set; }
     public Guid? UsuarioId { get; set; }
+    public int? StatusId { get; set; }
+    public string? UsuarioBusca { get; set; }
 
     public PedidoListFiltroDto ToDto() => new(
         Page,
         PageSize,
         De,
         Ate,
-        UsuarioId
+        UsuarioId,
+        StatusId,
+        UsuarioBusca
     );
 }

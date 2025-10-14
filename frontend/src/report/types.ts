@@ -3,6 +3,7 @@ type Item = {
   descricao: string;
   preco: number;
   quantidade: number;
+  quantidadeMinima: number;
   subtotal: number;
   pesoKg: number;
   pesoTotalKg: number;
@@ -14,6 +15,8 @@ type PedidoDetalhe = {
   usuarioNome: string;
   usuarioCpf: string | null;
   unidadeEntrega: string;
+  statusId: number;
+  statusNome: string;
   dataHora: string; // ISO
   total: number;
   pesoTotalKg: number;

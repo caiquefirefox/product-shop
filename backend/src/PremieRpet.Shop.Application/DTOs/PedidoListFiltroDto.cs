@@ -7,7 +7,9 @@ public sealed record PedidoListFiltroDto(
     int PageSize,
     DateTimeOffset? De,
     DateTimeOffset? Ate,
-    Guid? UsuarioId
+    Guid? UsuarioId,
+    int? StatusId,
+    string? UsuarioBusca
 )
 {
     public const int DefaultPage = 1;

@@ -10,4 +10,5 @@ public interface IPedidoRepository
     Task<Pedido?> GetWithItensAsync(Guid id, CancellationToken ct);
     Task AddHistoricoAsync(PedidoHistorico historico, CancellationToken ct);
     IQueryable<Pedido> Query();
+    IQueryable<PedidoStatus> StatusQuery();
 }

@@ -9,6 +9,8 @@ public sealed record PedidoDetalheDto(
     string UsuarioNome,
     string? UsuarioCpf,
     string UnidadeEntrega,
+    int StatusId,
+    string StatusNome,
     DateTimeOffset DataHora,
     decimal Total,
     decimal PesoTotalKg,

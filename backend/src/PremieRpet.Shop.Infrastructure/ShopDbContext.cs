@@ -1,5 +1,6 @@
 using System;
 using Microsoft.EntityFrameworkCore;
+using PremieRpet.Shop.Domain.Constants;
 using PremieRpet.Shop.Domain.Entities;
 
 namespace PremieRpet.Shop.Infrastructure;
@@ -9,6 +10,7 @@ public sealed class ShopDbContext : DbContext
     public DbSet<Produto> Produtos => Set<Produto>();
     public DbSet<Pedido> Pedidos => Set<Pedido>();
     public DbSet<PedidoItem> PedidoItens => Set<PedidoItem>();
+    public DbSet<PedidoStatus> PedidoStatus => Set<PedidoStatus>();
     public DbSet<PedidoHistorico> PedidoHistoricos => Set<PedidoHistorico>();
     public DbSet<ProdutoEspecieOpcao> ProdutoEspecieOpcoes => Set<ProdutoEspecieOpcao>();
     public DbSet<ProdutoPorteOpcao> ProdutoPorteOpcoes => Set<ProdutoPorteOpcao>();
@@ -80,10 +82,12 @@ public sealed class ShopDbContext : DbContext
             e.Property(p => p.DataHora);
             e.Property(p => p.AtualizadoEm);
             e.Property(p => p.AtualizadoPorUsuarioId);
+            e.Property(p => p.StatusId).HasColumnType("int").HasDefaultValue(PedidoStatusIds.Solicitado);
             e.HasMany(p => p.Itens).WithOne(i => i.Pedido).HasForeignKey(i => i.PedidoId);
             e.HasMany(p => p.Historicos).WithOne(h => h.Pedido).HasForeignKey(h => h.PedidoId);
 
             e.HasIndex(p => p.AtualizadoPorUsuarioId);
+            e.HasIndex(p => p.StatusId);
 
             e.HasOne<Usuario>()
                 .WithMany()
@@ -95,6 +99,12 @@ public sealed class ShopDbContext : DbContext
                 .HasForeignKey(p => p.AtualizadoPorUsuarioId)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("FK_Pedidos_Usuarios_AtualizadoPorUsuarioId");
+
+            e.HasOne(p => p.Status)
+                .WithMany(s => s.Pedidos)
+                .HasForeignKey(p => p.StatusId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_Pedidos_PedidoStatus_StatusId");
         });
 
         b.Entity<PedidoHistorico>(e =>
@@ -213,3 +223,14 @@ public sealed class ShopDbContext : DbContext
         });
     }
 }
+        b.Entity<PedidoStatus>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Nome).HasMaxLength(64).IsRequired();
+
+            e.HasData(
+                new PedidoStatus { Id = PedidoStatusIds.Solicitado, Nome = "Solicitado" },
+                new PedidoStatus { Id = PedidoStatusIds.Aprovado, Nome = "Aprovado" },
+                new PedidoStatus { Id = PedidoStatusIds.Cancelado, Nome = "Cancelado" }
+            );
+        });

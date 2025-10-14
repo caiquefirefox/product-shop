@@ -8,6 +8,7 @@ import {
   startOfDayISO_BR,
   endOfDayISO_BR,
 } from "../lib/format";
+import { DateUserFilters, type SimpleOption } from "../components/DateUserFilters";
 import { formatCpf } from "../lib/cpf";
 
 // ---------------------- Component ---------------------- //
@@ -19,6 +20,9 @@ export default function Relatorios() {
   const [de, setDe]   = useState<string>(() => formatDateBR(thirtyDaysAgo));
   const [ate, setAte] = useState<string>(() => formatDateBR(now));
   const [buscaUsuario, setBuscaUsuario] = useState<string>("");
+  const [statusId, setStatusId] = useState<string>("");
+  const [statusOptions, setStatusOptions] = useState<SimpleOption[]>([]);
+  const [statusLoading, setStatusLoading] = useState(false);
 
   // dados & estados
   const [pedidos, setPedidos] = useState<PedidoDetalhe[]>([]);
@@ -36,6 +40,7 @@ export default function Relatorios() {
 
       if (!deIso || !ateIso) {
         setError("Datas inválidas. Use o formato dd/mm/aaaa.");
+        setPedidos([]);
         setLoading(false);
         return;
       }
@@ -43,20 +48,55 @@ export default function Relatorios() {
       params.de = deIso;
       params.ate = ateIso;
 
+      if (statusId) {
+        params.statusId = statusId;
+      }
+
       const r = await api.get<PedidoDetalhe[]>("/relatorios/pedidos/detalhes", { params });
       setPedidos(r.data);
     } catch (e: any) {
       console.error(e);
       setError(e?.response?.data?.detail || e?.message || "Falha ao carregar relatórios");
+      setPedidos([]);
     } finally {
       setLoading(false);
     }
-  }, [de, ate]);
+  }, [de, ate, statusId]);
 
   useEffect(() => {
     // carrega ao montar
     carregar();
   }, [carregar]);
+
+  useEffect(() => {
+    let vivo = true;
+    setStatusLoading(true);
+
+    type PedidoStatusResponse = { id: number; nome: string };
+
+    api
+      .get<PedidoStatusResponse[]>("/pedidos/status")
+      .then((response) => {
+        if (!vivo) return;
+        const options = (response.data || []).map((item) => ({
+          value: String(item.id),
+          label: item.nome,
+        }));
+        setStatusOptions(options);
+      })
+      .catch(() => {
+        if (!vivo) return;
+        setStatusOptions([]);
+      })
+      .finally(() => {
+        if (!vivo) return;
+        setStatusLoading(false);
+      });
+
+    return () => {
+      vivo = false;
+    };
+  }, []);
 
   // agrupamento por usuário (nome)
   const grupos = useMemo(() => {
@@ -107,6 +147,7 @@ export default function Relatorios() {
       "PedidoId",
       "DataHora",
       "UnidadeEntrega",
+      "Status",
       "ItemCodigo",
       "ItemDescricao",
       "Quantidade",
@@ -130,6 +171,7 @@ export default function Relatorios() {
               p.id,
               formatDateBR(new Date(p.dataHora)),
               p.unidadeEntrega,
+              p.statusNome,
               it.produtoCodigo,
               it.descricao,
               String(it.quantidade),
@@ -162,56 +204,30 @@ export default function Relatorios() {
       <h1 className="text-2xl font-semibold">Relatórios · Pedidos por usuário</h1>
 
       {/* Filtros */}
-      <div className="flex flex-wrap gap-3 items-end bg-white p-4 rounded-xl shadow">
-        <div className="flex flex-col">
-          <label className="text-sm text-gray-600">De</label>
-          <input
-            type="text"
-            inputMode="numeric"
-            placeholder="dd/mm/aaaa"
-            value={de}
-            onChange={(e) => setDe(e.target.value)}
-            className="border rounded-lg px-3 py-2 w-[160px]"
-            aria-label="Data inicial no formato dia/mês/ano"
-          />
-        </div>
-        <div className="flex flex-col">
-          <label className="text-sm text-gray-600">Até</label>
-          <input
-            type="text"
-            inputMode="numeric"
-            placeholder="dd/mm/aaaa"
-            value={ate}
-            onChange={(e) => setAte(e.target.value)}
-            className="border rounded-lg px-3 py-2 w-[160px]"
-            aria-label="Data final no formato dia/mês/ano"
-          />
-        </div>
-        <div className="flex flex-col">
-          <label className="text-sm text-gray-600">Usuário (contém)</label>
-          <input
-            type="text"
-            placeholder="Nome do usuário"
-            value={buscaUsuario}
-            onChange={(e) => setBuscaUsuario(e.target.value)}
-            className="border rounded-lg px-3 py-2 min-w-[240px]"
-          />
-        </div>
+      <DateUserFilters
+        de={de}
+        ate={ate}
+        onChangeDe={setDe}
+        onChangeAte={setAte}
+        usuario={buscaUsuario}
+        onChangeUsuario={setBuscaUsuario}
+        showUsuario
+        statusId={statusId}
+        onChangeStatusId={setStatusId}
+        statusOptions={statusOptions}
+        onApply={carregar}
+        applyLabel={loading ? "Carregando..." : "Buscar"}
+        disabled={loading || statusLoading}
+      >
         <button
-          onClick={carregar}
-          className="ml-auto px-4 py-2 rounded-xl border shadow hover:bg-gray-50"
-          disabled={loading}
-        >
-          {loading ? "Carregando..." : "Buscar"}
-        </button>
-        <button
+          type="button"
           onClick={exportarCSV}
-          className="px-4 py-2 rounded-xl border shadow hover:bg-gray-50"
+          className="px-4 py-2 rounded-lg border shadow hover:bg-gray-50 disabled:opacity-50"
           disabled={!grupos.length}
         >
           Exportar CSV
         </button>
-      </div>
+      </DateUserFilters>
 
       {error && <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700">{error}</div>}
 
@@ -245,6 +261,7 @@ export default function Relatorios() {
                   <tr className="text-left bg-gray-50">
                     <th className="px-4 py-2">Data</th>
                     <th className="px-4 py-2">Unidade</th>
+                    <th className="px-4 py-2">Status</th>
                     <th className="px-4 py-2">Itens</th>
                     <th className="px-4 py-2">Total (R$)</th>
                     <th className="px-4 py-2">Peso (kg)</th>
@@ -257,6 +274,7 @@ export default function Relatorios() {
                       <tr className="border-t">
                         <td className="px-4 py-2 whitespace-nowrap">{formatDateBR(new Date(p.dataHora))}</td>
                         <td className="px-4 py-2">{p.unidadeEntrega}</td>
+                        <td className="px-4 py-2">{p.statusNome}</td>
                         <td className="px-4 py-2">{p.itens.length}</td>
                         <td className="px-4 py-2">{formatCurrencyBRL(p.total)}</td>
                         <td className="px-4 py-2">{formatPeso(p.pesoTotalKg, "kg", { unit: "kg", unitSuffix: false })}</td>
@@ -273,7 +291,7 @@ export default function Relatorios() {
                       </tr>
                       {expand[p.id] && (
                         <tr id={`itens-${p.id}`} className="border-t bg-gray-50">
-                          <td colSpan={6} className="px-0">
+                          <td colSpan={7} className="px-0">
                             <div className="px-4 py-3">
                               <div className="font-medium mb-2">Itens do pedido</div>
                               <table className="min-w-[860px] w-full text-sm">
