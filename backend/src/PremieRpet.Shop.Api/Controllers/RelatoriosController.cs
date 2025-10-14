@@ -21,6 +21,7 @@ public class RelatoriosController(IPedidoService svc) : ControllerBase
         [FromQuery] DateTimeOffset? de,
         [FromQuery] DateTimeOffset? ate,
         [FromQuery] Guid? usuarioId,
+        [FromQuery] int? statusId,
         CancellationToken ct)
-        => svc.ListarPedidosDetalhadosAsync(de, ate, usuarioId, ct);
+        => svc.ListarPedidosDetalhadosAsync(de, ate, usuarioId, statusId, ct);
 }

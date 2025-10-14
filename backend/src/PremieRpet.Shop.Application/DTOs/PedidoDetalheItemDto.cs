@@ -5,6 +5,7 @@ public sealed record PedidoDetalheItemDto(
     string Descricao,
     decimal Preco,
     int Quantidade,
+    int QuantidadeMinima,
     decimal Subtotal,
     decimal PesoKg,
     decimal PesoTotalKg
