@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using PremieRpet.Shop.Application.Interfaces.Repositories;
 using PremieRpet.Shop.Domain.Entities;
@@ -20,8 +22,50 @@ public sealed class PedidoRepository : IPedidoRepository
     {
         if (_db.Entry(pedido).State == EntityState.Detached)
         {
-            _db.Pedidos.Attach(pedido);
-            _db.Entry(pedido).State = EntityState.Modified;
+            _db.ChangeTracker.TrackGraph(pedido, node =>
+            {
+                switch (node.Entry.Entity)
+                {
+                    case Pedido:
+                        node.Entry.State = EntityState.Modified;
+                        break;
+                    case PedidoItem item:
+                        node.Entry.State = item.Id == Guid.Empty
+                            ? EntityState.Added
+                            : EntityState.Modified;
+                        break;
+                    case PedidoHistorico historico:
+                        node.Entry.State = historico.Id == Guid.Empty
+                            ? EntityState.Added
+                            : EntityState.Modified;
+                        break;
+                    default:
+                        node.Entry.State = node.Entry.IsKeySet
+                            ? EntityState.Modified
+                            : EntityState.Added;
+                        break;
+                }
+            });
+
+            var idsAtuais = pedido.Itens.Select(i => i.Id).ToHashSet();
+            var itensRemovidos = await _db.PedidoItens
+                .Where(i => i.PedidoId == pedido.Id && !idsAtuais.Contains(i.Id))
+                .ToListAsync(ct);
+
+            if (itensRemovidos.Count > 0)
+                _db.PedidoItens.RemoveRange(itensRemovidos);
+        }
+
+        foreach (var entry in _db.ChangeTracker.Entries<PedidoItem>())
+        {
+            if (entry.State == EntityState.Added && entry.Entity.Id == Guid.Empty)
+                entry.Entity.Id = Guid.NewGuid();
+        }
+
+        foreach (var entry in _db.ChangeTracker.Entries<PedidoHistorico>())
+        {
+            if (entry.State == EntityState.Added && entry.Entity.Id == Guid.Empty)
+                entry.Entity.Id = Guid.NewGuid();
         }
 
         await _db.SaveChangesAsync(ct);

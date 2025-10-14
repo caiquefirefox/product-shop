@@ -432,7 +432,7 @@ public sealed class PedidoService : IPedidoService
         var pesoNovoPedido = 0m;
 
         var itensAnteriores = pedido.Itens.ToDictionary(i => i.ProdutoCodigo, StringComparer.OrdinalIgnoreCase);
-        var novosItens = new List<PedidoItem>(itensNormalizados.Count);
+        var itensPersistidos = pedido.Itens.ToDictionary(i => i.ProdutoCodigo, StringComparer.OrdinalIgnoreCase);
         var historicoAlteracoes = new List<PedidoHistoricoAlteracaoItemDto>();
 
         foreach (var item in itensNormalizados)
@@ -448,19 +448,35 @@ public sealed class PedidoService : IPedidoService
             var pesoUnitKg = PesoRules.ToKg(prod.Peso, (int)prod.TipoPeso);
             pesoNovoPedido += pesoUnitKg * item.Quantidade;
 
-            var novoItem = new PedidoItem
+            if (itensPersistidos.TryGetValue(prod.Codigo, out var existente))
             {
-                ProdutoId = prod.Id,
-                ProdutoCodigo = prod.Codigo,
-                Descricao = prod.Descricao,
-                Preco = prod.Preco,
-                Peso = prod.Peso,
-                TipoPeso = (int)prod.TipoPeso,
-                Quantidade = item.Quantidade,
-                PedidoId = pedido.Id
-            };
+                existente.ProdutoId = prod.Id;
+                existente.ProdutoCodigo = prod.Codigo;
+                existente.Descricao = prod.Descricao;
+                existente.Preco = prod.Preco;
+                existente.Peso = prod.Peso;
+                existente.TipoPeso = (int)prod.TipoPeso;
+                existente.Quantidade = item.Quantidade;
 
-            novosItens.Add(novoItem);
+                itensPersistidos.Remove(prod.Codigo);
+            }
+            else
+            {
+                var novoItem = new PedidoItem
+                {
+                    Id = Guid.Empty,
+                    ProdutoId = prod.Id,
+                    ProdutoCodigo = prod.Codigo,
+                    Descricao = prod.Descricao,
+                    Preco = prod.Preco,
+                    Peso = prod.Peso,
+                    TipoPeso = (int)prod.TipoPeso,
+                    Quantidade = item.Quantidade,
+                    PedidoId = pedido.Id
+                };
+
+                pedido.Itens.Add(novoItem);
+            }
 
             var quantidadeAnterior = itensAnteriores.TryGetValue(item.ProdutoCodigo, out var anterior)
                 ? anterior.Quantidade
@@ -498,10 +514,9 @@ public sealed class PedidoService : IPedidoService
         pedido.AtualizadoEm = agora;
         pedido.AtualizadoPorUsuarioId = usuarioAtualId;
 
-        pedido.Itens.Clear();
-        foreach (var item in novosItens)
+        foreach (var removido in itensPersistidos.Values)
         {
-            pedido.Itens.Add(item);
+            pedido.Itens.Remove(removido);
         }
 
         PedidoHistorico? historicoRegistro = null;
@@ -518,6 +533,7 @@ public sealed class PedidoService : IPedidoService
 
             historicoRegistro = new PedidoHistorico
             {
+                Id = Guid.Empty,
                 PedidoId = pedido.Id,
                 UsuarioId = usuarioAtualId,
                 UsuarioNome = usuarioNome,
@@ -626,6 +642,7 @@ public sealed class PedidoService : IPedidoService
         var detalhes = CriarDetalhesStatus(statusAnterior, "Aprovado");
         pedido.Historicos.Add(new PedidoHistorico
         {
+            Id = Guid.Empty,
             PedidoId = pedido.Id,
             UsuarioId = usuarioAtualId,
             UsuarioNome = usuarioNome,
@@ -664,6 +681,7 @@ public sealed class PedidoService : IPedidoService
         var detalhes = CriarDetalhesStatus(statusAnterior, "Cancelado");
         pedido.Historicos.Add(new PedidoHistorico
         {
+            Id = Guid.Empty,
             PedidoId = pedido.Id,
             UsuarioId = usuarioAtualId,
             UsuarioNome = usuarioNome,
