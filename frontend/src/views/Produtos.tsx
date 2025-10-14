@@ -257,6 +257,8 @@ export default function Produtos() {
   const [imagemSelecionada, setImagemSelecionada] = useState<File | null>(null);
   const [removerImagem, setRemoverImagem] = useState(false);
   const produtosRequestIdRef = useRef(0);
+  const formContainerRef = useRef<HTMLDivElement | null>(null);
+  const shouldScrollToFormRef = useRef(false);
 
   const editando = produtoEmEdicao !== null;
 
@@ -335,6 +337,10 @@ export default function Produtos() {
       }
     };
   }, [imagemPreview]);
+
+  const scrollFormIntoView = () => {
+    formContainerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const resetImagemCampos = () => {
     setImagemSelecionada(null);
@@ -460,6 +466,38 @@ export default function Produtos() {
     resetImagemCampos();
   };
 
+  useEffect(() => {
+    if (!formAberto || !shouldScrollToFormRef.current) {
+      return;
+    }
+
+    shouldScrollToFormRef.current = false;
+
+    if (typeof window === "undefined") {
+      scrollFormIntoView();
+      return;
+    }
+
+    const animationFrame = window.requestAnimationFrame(() => {
+      scrollFormIntoView();
+    });
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+    };
+  }, [formAberto]);
+
+  const ensureFormVisible = () => {
+    if (formAberto) {
+      shouldScrollToFormRef.current = false;
+      scrollFormIntoView();
+      return;
+    }
+
+    shouldScrollToFormRef.current = true;
+    setFormAberto(true);
+  };
+
   const fecharFormulario = () => {
     resetFormCampos();
     setFormAberto(false);
@@ -467,11 +505,10 @@ export default function Produtos() {
 
   const iniciarNovoProduto = () => {
     resetFormCampos();
-    setFormAberto(true);
+    ensureFormVisible();
   };
 
   const iniciarEdicao = (produto: Produto) => {
-    setFormAberto(true);
     setProdutoEmEdicao(produto);
     setCodigo(produto.codigo);
     setDescricao(produto.descricao);
@@ -488,6 +525,7 @@ export default function Produtos() {
     setImagemSelecionada(null);
     setRemoverImagem(false);
     atualizarPreview(produto.imagemUrl ?? null);
+    ensureFormVisible();
   };
 
   const cancelarFormulario = () => {
@@ -747,7 +785,7 @@ export default function Produtos() {
   return (
     <div className="space-y-8">
       {formAberto && (
-        <div className="rounded-3xl border border-gray-100 bg-white/90 p-6 shadow-sm backdrop-blur">
+        <div ref={formContainerRef} className="rounded-3xl border border-gray-100 bg-white/90 p-6 shadow-sm backdrop-blur">
           <div className="mb-6 space-y-2">
             <h2 className="text-xl font-semibold text-gray-900">
               {editando ? "Editar produto" : "Novo produto"}
