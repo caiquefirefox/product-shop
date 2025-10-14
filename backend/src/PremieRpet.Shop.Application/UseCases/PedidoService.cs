@@ -431,7 +431,10 @@ public sealed class PedidoService : IPedidoService
         var pesoBase = Math.Max(0, pesoMesAtual - pesoPedidoAtual);
         var pesoNovoPedido = 0m;
 
-        var itensAnteriores = pedido.Itens.ToDictionary(i => i.ProdutoCodigo, StringComparer.OrdinalIgnoreCase);
+        var itensAnteriores = pedido.Itens.ToDictionary(
+            i => i.ProdutoCodigo,
+            i => (Quantidade: i.Quantidade, Descricao: i.Descricao),
+            StringComparer.OrdinalIgnoreCase);
         var itensPersistidos = pedido.Itens.ToDictionary(i => i.ProdutoCodigo, StringComparer.OrdinalIgnoreCase);
         var historicoAlteracoes = new List<PedidoHistoricoAlteracaoItemDto>();
 
@@ -493,14 +496,14 @@ public sealed class PedidoService : IPedidoService
             }
         }
 
-        foreach (var anterior in itensAnteriores.Values)
+        foreach (var anterior in itensAnteriores)
         {
-            if (!codigos.Contains(anterior.ProdutoCodigo))
+            if (!codigos.Contains(anterior.Key))
             {
                 historicoAlteracoes.Add(new PedidoHistoricoAlteracaoItemDto(
-                    anterior.ProdutoCodigo,
-                    anterior.Descricao,
-                    anterior.Quantidade,
+                    anterior.Key,
+                    anterior.Value.Descricao,
+                    anterior.Value.Quantidade,
                     0
                 ));
             }
