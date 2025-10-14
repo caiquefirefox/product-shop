@@ -1,6 +1,12 @@
-import { ChangeEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import Select, { MultiValue, StylesConfig } from "react-select";
 import api from "../lib/api";
+import ProductFilters, {
+  type ProductFilterChangeHandler,
+  type ProductFilterOptions,
+  type ProductFilterSelectOption,
+  type ProductFilterValues,
+} from "../components/ProductFilters";
 
 type Produto = {
   codigo: string;
@@ -199,6 +205,8 @@ const detailLabelClasses = "font-semibold uppercase tracking-wide text-slate-400
 const detailValueClasses = "text-sm font-medium text-slate-700";
 const detailEmptyClasses = "text-sm font-medium text-slate-400";
 
+const DEFAULT_PAGE_SIZE = 10;
+
 type DetailItemProps = {
   label: string;
   value: string;
@@ -218,6 +226,18 @@ export default function Produtos() {
   const [tiposProduto, setTiposProduto] = useState<ProdutoOpcao[]>([]);
   const [faixasEtarias, setFaixasEtarias] = useState<ProdutoOpcao[]>([]);
   const [produtos, setProdutos] = useState<Produto[]>([]);
+  const [codigoFiltro, setCodigoFiltro] = useState("");
+  const [descricaoFiltro, setDescricaoFiltro] = useState("");
+  const [tipoProdutoFiltro, setTipoProdutoFiltro] = useState("");
+  const [especieFiltro, setEspecieFiltro] = useState("");
+  const [faixaEtariaFiltro, setFaixaEtariaFiltro] = useState("");
+  const [porteFiltro, setPorteFiltro] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [produtosCarregando, setProdutosCarregando] = useState(false);
+  const [reloadProdutosToken, setReloadProdutosToken] = useState(0);
   const [codigo, setCodigo] = useState("");
   const [descricao, setDescricao] = useState("");
   const [peso, setPeso] = useState("1");
@@ -236,6 +256,7 @@ export default function Produtos() {
   const [imagemPreview, setImagemPreview] = useState<string | null>(null);
   const [imagemSelecionada, setImagemSelecionada] = useState<File | null>(null);
   const [removerImagem, setRemoverImagem] = useState(false);
+  const produtosRequestIdRef = useRef(0);
 
   const editando = produtoEmEdicao !== null;
 
@@ -322,17 +343,106 @@ export default function Produtos() {
     atualizarPreview(null);
   };
 
-  const loadProdutos = async () => {
-    const response = await api.get<ProdutosListResponse>("/produtos");
-    const data = response.data;
+  const hasFiltros = useMemo(
+    () =>
+      Boolean(
+        codigoFiltro.trim() ||
+          descricaoFiltro.trim() ||
+          tipoProdutoFiltro ||
+          especieFiltro ||
+          faixaEtariaFiltro ||
+          porteFiltro,
+      ),
+    [codigoFiltro, descricaoFiltro, tipoProdutoFiltro, especieFiltro, faixaEtariaFiltro, porteFiltro],
+  );
 
-    if (Array.isArray(data)) {
-      setProdutos(data);
-      return;
+  const tipoProdutoFiltroOptions = useMemo<ProductFilterSelectOption[]>(
+    () =>
+      tiposProduto.map(opcao => ({
+        value: opcao.id,
+        label: opcao.nome,
+      })),
+    [tiposProduto],
+  );
+
+  const especieFiltroOptions = useMemo<ProductFilterSelectOption[]>(
+    () =>
+      especies.map(opcao => ({
+        value: opcao.id,
+        label: opcao.nome,
+      })),
+    [especies],
+  );
+
+  const faixaEtariaFiltroOptions = useMemo<ProductFilterSelectOption[]>(
+    () =>
+      faixasEtarias.map(opcao => ({
+        value: opcao.id,
+        label: opcao.nome,
+      })),
+    [faixasEtarias],
+  );
+
+  const porteFiltroOptions = useMemo<ProductFilterSelectOption[]>(
+    () =>
+      porteOpcoes.map(opcao => ({
+        value: opcao.id,
+        label: opcao.nome,
+      })),
+    [porteOpcoes],
+  );
+
+  const filtroValores: ProductFilterValues = {
+    codigo: codigoFiltro,
+    descricao: descricaoFiltro,
+    tipoProduto: tipoProdutoFiltro,
+    especie: especieFiltro,
+    faixaEtaria: faixaEtariaFiltro,
+    porte: porteFiltro,
+  };
+
+  const filtroOpcoes: ProductFilterOptions = {
+    tiposProduto: tipoProdutoFiltroOptions,
+    especies: especieFiltroOptions,
+    faixasEtarias: faixaEtariaFiltroOptions,
+    portes: porteFiltroOptions,
+  };
+
+  const handleFiltroChange: ProductFilterChangeHandler = (field, value) => {
+    switch (field) {
+      case "codigo":
+        setCodigoFiltro(value);
+        break;
+      case "descricao":
+        setDescricaoFiltro(value);
+        break;
+      case "tipoProduto":
+        setTipoProdutoFiltro(value);
+        break;
+      case "especie":
+        setEspecieFiltro(value);
+        break;
+      case "faixaEtaria":
+        setFaixaEtariaFiltro(value);
+        break;
+      case "porte":
+        setPorteFiltro(value);
+        break;
+      default:
+        break;
     }
 
-    const items = Array.isArray(data?.items) ? data.items : [];
-    setProdutos(items);
+    setPage(1);
+  };
+
+  const clearFiltros = () => {
+    setCodigoFiltro("");
+    setDescricaoFiltro("");
+    setTipoProdutoFiltro("");
+    setEspecieFiltro("");
+    setFaixaEtariaFiltro("");
+    setPorteFiltro("");
+    setPage(1);
   };
   const resetFormCampos = () => {
     setProdutoEmEdicao(null);
@@ -401,9 +511,97 @@ export default function Produtos() {
     }
   };
   useEffect(() => {
-    loadProdutos();
     loadOpcoes();
   }, []);
+
+  useEffect(() => {
+    let isSubscribed = true;
+    const params: Record<string, string> = {};
+    const codigo = codigoFiltro.trim();
+    const descricao = descricaoFiltro.trim();
+
+    if (codigo) params.codigo = codigo;
+    if (descricao) params.descricao = descricao;
+    if (tipoProdutoFiltro) params.tipoProdutoOpcaoId = tipoProdutoFiltro;
+    if (especieFiltro) params.especieOpcaoId = especieFiltro;
+    if (faixaEtariaFiltro) params.faixaEtariaOpcaoId = faixaEtariaFiltro;
+    if (porteFiltro) params.porteOpcaoId = porteFiltro;
+
+    const targetPage = Math.max(page, 1);
+    params.page = targetPage.toString();
+
+    const requestId = ++produtosRequestIdRef.current;
+    setProdutosCarregando(true);
+
+    api
+      .get<ProdutosListResponse>("/produtos", { params })
+      .then(response => {
+        if (!isSubscribed || produtosRequestIdRef.current !== requestId) return;
+
+        const data = response.data;
+
+        if (Array.isArray(data)) {
+          setProdutos(data);
+          const total = data.length;
+          setPageSize(total > 0 ? total : DEFAULT_PAGE_SIZE);
+          setTotalItems(total);
+          setTotalPages(total > 0 ? 1 : 0);
+          if (targetPage !== 1) {
+            setPage(1);
+          }
+          return;
+        }
+
+        const items = Array.isArray(data?.items) ? data.items : [];
+        const reportedPage = data?.page ?? targetPage;
+        const reportedPageSize = data?.pageSize ?? DEFAULT_PAGE_SIZE;
+        const reportedTotalItems = data?.totalItems ?? items.length;
+        const reportedTotalPages = data?.totalPages ?? 0;
+
+        const safePageSize = reportedPageSize > 0 ? reportedPageSize : DEFAULT_PAGE_SIZE;
+        const safeTotalItems = Math.max(0, reportedTotalItems);
+        const normalizedTotalPages =
+          safeTotalItems > 0
+            ? reportedTotalPages > 0
+              ? reportedTotalPages
+              : Math.max(Math.ceil(safeTotalItems / safePageSize), 1)
+            : 0;
+        const safePageFromResponse =
+          normalizedTotalPages > 0
+            ? Math.min(Math.max(reportedPage > 0 ? reportedPage : targetPage, 1), normalizedTotalPages)
+            : 1;
+
+        setProdutos(items);
+        setPageSize(safePageSize);
+        setTotalItems(safeTotalItems);
+        setTotalPages(normalizedTotalPages);
+
+        if (safePageFromResponse !== targetPage) {
+          setPage(safePageFromResponse);
+        }
+      })
+      .catch(error => {
+        if (!isSubscribed || produtosRequestIdRef.current !== requestId) return;
+        console.error("Não foi possível carregar os produtos", error);
+      })
+      .finally(() => {
+        if (!isSubscribed || produtosRequestIdRef.current !== requestId) return;
+        setProdutosCarregando(false);
+      });
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, [
+    codigoFiltro,
+    descricaoFiltro,
+    tipoProdutoFiltro,
+    especieFiltro,
+    faixaEtariaFiltro,
+    porteFiltro,
+    page,
+    reloadProdutosToken,
+  ]);
 
   useEffect(() => {
     setEspecieId(prev => {
@@ -516,17 +714,35 @@ export default function Produtos() {
     } else {
       await api.post(`/produtos/${codigoParaSalvar}`, formData);
     }
-    await loadProdutos();
+    setReloadProdutosToken(token => token + 1);
     fecharFormulario();
   };
 
   const remover = async (c: string) => {
     await api.delete(`/produtos/${c}`);
-    await loadProdutos();
+    setReloadProdutosToken(token => token + 1);
     if (produtoEmEdicao?.codigo === c) {
       fecharFormulario();
     }
   };
+
+  const hasProdutos = produtos.length > 0;
+  const safePageSize = pageSize > 0 ? pageSize : DEFAULT_PAGE_SIZE;
+  const safeTotalItems = hasProdutos ? Math.max(totalItems, produtos.length) : totalItems;
+  const normalizedTotalPages =
+    safeTotalItems > 0
+      ? totalPages > 0
+        ? totalPages
+        : Math.max(Math.ceil(safeTotalItems / safePageSize), 1)
+      : 0;
+  const safePageValue =
+    normalizedTotalPages > 0 ? Math.min(Math.max(page, 1), normalizedTotalPages) : 1;
+  const showingStart = hasProdutos ? (safePageValue - 1) * safePageSize + 1 : 0;
+  const showingEnd = hasProdutos ? Math.min(showingStart + produtos.length - 1, safeTotalItems) : 0;
+  const canGoPrev = hasProdutos && safePageValue > 1 && !produtosCarregando;
+  const canGoNext =
+    hasProdutos && normalizedTotalPages > 0 && safePageValue < normalizedTotalPages && !produtosCarregando;
+  const displayTotalPages = normalizedTotalPages > 0 ? normalizedTotalPages : 1;
 
   return (
     <div className="space-y-8">
@@ -773,93 +989,155 @@ export default function Produtos() {
             Adicionar produto
           </button>
         </div>
-        <div className="grid gap-3">
-          {produtos.length === 0 ? (
-            <div className={emptyStateClasses}>
-              Nenhum produto cadastrado por aqui ainda. Clique em &quot;Adicionar produto&quot; para cadastrar o primeiro item.
-            </div>
-          ) : (
-            produtos.map(p => {
-              const minimo = Math.max(1, p.quantidadeMinimaDeCompra);
-              const tipoPesoLabel = p.tipoPeso === 0 ? "Gramas" : "Quilos";
-              const tipoPesoAbreviacao = p.tipoPeso === 0 ? "g" : "kg";
-              const pesoComUnidade = `${pesoFormatter.format(p.peso)} ${tipoPesoAbreviacao}`;
-              const portesList = p.porteNomes.map(nome => nome.trim()).filter(Boolean);
-              const saboresList = p.sabores
-                .split(",")
-                .map(sabor => sabor.trim())
-                .filter(Boolean);
-              const formattedPortes = portesList.join(", ");
-              const formattedSabores = saboresList.join(", ");
+        <div className="mb-6 space-y-5 rounded-2xl border border-indigo-100 bg-white/80 p-5 shadow-sm">
+          <ProductFilters
+            idPrefix="produtos-filtro"
+            title="Filtrar produtos cadastrados"
+            description="Refine a listagem utilizando os filtros abaixo."
+            values={filtroValores}
+            options={filtroOpcoes}
+            hasFilters={hasFiltros}
+            onChange={handleFiltroChange}
+            onClear={clearFiltros}
+          />
+        </div>
 
-              return (
-                <div key={p.codigo} className={productCardClasses}>
-                  <div className="flex flex-col gap-4 md:grid md:grid-cols-[auto,1fr] md:items-start md:gap-6">
-                    {p.imagemUrl && (
-                      <div className="flex aspect-square w-full max-w-[132px] flex-none items-center justify-center overflow-hidden rounded-2xl border border-gray-100 bg-white/80 p-3 shadow-inner md:w-[132px] md:self-stretch">
-                        <img
-                          src={p.imagemUrl}
-                          alt={`Imagem do produto ${p.descricao}`}
-                          className="h-full w-full object-contain"
-                        />
-                      </div>
-                    )}
-                    <div className="flex min-w-0 flex-1 flex-col gap-4">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="truncate text-base font-semibold text-gray-900">{p.codigo} - {p.descricao}</h3>
-                            <span className={codeBadgeClasses}>Preço: {currencyFormatter.format(p.preco)}</span>
-                            <span className={infoBadgeClasses}>Mínimo {minimo} un.</span>
+        {produtosCarregando && !hasProdutos ? (
+          <div className={emptyStateClasses}>Carregando produtos cadastrados...</div>
+        ) : hasProdutos ? (
+          <div className="space-y-6">
+            <div className="grid gap-3">
+              {produtos.map(p => {
+                const minimo = Math.max(1, p.quantidadeMinimaDeCompra);
+                const tipoPesoLabel = p.tipoPeso === 0 ? "Gramas" : "Quilos";
+                const tipoPesoAbreviacao = p.tipoPeso === 0 ? "g" : "kg";
+                const pesoComUnidade = `${pesoFormatter.format(p.peso)} ${tipoPesoAbreviacao}`;
+                const portesList = p.porteNomes.map(nome => nome.trim()).filter(Boolean);
+                const saboresList = p.sabores
+                  .split(",")
+                  .map(sabor => sabor.trim())
+                  .filter(Boolean);
+                const formattedPortes = portesList.join(", ");
+                const formattedSabores = saboresList.join(", ");
+
+                return (
+                  <div key={p.codigo} className={productCardClasses}>
+                    <div className="flex flex-col gap-4 md:grid md:grid-cols-[auto,1fr] md:items-start md:gap-6">
+                      {p.imagemUrl && (
+                        <div className="flex aspect-square w-full max-w-[132px] flex-none items-center justify-center overflow-hidden rounded-2xl border border-gray-100 bg-white/80 p-3 shadow-inner md:w-[132px] md:self-stretch">
+                          <img
+                            src={p.imagemUrl}
+                            alt={`Imagem do produto ${p.descricao}`}
+                            className="h-full w-full object-contain"
+                          />
+                        </div>
+                      )}
+                      <div className="flex min-w-0 flex-1 flex-col gap-4">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h3 className="truncate text-base font-semibold text-gray-900">{p.codigo} - {p.descricao}</h3>
+                              <span className={codeBadgeClasses}>Preço: {currencyFormatter.format(p.preco)}</span>
+                              <span className={infoBadgeClasses}>Mínimo {minimo} un.</span>
+                            </div>
+                            <div className={headerMetaClasses}>
+                              <span>
+                                Peso:
+                                <span className="ml-1 font-medium text-gray-600">{pesoComUnidade}</span>
+                              </span>
+                              <span className="hidden sm:inline text-slate-300">•</span>
+                              <span>
+                                Unidade:
+                                <span className="ml-1 font-medium text-gray-600">{tipoPesoLabel}</span>
+                              </span>
+                              <span className="hidden sm:inline text-slate-300">•</span>
+                              <span>
+                                Tipo:
+                                <span className="ml-1 font-medium text-gray-600">{p.tipoProdutoNome}</span>
+                              </span>
+                            </div>
                           </div>
-                          <div className={headerMetaClasses}>
-                            <span>
-                              Peso:
-                              <span className="ml-1 font-medium text-gray-600">{pesoComUnidade}</span>
-                            </span>
-                            <span className="hidden sm:inline text-slate-300">•</span>
-                            <span>
-                              Unidade:
-                              <span className="ml-1 font-medium text-gray-600">{tipoPesoLabel}</span>
-                            </span>
-                            <span className="hidden sm:inline text-slate-300">•</span>
-                            <span>
-                              Tipo:
-                              <span className="ml-1 font-medium text-gray-600">{p.tipoProdutoNome}</span>
-                            </span>
+                          <div className="flex flex-wrap items-center gap-3 text-sm">
+                            <button onClick={() => iniciarEdicao(p)} className={editButtonClasses}>
+                              Editar
+                            </button>
+                            <button onClick={() => remover(p.codigo)} className={deleteButtonClasses}>
+                              Excluir
+                            </button>
                           </div>
                         </div>
-                        <div className="flex flex-wrap items-center gap-3 text-sm">
-                          <button onClick={() => iniciarEdicao(p)} className={editButtonClasses}>
-                            Editar
-                          </button>
-                          <button onClick={() => remover(p.codigo)} className={deleteButtonClasses}>
-                            Excluir
-                          </button>
-                        </div>
-                      </div>
 
-                      <dl className={detailsGridClasses}>
-                        <DetailItem label="Espécie" value={p.especieNome} />
-                        <DetailItem label="Faixa etária" value={p.faixaEtariaNome} />
-                        <DetailItem
-                          label="Portes atendidos"
-                          value={formattedPortes || "Sem porte definido"}
-                          muted={!portesList.length}
-                        />
-                        <DetailItem
-                          label="Sabores"
-                          value={formattedSabores || "Nenhum sabor informado"}
-                          muted={!saboresList.length}
-                        />
-                      </dl>
+                        <dl className={detailsGridClasses}>
+                          <DetailItem label="Espécie" value={p.especieNome} />
+                          <DetailItem label="Faixa etária" value={p.faixaEtariaNome} />
+                          <DetailItem
+                            label="Portes atendidos"
+                            value={formattedPortes || "Sem porte definido"}
+                            muted={!portesList.length}
+                          />
+                          <DetailItem
+                            label="Sabores"
+                            value={formattedSabores || "Nenhum sabor informado"}
+                            muted={!saboresList.length}
+                          />
+                        </dl>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })
-          )}
-        </div>
+                );
+              })}
+            </div>
+
+            <nav
+              className="flex flex-col gap-3 rounded-2xl border border-indigo-100 bg-white/80 px-5 py-4 shadow-sm md:flex-row md:items-center md:justify-between"
+              aria-label="Paginação dos produtos cadastrados"
+            >
+              <p className="text-sm text-gray-600">
+                Mostrando
+                {" "}
+                <span className="font-semibold text-gray-900">
+                  {showingStart}-{showingEnd}
+                </span>
+                {" "}
+                de
+                {" "}
+                <span className="font-semibold text-gray-900">{safeTotalItems}</span>
+                {" "}
+                produtos
+                {produtosCarregando && (
+                  <span className="ml-2 text-xs font-semibold uppercase tracking-wide text-indigo-500">Atualizando...</span>
+                )}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPage(Math.max(safePageValue - 1, 1))}
+                  disabled={!canGoPrev}
+                  className="inline-flex items-center gap-2 rounded-full border border-indigo-200 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-indigo-600 transition hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400 disabled:hover:bg-transparent"
+                >
+                  Anterior
+                </button>
+                <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  Página {safePageValue} de {displayTotalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPage(Math.min(safePageValue + 1, displayTotalPages))}
+                  disabled={!canGoNext}
+                  className="inline-flex items-center gap-2 rounded-full border border-indigo-200 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-indigo-600 transition hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400 disabled:hover:bg-transparent"
+                >
+                  Próxima
+                </button>
+              </div>
+            </nav>
+          </div>
+        ) : (
+          <div className={emptyStateClasses}>
+            {hasFiltros
+              ? "Nenhum produto encontrado com os filtros selecionados. Ajuste os filtros ou limpe a busca para visualizar outros itens."
+              : "Nenhum produto cadastrado por aqui ainda. Clique em \"Adicionar produto\" para cadastrar o primeiro item."}
+          </div>
+        )}
       </div>
     </div>
   );
