@@ -89,6 +89,7 @@ export default function Pedidos() {
   const [resumo, setResumo] = useState<PedidoResumoMensal | null>(null);
   const [resumoLoading, setResumoLoading] = useState(false);
   const [resumoError, setResumoError] = useState<string | null>(null);
+  const [resumoUsuarioId, setResumoUsuarioId] = useState<string | null>(null);
 
   const [selectedPedidoId, setSelectedPedidoId] = useState<string | null>(null);
   const [detalhe, setDetalhe] = useState<PedidoDetalheCompleto | null>(null);
@@ -304,6 +305,10 @@ export default function Pedidos() {
         params.statusId = appliedStatusFiltro;
       }
 
+      if (isAdmin && resumoUsuarioId) {
+        params.usuarioId = resumoUsuarioId;
+      }
+
       const response = await api.get<PedidoResumoMensal>("/pedidos/resumo-mensal", { params });
       setResumo(response.data);
     } catch (error: any) {
@@ -313,7 +318,7 @@ export default function Pedidos() {
     } finally {
       setResumoLoading(false);
     }
-  }, [appliedDe, appliedAte, appliedStatusFiltro]);
+  }, [appliedDe, appliedAte, appliedStatusFiltro, isAdmin, resumoUsuarioId]);
 
   const aplicarFiltros = useCallback(() => {
     setListError(null);
@@ -357,6 +362,26 @@ export default function Pedidos() {
   useEffect(() => {
     loadResumo();
   }, [loadResumo]);
+
+  useEffect(() => {
+    if (!isAdmin) {
+      setResumoUsuarioId(null);
+      return;
+    }
+
+    const usuarioBusca = appliedUsuarioFiltro.trim();
+    if (!usuarioBusca || listLoading) {
+      setResumoUsuarioId(null);
+      return;
+    }
+
+    const uniqueUsuarios = Array.from(new Set(pedidos.map((pedido) => pedido.usuarioId)));
+    if (uniqueUsuarios.length === 1) {
+      setResumoUsuarioId(uniqueUsuarios[0]);
+    } else {
+      setResumoUsuarioId(null);
+    }
+  }, [appliedUsuarioFiltro, isAdmin, listLoading, pedidos]);
 
   useEffect(() => {
     if (!selectedPedidoId) return;
