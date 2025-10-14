@@ -789,8 +789,20 @@ export default function Produtos() {
 
   return (
     <div className="space-y-8">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">Produtos</h1>
+          <p className="text-sm text-gray-600">
+            Acompanhe os itens cadastrados e utilize o botão "Adicionar produto" para incluir novos produtos.
+          </p>
+        </div>
+        <button onClick={iniciarNovoProduto} className={saveButtonClasses}>
+          Adicionar produto
+        </button>
+      </div>
+
       {formAberto && (
-        <div ref={formContainerRef} className="rounded-3xl border border-gray-100 bg-white/90 p-6 shadow-sm backdrop-blur">
+        <div ref={formContainerRef} className="rounded-3xl border border-gray-100 p-6 shadow-sm">
           <div className="mb-6 space-y-2">
             <h2 className="text-xl font-semibold text-gray-900">
               {editando ? "Editar produto" : "Novo produto"}
@@ -1020,19 +1032,8 @@ export default function Produtos() {
         </div>
       )}
 
-      <div className="rounded-3xl border border-gray-100 bg-white/90 p-6 shadow-sm backdrop-blur">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">Produtos</h2>
-            <p className="text-sm text-gray-500">
-              Acompanhe os itens cadastrados e utilize o botão "Adicionar produto" para incluir novos produtos.
-            </p>
-          </div>
-          <button onClick={iniciarNovoProduto} className={saveButtonClasses}>
-            Adicionar produto
-          </button>
-        </div>
-        <div className="mb-6 space-y-5 rounded-2xl border border-indigo-100 bg-white/80 p-5 shadow-sm">
+      <div className="space-y-6">
+        <div className="space-y-5 rounded-2xl border border-indigo-100 bg-white/80 p-5 shadow-sm">
           <ProductFilters
             idPrefix="produtos-filtro"
             title="Filtrar produtos cadastrados"
