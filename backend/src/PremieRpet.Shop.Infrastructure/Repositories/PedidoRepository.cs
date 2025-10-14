@@ -37,7 +37,7 @@ public sealed class PedidoRepository : IPedidoRepository
                     case PedidoHistorico historico:
                         node.Entry.State = historico.Id == Guid.Empty
                             ? EntityState.Added
-                            : EntityState.Modified;
+                            : EntityState.Unchanged;
                         break;
                     default:
                         node.Entry.State = node.Entry.IsKeySet
@@ -54,6 +54,27 @@ public sealed class PedidoRepository : IPedidoRepository
 
             if (itensRemovidos.Count > 0)
                 _db.PedidoItens.RemoveRange(itensRemovidos);
+        }
+
+        foreach (var historico in pedido.Historicos)
+        {
+            var entry = _db.Entry(historico);
+
+            if (historico.Id == Guid.Empty)
+            {
+                entry.State = EntityState.Added;
+
+                if (historico.PedidoId == Guid.Empty)
+                    historico.PedidoId = pedido.Id;
+            }
+            else if (entry.State == EntityState.Detached)
+            {
+                entry.State = EntityState.Unchanged;
+            }
+            else if (entry.State == EntityState.Modified)
+            {
+                entry.State = EntityState.Unchanged;
+            }
         }
 
         foreach (var entry in _db.ChangeTracker.Entries<PedidoItem>())
