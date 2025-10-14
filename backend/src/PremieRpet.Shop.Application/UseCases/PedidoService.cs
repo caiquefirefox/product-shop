@@ -202,8 +202,12 @@ public sealed class PedidoService : IPedidoService
                 .FirstOrDefaultAsync(p => p.Codigo == item.ProdutoCodigo, ct)
                 ?? throw new InvalidOperationException($"Produto {item.ProdutoCodigo} não encontrado");
 
-            if (item.Quantidade < prod.QuantidadeMinimaDeCompra)
-                throw new InvalidOperationException($"Quantidade mínima para {prod.Descricao} é {prod.QuantidadeMinimaDeCompra} unidade(s).");
+            var quantidadeMinima = Math.Max(1, prod.QuantidadeMinimaDeCompra);
+            if (item.Quantidade < quantidadeMinima)
+                throw new InvalidOperationException($"Quantidade mínima para {prod.Descricao} é {quantidadeMinima} unidade(s).");
+
+            if (item.Quantidade % quantidadeMinima != 0)
+                throw new InvalidOperationException($"A quantidade para {prod.Descricao} deve ser múltipla de {quantidadeMinima} unidade(s).");
 
             var pesoOriginal = prod.Peso;
             var tipoPesoOriginal = (int)prod.TipoPeso;
@@ -437,6 +441,9 @@ public sealed class PedidoService : IPedidoService
             var quantidadeMinima = Math.Max(1, prod.QuantidadeMinimaDeCompra);
             if (item.Quantidade < quantidadeMinima)
                 throw new InvalidOperationException($"Quantidade mínima para {prod.Descricao} é {quantidadeMinima} unidade(s).");
+
+            if (item.Quantidade % quantidadeMinima != 0)
+                throw new InvalidOperationException($"A quantidade para {prod.Descricao} deve ser múltipla de {quantidadeMinima} unidade(s).");
 
             var pesoUnitKg = PesoRules.ToKg(prod.Peso, (int)prod.TipoPeso);
             pesoNovoPedido += pesoUnitKg * item.Quantidade;

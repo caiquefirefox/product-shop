@@ -18,7 +18,12 @@ public sealed class PedidoRepository : IPedidoRepository
 
     public async Task UpdateAsync(Pedido pedido, CancellationToken ct)
     {
-        _db.Pedidos.Update(pedido);
+        if (_db.Entry(pedido).State == EntityState.Detached)
+        {
+            _db.Pedidos.Attach(pedido);
+            _db.Entry(pedido).State = EntityState.Modified;
+        }
+
         await _db.SaveChangesAsync(ct);
     }
 

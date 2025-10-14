@@ -4,7 +4,7 @@ import { formatCurrencyBRL, formatPeso, startOfDayISO_BR, endOfDayISO_BR, format
 import { DateUserFilters, type SimpleOption } from "../components/DateUserFilters";
 import { ProductFilters, type ProductFilterChangeHandler, type ProductFilterOptions, type ProductFilterSelectOption, type ProductFilterValues } from "../components/ProductFilters";
 import type { Produto } from "../cart/types";
-import { minQtyFor, toKg } from "../cart/calc";
+import { minQtyFor, normalizeQuantityToMultiple, toKg } from "../cart/calc";
 const STATUS_SOLICITADO = 1;
 const STATUS_APROVADO = 2;
 const STATUS_CANCELADO = 3;
@@ -590,8 +590,9 @@ export default function Pedidos() {
       return prev
         .map((item) => {
           if (item.codigo !== codigo) return item;
-          const minimo = item.minQty ?? 1;
-          const normalizado = Math.max(minimo, Math.floor(Number.isFinite(quantidade) ? quantidade : item.quantidade));
+          const minimo = Math.max(1, item.minQty ?? 1);
+          const desejada = Number.isFinite(quantidade) ? quantidade : item.quantidade;
+          const normalizado = normalizeQuantityToMultiple(desejada, minimo, item.quantidade);
           return { ...item, quantidade: normalizado };
         })
         .filter((item) => item.quantidade > 0);
@@ -1015,8 +1016,8 @@ export default function Pedidos() {
                               <td className="px-3 py-2 text-right text-sm">
                                 <input
                                   type="number"
-                                  min={item.minQty ?? 1}
-                                  step={1}
+                                  min={Math.max(1, item.minQty ?? 1)}
+                                  step={Math.max(1, item.minQty ?? 1)}
                                   value={item.quantidade}
                                   onChange={(event) => updateItemQuantity(item.codigo, Number(event.target.value))}
                                   disabled={!canEditPedido || saving}
