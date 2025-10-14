@@ -1,5 +1,5 @@
 import { useMsal } from "@azure/msal-react";
-import { Routes, Route, Link, Navigate, useNavigate, useLocation } from "react-router-dom";
+import { Routes, Route, NavLink, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { ShoppingCart } from "lucide-react";
 import Catalogo from "../views/Catalogo";
 import Carrinho from "../views/Carrinho";
@@ -21,6 +21,10 @@ export default function App() {
   const { totalUnidades, totalPesoKg, totalValor } = useCart();
   const isLoginRoute = location.pathname.startsWith("/login");
   const pesoResumo = formatPeso(totalPesoKg, "kg", { unit: "kg", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const navLinkClassName = ({ isActive }: { isActive: boolean }) =>
+    `px-3 py-2 rounded-lg transition-colors duration-150 ${
+      isActive ? "text-blue-700 bg-blue-50 font-semibold" : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+    }`;
 
   const gotoLogin = () => navigate("/login");
   const logout = async () => {
@@ -34,11 +38,23 @@ export default function App() {
       {!isLoginRoute && !isLoading && (
         <header className="bg-white border-b">
           <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-            <nav className="flex items-center gap-4">
-              <Link to="/" className="font-semibold">Catálogo</Link>
-              <Link to="/pedidos">Pedidos</Link>
-              {isAdmin && <Link to="/produtos">Produtos</Link>}
-              {isAdmin && <Link to="/relatorios">Relatórios</Link>}
+            <nav className="flex items-center gap-1 text-sm">
+              <NavLink to="/" end className={navLinkClassName}>
+                Catálogo
+              </NavLink>
+              <NavLink to="/pedidos" className={navLinkClassName}>
+                Pedidos
+              </NavLink>
+              {isAdmin && (
+                <NavLink to="/produtos" className={navLinkClassName}>
+                  Produtos
+                </NavLink>
+              )}
+              {isAdmin && (
+                <NavLink to="/relatorios" className={navLinkClassName}>
+                  Relatórios
+                </NavLink>
+              )}
             </nav>
 
             <div className="flex items-center gap-4">
