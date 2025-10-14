@@ -5,6 +5,12 @@ import { useCart } from "../cart/CartContext";
 import type { Produto } from "../cart/types";
 import { minQtyFor } from "../cart/calc";
 import { formatCurrencyBRL, formatPeso } from "../lib/format";
+import ProductFilters, {
+  type ProductFilterChangeHandler,
+  type ProductFilterOptions,
+  type ProductFilterSelectOption,
+  type ProductFilterValues,
+} from "../components/ProductFilters";
 
 const gradientClasses = [
   "from-indigo-200 via-indigo-100 to-white",
@@ -28,11 +34,6 @@ type ProdutoOpcao = {
   nome: string;
 };
 
-type SelectOption = {
-  value: string;
-  label: string;
-};
-
 type CatalogoResponse = {
   items: Produto[];
   page: number;
@@ -54,10 +55,18 @@ export default function Catalogo() {
   const [especieFiltro, setEspecieFiltro] = useState("");
   const [faixaEtariaFiltro, setFaixaEtariaFiltro] = useState("");
   const [porteFiltro, setPorteFiltro] = useState("");
-  const [tipoProdutoOptions, setTipoProdutoOptions] = useState<SelectOption[]>([]);
-  const [especieOptions, setEspecieOptions] = useState<SelectOption[]>([]);
-  const [faixaEtariaOptions, setFaixaEtariaOptions] = useState<SelectOption[]>([]);
-  const [porteOptions, setPorteOptions] = useState<SelectOption[]>([]);
+  const [tipoProdutoOptions, setTipoProdutoOptions] = useState<
+    ProductFilterSelectOption[]
+  >([]);
+  const [especieOptions, setEspecieOptions] = useState<
+    ProductFilterSelectOption[]
+  >([]);
+  const [faixaEtariaOptions, setFaixaEtariaOptions] = useState<
+    ProductFilterSelectOption[]
+  >([]);
+  const [porteOptions, setPorteOptions] = useState<
+    ProductFilterSelectOption[]
+  >([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [totalItems, setTotalItems] = useState(0);
@@ -83,6 +92,49 @@ export default function Catalogo() {
     setPage(1);
   };
 
+  const filterValues: ProductFilterValues = {
+    codigo: codigoFiltro,
+    descricao: descricaoFiltro,
+    tipoProduto: tipoProdutoFiltro,
+    especie: especieFiltro,
+    faixaEtaria: faixaEtariaFiltro,
+    porte: porteFiltro,
+  };
+
+  const filterOptions: ProductFilterOptions = {
+    tiposProduto: tipoProdutoOptions,
+    especies: especieOptions,
+    faixasEtarias: faixaEtariaOptions,
+    portes: porteOptions,
+  };
+
+  const handleFilterChange: ProductFilterChangeHandler = (field, value) => {
+    switch (field) {
+      case "codigo":
+        setCodigoFiltro(value);
+        break;
+      case "descricao":
+        setDescricaoFiltro(value);
+        break;
+      case "tipoProduto":
+        setTipoProdutoFiltro(value);
+        break;
+      case "especie":
+        setEspecieFiltro(value);
+        break;
+      case "faixaEtaria":
+        setFaixaEtariaFiltro(value);
+        break;
+      case "porte":
+        setPorteFiltro(value);
+        break;
+      default:
+        break;
+    }
+
+    setPage(1);
+  };
+
   useEffect(() => {
     let isSubscribed = true;
 
@@ -97,7 +149,9 @@ export default function Catalogo() {
 
         if (!isSubscribed) return;
 
-        const mapToOption = (opcao: ProdutoOpcao): SelectOption => ({
+        const mapToOption = (
+          opcao: ProdutoOpcao,
+        ): ProductFilterSelectOption => ({
           value: opcao.id,
           label: opcao.nome,
         });
@@ -251,165 +305,16 @@ export default function Catalogo() {
       </section>
 
       <section className="rounded-3xl border border-indigo-100 bg-white/80 px-6 py-6 shadow-sm">
-        <div className="flex flex-col gap-6">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="text-left">
-              <h2 className="text-lg font-semibold text-slate-900">Filtrar produtos</h2>
-              <p className="text-sm text-slate-500">Refine o catálogo utilizando os campos abaixo.</p>
-            </div>
-            {hasFilters && (
-              <button
-                type="button"
-                onClick={clearFilters}
-                className="inline-flex items-center gap-2 rounded-full border border-indigo-200 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-indigo-600 transition hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2"
-              >
-                Limpar filtros
-              </button>
-            )}
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <div className="flex flex-col gap-2 text-left">
-              <label
-                htmlFor="catalogo-filtro-codigo"
-                className="text-xs font-semibold uppercase tracking-wide text-slate-500"
-              >
-                Código
-              </label>
-              <input
-                id="catalogo-filtro-codigo"
-                type="text"
-                value={codigoFiltro}
-                onChange={event => {
-                  setCodigoFiltro(event.target.value);
-                  setPage(1);
-                }}
-                placeholder="Buscar por código"
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-              />
-            </div>
-
-            <div className="flex flex-col gap-2 text-left">
-              <label
-                htmlFor="catalogo-filtro-descricao"
-                className="text-xs font-semibold uppercase tracking-wide text-slate-500"
-              >
-                Descrição
-              </label>
-              <input
-                id="catalogo-filtro-descricao"
-                type="text"
-                value={descricaoFiltro}
-                onChange={event => {
-                  setDescricaoFiltro(event.target.value);
-                  setPage(1);
-                }}
-                placeholder="Buscar por descrição"
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-              />
-            </div>
-
-            <div className="flex flex-col gap-2 text-left">
-              <label
-                htmlFor="catalogo-filtro-tipo-produto"
-                className="text-xs font-semibold uppercase tracking-wide text-slate-500"
-              >
-                Tipo do produto
-              </label>
-              <select
-                id="catalogo-filtro-tipo-produto"
-                value={tipoProdutoFiltro}
-                onChange={event => {
-                  setTipoProdutoFiltro(event.target.value);
-                  setPage(1);
-                }}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-              >
-                <option value="">Todos os tipos</option>
-                {tipoProdutoOptions.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-2 text-left">
-              <label
-                htmlFor="catalogo-filtro-especie"
-                className="text-xs font-semibold uppercase tracking-wide text-slate-500"
-              >
-                Espécie
-              </label>
-              <select
-                id="catalogo-filtro-especie"
-                value={especieFiltro}
-                onChange={event => {
-                  setEspecieFiltro(event.target.value);
-                  setPage(1);
-                }}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-              >
-                <option value="">Todas as espécies</option>
-                {especieOptions.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-2 text-left">
-              <label
-                htmlFor="catalogo-filtro-faixa-etaria"
-                className="text-xs font-semibold uppercase tracking-wide text-slate-500"
-              >
-                Faixa etária
-              </label>
-              <select
-                id="catalogo-filtro-faixa-etaria"
-                value={faixaEtariaFiltro}
-                onChange={event => {
-                  setFaixaEtariaFiltro(event.target.value);
-                  setPage(1);
-                }}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-              >
-                <option value="">Todas as faixas</option>
-                {faixaEtariaOptions.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-2 text-left">
-              <label
-                htmlFor="catalogo-filtro-porte"
-                className="text-xs font-semibold uppercase tracking-wide text-slate-500"
-              >
-                Porte
-              </label>
-              <select
-                id="catalogo-filtro-porte"
-                value={porteFiltro}
-                onChange={event => {
-                  setPorteFiltro(event.target.value);
-                  setPage(1);
-                }}
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-              >
-                <option value="">Todos os portes</option>
-                {porteOptions.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
+        <ProductFilters
+          idPrefix="catalogo-filtro"
+          title="Filtrar produtos"
+          description="Refine o catálogo utilizando os campos abaixo."
+          values={filterValues}
+          options={filterOptions}
+          hasFilters={hasFilters}
+          onChange={handleFilterChange}
+          onClear={clearFilters}
+        />
       </section>
 
       {hasProdutos ? (
