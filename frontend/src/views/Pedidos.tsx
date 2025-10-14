@@ -95,6 +95,7 @@ export default function Pedidos() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [loadingPedidoId, setLoadingPedidoId] = useState<string | null>(null);
+  const editorRef = useRef<HTMLDivElement | null>(null);
 
   const [editorItens, setEditorItens] = useState<EditorItem[]>([]);
   const [unidadeEntrega, setUnidadeEntrega] = useState("");
@@ -189,6 +190,12 @@ export default function Pedidos() {
     return uniqueUsers === 1;
   }, [isAdmin, pedidos]);
 
+  const resumoUsuarioId = useMemo(() => {
+    if (!isAdmin) return null;
+    if (!isSingleUserList) return null;
+    return pedidos[0]?.usuarioId ?? null;
+  }, [isAdmin, isSingleUserList, pedidos]);
+
   const pesoProgressPerc = useMemo(() => {
     if (!resumo || resumo.limiteKg <= 0) return 0;
     return Math.min(100, Math.round((resumo.totalConsumidoKg / resumo.limiteKg) * 100));
@@ -199,6 +206,21 @@ export default function Pedidos() {
     const utilizados = Math.min(resumo.pedidosUtilizados, resumo.limitePedidos);
     return Math.min(100, Math.round((utilizados / resumo.limitePedidos) * 100));
   }, [resumo]);
+
+  const hasPedidos = pedidos.length > 0;
+  const safePageSize = pageSize > 0 ? pageSize : 10;
+  const safeTotalItems = hasPedidos ? Math.max(totalItems, pedidos.length) : totalItems;
+  const normalizedTotalPages = safeTotalItems > 0
+    ? (totalPages > 0 ? totalPages : Math.max(Math.ceil(safeTotalItems / safePageSize), 1))
+    : 0;
+  const safePage = normalizedTotalPages > 0
+    ? Math.min(Math.max(page, 1), normalizedTotalPages)
+    : 1;
+  const showingStart = hasPedidos ? (safePage - 1) * safePageSize + 1 : 0;
+  const showingEnd = hasPedidos ? Math.min(showingStart + pedidos.length - 1, safeTotalItems) : 0;
+  const canGoPrev = hasPedidos && safePage > 1;
+  const canGoNext = hasPedidos && normalizedTotalPages > 0 && safePage < normalizedTotalPages;
+  const displayTotalPages = normalizedTotalPages > 0 ? normalizedTotalPages : 1;
 
   const loadPedidos = useCallback(async () => {
     setListLoading(true);
@@ -288,6 +310,10 @@ export default function Pedidos() {
         params.statusId = appliedStatusFiltro;
       }
 
+      if (resumoUsuarioId) {
+        params.usuarioId = resumoUsuarioId;
+      }
+
       const response = await api.get<PedidoResumoMensal>("/pedidos/resumo-mensal", { params });
       setResumo(response.data);
     } catch (error: any) {
@@ -297,7 +323,7 @@ export default function Pedidos() {
     } finally {
       setResumoLoading(false);
     }
-  }, [appliedDe, appliedAte, appliedStatusFiltro]);
+  }, [appliedDe, appliedAte, appliedStatusFiltro, resumoUsuarioId]);
 
   const aplicarFiltros = useCallback(() => {
     setListError(null);
@@ -341,6 +367,14 @@ export default function Pedidos() {
   useEffect(() => {
     loadResumo();
   }, [loadResumo]);
+
+  useEffect(() => {
+    if (!selectedPedidoId) return;
+    if (detailLoading) return;
+    if (!editorRef.current) return;
+
+    editorRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [selectedPedidoId, detailLoading]);
 
   useEffect(() => {
     let alive = true;
@@ -831,131 +865,162 @@ export default function Pedidos() {
         ) : listError ? (
           <div className="p-6 text-sm text-red-600">{listError}</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Código</th>
-                  <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Data</th>
-                  <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Colaborador</th>
-                  <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
-                  <th className="px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Peso (kg)</th>
-                  <th className="px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Total</th>
-                  <th className="px-4 py-2 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {pedidos.length === 0 ? (
+          <>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
                   <tr>
-                    <td colSpan={7} className="px-4 py-6 text-center text-sm text-gray-500">
-                      Nenhum pedido encontrado para o período selecionado.
-                    </td>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Código</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Data</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Colaborador</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
+                    <th className="px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Peso (kg)</th>
+                    <th className="px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Total</th>
+                    <th className="px-4 py-2 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Ações</th>
                   </tr>
-                ) : (
-                  pedidos.map((pedido) => {
-                    const isSelecionado = selectedPedidoId === pedido.id;
-                    const isAbrindo = loadingPedidoId === pedido.id && detailLoading;
-                    const linhaClasse = isSelecionado
-                      ? "bg-indigo-50/50"
-                      : loadingPedidoId === pedido.id
-                        ? "bg-indigo-50/30"
-                        : "bg-white";
-                    const podeEditarConteudo = pedido.statusId !== STATUS_CANCELADO && (isAdmin || editWindowActive);
-                    const mostraAprovar = isAdmin && pedido.statusId === STATUS_SOLICITADO;
-                    const mostraCancelar = pedido.statusId !== STATUS_CANCELADO && (isAdmin || editWindowActive);
-                    const editLabel = isAbrindo
-                      ? "Abrindo..."
-                      : isSelecionado
-                        ? podeEditarConteudo
-                          ? "Editando"
-                          : "Visualizando"
-                        : podeEditarConteudo
-                          ? "Editar"
-                          : "Ver";
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {pedidos.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-6 text-center text-sm text-gray-500">
+                        Nenhum pedido encontrado para o período selecionado.
+                      </td>
+                    </tr>
+                  ) : (
+                    pedidos.map((pedido) => {
+                      const isSelecionado = selectedPedidoId === pedido.id;
+                      const isAbrindo = loadingPedidoId === pedido.id && detailLoading;
+                      const linhaClasse = isSelecionado
+                        ? "bg-indigo-50/50"
+                        : loadingPedidoId === pedido.id
+                          ? "bg-indigo-50/30"
+                          : "bg-white";
+                      const podeEditarConteudo = pedido.statusId !== STATUS_CANCELADO && (isAdmin || editWindowActive);
+                      const mostraAprovar = isAdmin && pedido.statusId === STATUS_SOLICITADO;
+                      const mostraCancelar = pedido.statusId !== STATUS_CANCELADO && (isAdmin || editWindowActive);
+                      const editLabel = isAbrindo
+                        ? "Abrindo..."
+                        : isSelecionado
+                          ? podeEditarConteudo
+                            ? "Editando"
+                            : "Visualizando"
+                          : podeEditarConteudo
+                            ? "Editar"
+                            : "Ver";
 
-                    return (
-                      <tr key={pedido.id} className={linhaClasse}>
-                        <td className="px-4 py-3 text-sm font-medium text-gray-700">{pedido.id.slice(0, 8)}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{formatDateTimePtBr(pedido.dataHora)}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">
-                          <div>{pedido.usuarioNome}</div>
-                          {pedido.usuarioCpf && <div className="text-xs text-gray-400">CPF: {pedido.usuarioCpf}</div>}
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-gray-600">
-                            {pedido.statusNome}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-right text-sm text-gray-600">{formatPeso(pedido.pesoTotalKg, "kg", { unit: "kg" })}</td>
-                        <td className="px-4 py-3 text-right text-sm text-gray-600">{formatCurrencyBRL(pedido.total)}</td>
-                        <td className="px-4 py-3 text-center">
-                          <div className="flex flex-wrap items-center justify-center gap-2">
-                            <button
-                              className="px-3 py-1.5 text-sm rounded-lg border border-indigo-200 text-indigo-600 hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                              onClick={() => loadPedidoDetalhe(pedido.id)}
-                              disabled={isAbrindo}
-                            >
-                              {editLabel}
-                            </button>
-                            {mostraAprovar && (
+                      return (
+                        <tr key={pedido.id} className={linhaClasse}>
+                          <td className="px-4 py-3 text-sm font-medium text-gray-700">{pedido.id.slice(0, 8)}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{formatDateTimePtBr(pedido.dataHora)}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600">
+                            <div>{pedido.usuarioNome}</div>
+                            {pedido.usuarioCpf && <div className="text-xs text-gray-400">CPF: {pedido.usuarioCpf}</div>}
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-gray-600">
+                              {pedido.statusNome}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right text-sm text-gray-600">{formatPeso(pedido.pesoTotalKg, "kg", { unit: "kg" })}</td>
+                          <td className="px-4 py-3 text-right text-sm text-gray-600">{formatCurrencyBRL(pedido.total)}</td>
+                          <td className="px-4 py-3 text-center">
+                            <div className="flex flex-wrap items-center justify-center gap-2">
                               <button
-                                className="px-3 py-1.5 text-sm rounded-lg border border-green-200 text-green-600 hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                                onClick={() => aprovarPedido(pedido.id)}
-                                disabled={approvingId === pedido.id || cancellingId === pedido.id}
+                                className="px-3 py-1.5 text-sm rounded-lg border border-indigo-200 text-indigo-600 hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                onClick={() => loadPedidoDetalhe(pedido.id)}
+                                disabled={isAbrindo}
                               >
-                                {approvingId === pedido.id ? "Aprovando..." : "Aprovar"}
+                                {editLabel}
                               </button>
-                            )}
-                            {mostraCancelar && (
-                              <button
-                                className="px-3 py-1.5 text-sm rounded-lg border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                                onClick={() => cancelarPedido(pedido.id)}
-                                disabled={cancellingId === pedido.id || approvingId === pedido.id || (!isAdmin && !editWindowActive)}
-                              >
-                                {cancellingId === pedido.id ? "Cancelando..." : "Cancelar"}
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 text-sm text-gray-600">
-            <button
-              className="px-3 py-1 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50"
-              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-              disabled={page <= 1}
-            >
-              Anterior
-            </button>
-            <div>Pagina {page} de {totalPages}</div>
-            <button
-              className="px-3 py-1 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50"
-              onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-              disabled={page >= totalPages}
-            >
-              Próxima
-            </button>
-          </div>
+                              {mostraAprovar && (
+                                <button
+                                  className="px-3 py-1.5 text-sm rounded-lg border border-green-200 text-green-600 hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  onClick={() => aprovarPedido(pedido.id)}
+                                  disabled={approvingId === pedido.id || cancellingId === pedido.id}
+                                >
+                                  {approvingId === pedido.id ? "Aprovando..." : "Aprovar"}
+                                </button>
+                              )}
+                              {mostraCancelar && (
+                                <button
+                                  className="px-3 py-1.5 text-sm rounded-lg border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  onClick={() => cancelarPedido(pedido.id)}
+                                  disabled={cancellingId === pedido.id || approvingId === pedido.id || (!isAdmin && !editWindowActive)}
+                                >
+                                  {cancellingId === pedido.id ? "Cancelando..." : "Cancelar"}
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+            {hasPedidos && (
+              <nav
+                className="flex flex-col gap-3 border-t border-gray-100 bg-gray-50/80 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
+                aria-label="Paginação da lista de pedidos"
+              >
+                <p className="text-sm text-gray-600">
+                  Mostrando {" "}
+                  <span className="font-semibold text-gray-900">
+                    {showingStart}-{showingEnd}
+                  </span>{" "}
+                  de {" "}
+                  <span className="font-semibold text-gray-900">{safeTotalItems}</span>{" "}
+                  pedidos
+                  {listLoading && (
+                    <span className="ml-2 text-xs font-semibold uppercase tracking-wide text-indigo-500">Atualizando...</span>
+                  )}
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                    disabled={!canGoPrev}
+                    className="inline-flex items-center gap-2 rounded-full border border-indigo-200 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-indigo-600 transition hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400 disabled:hover:bg-transparent"
+                  >
+                    Anterior
+                  </button>
+                  <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Página {safePage} de {displayTotalPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPage((prev) => Math.min(displayTotalPages, prev + 1))}
+                    disabled={!canGoNext}
+                    className="inline-flex items-center gap-2 rounded-full border border-indigo-200 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-indigo-600 transition hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400 disabled:hover:bg-transparent"
+                  >
+                    Próxima
+                  </button>
+                </div>
+              </nav>
+            )}
+          </>
         )}
       </div>
 
       {selectedPedidoId && (
-        <div className="space-y-6">
+        <div className="space-y-6" ref={editorRef}>
           <div className="bg-white rounded-xl shadow border border-gray-100 p-5">
             <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 pb-4 mb-4">
-              <div>
+              <div className="space-y-2">
                 <h2 className="text-xl font-semibold">Editar pedido</h2>
                 {pedidoSelecionado && (
-                  <p className="text-sm text-gray-600">
-                    Pedido realizado em {formatDateTimePtBr(pedidoSelecionado.dataHora)} · Unidade atual: {pedidoSelecionado.unidadeEntrega}
-                  </p>
+                  <div className="space-y-1 text-sm text-gray-600">
+                    <p>
+                      <span className="font-medium text-gray-800">Código:</span>{" "}
+                      <span className="text-gray-700">{pedidoSelecionado.id}</span>{" · "}
+                      <span className="font-medium text-gray-800">Colaborador:</span>{" "}
+                      <span className="text-gray-700">{pedidoSelecionado.usuarioNome}</span>
+                    </p>
+                    <p>
+                      Pedido realizado em {formatDateTimePtBr(pedidoSelecionado.dataHora)} · Unidade atual: {pedidoSelecionado.unidadeEntrega}
+                    </p>
+                  </div>
                 )}
               </div>
               {!isAdmin && !editWindowActive && pedidoSelecionado?.statusId !== STATUS_CANCELADO && (

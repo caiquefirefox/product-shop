@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useMsal } from "@azure/msal-react";
 import { Routes, Route, NavLink, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { ShoppingCart } from "lucide-react";
@@ -20,6 +21,22 @@ export default function App() {
   const { account, isAdmin, isLoading, clearRolesCache } = useUser();
   const { totalUnidades, totalPesoKg, totalValor } = useCart();
   const isLoginRoute = location.pathname.startsWith("/login");
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    if (isLoginRoute) {
+      setIsScrolled(false);
+      return;
+    }
+
+    const onScroll = () => {
+      setIsScrolled(window.scrollY > 16);
+    };
+
+    onScroll();
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [isLoginRoute]);
   const pesoResumo = formatPeso(totalPesoKg, "kg", { unit: "kg", minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const navLinkClassName = ({ isActive }: { isActive: boolean }) =>
     `px-3 py-2 rounded-lg transition-colors duration-150 ${
@@ -36,8 +53,16 @@ export default function App() {
   return (
     <div className="min-h-screen">
       {!isLoginRoute && !isLoading && (
-        <header className="bg-white border-b">
-          <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+        <header
+          className={`fixed top-0 left-0 right-0 bg-white border-b transition-all duration-300 ${
+            isScrolled ? "shadow-sm" : ""
+          } z-50`}
+        >
+          <div
+            className={`max-w-6xl mx-auto px-4 flex items-center justify-between transition-all duration-300 ${
+              isScrolled ? "py-2" : "py-4"
+            }`}
+          >
             <nav className="flex items-center gap-1 text-sm">
               <NavLink to="/" end className={navLinkClassName}>
                 Catálogo
@@ -84,6 +109,10 @@ export default function App() {
             </div>
           </div>
         </header>
+      )}
+
+      {!isLoginRoute && !isLoading && (
+        <div className={`transition-all duration-300 ${isScrolled ? "h-20" : "h-24"}`} aria-hidden />
       )}
 
       <main className={isLoginRoute ? "" : "max-w-6xl mx-auto p-4"}>
