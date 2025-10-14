@@ -5,9 +5,12 @@ import { DateUserFilters, type SimpleOption } from "../components/DateUserFilter
 import { ProductFilters, type ProductFilterChangeHandler, type ProductFilterOptions, type ProductFilterSelectOption, type ProductFilterValues } from "../components/ProductFilters";
 import type { Produto } from "../cart/types";
 import { minQtyFor, normalizeQuantityToMultiple, toKg } from "../cart/calc";
+import { ENV } from "../config/env";
 const STATUS_SOLICITADO = 1;
 const STATUS_APROVADO = 2;
 const STATUS_CANCELADO = 3;
+const EDIT_WINDOW_OPENING_DAY = ENV.PEDIDOS_EDIT_WINDOW_OPENING_DAY;
+const EDIT_WINDOW_CLOSING_DAY = ENV.PEDIDOS_EDIT_WINDOW_CLOSING_DAY;
 
 import type {
   PedidoDetalhe,
@@ -147,9 +150,11 @@ export default function Pedidos() {
 
   const editWindowActive = useMemo(() => {
     if (isAdmin) return true;
-    const now = new Date();
-    const day = now.getDate();
-    return day >= 15 && day <= 20;
+    const day = new Date().getDate();
+    return (
+      day >= EDIT_WINDOW_OPENING_DAY &&
+      day <= EDIT_WINDOW_CLOSING_DAY
+    );
   }, [isAdmin]);
 
   const editorTotals = useMemo(() => {
