@@ -190,6 +190,12 @@ export default function Pedidos() {
     return uniqueUsers === 1;
   }, [isAdmin, pedidos]);
 
+  const resumoUsuarioId = useMemo(() => {
+    if (!isAdmin) return null;
+    if (!isSingleUserList) return null;
+    return pedidos[0]?.usuarioId ?? null;
+  }, [isAdmin, isSingleUserList, pedidos]);
+
   const pesoProgressPerc = useMemo(() => {
     if (!resumo || resumo.limiteKg <= 0) return 0;
     return Math.min(100, Math.round((resumo.totalConsumidoKg / resumo.limiteKg) * 100));
@@ -304,6 +310,10 @@ export default function Pedidos() {
         params.statusId = appliedStatusFiltro;
       }
 
+      if (resumoUsuarioId) {
+        params.usuarioId = resumoUsuarioId;
+      }
+
       const response = await api.get<PedidoResumoMensal>("/pedidos/resumo-mensal", { params });
       setResumo(response.data);
     } catch (error: any) {
@@ -313,7 +323,7 @@ export default function Pedidos() {
     } finally {
       setResumoLoading(false);
     }
-  }, [appliedDe, appliedAte, appliedStatusFiltro]);
+  }, [appliedDe, appliedAte, appliedStatusFiltro, resumoUsuarioId]);
 
   const aplicarFiltros = useCallback(() => {
     setListError(null);

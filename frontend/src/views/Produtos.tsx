@@ -257,6 +257,7 @@ export default function Produtos() {
   const [imagemSelecionada, setImagemSelecionada] = useState<File | null>(null);
   const [removerImagem, setRemoverImagem] = useState(false);
   const produtosRequestIdRef = useRef(0);
+  const formularioRef = useRef<HTMLDivElement | null>(null);
 
   const editando = produtoEmEdicao !== null;
 
@@ -489,6 +490,14 @@ export default function Produtos() {
     setRemoverImagem(false);
     atualizarPreview(produto.imagemUrl ?? null);
   };
+
+  useEffect(() => {
+    if (!formAberto) return;
+    if (!produtoEmEdicao) return;
+    if (!formularioRef.current) return;
+
+    formularioRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [formAberto, produtoEmEdicao]);
 
   const cancelarFormulario = () => {
     fecharFormulario();
@@ -747,7 +756,10 @@ export default function Produtos() {
   return (
     <div className="space-y-8">
       {formAberto && (
-        <div className="rounded-3xl border border-gray-100 bg-white/90 p-6 shadow-sm backdrop-blur">
+        <div
+          ref={formularioRef}
+          className="rounded-3xl border border-gray-100 bg-white/90 p-6 shadow-sm backdrop-blur scroll-mt-24"
+        >
           <div className="mb-6 space-y-2">
             <h2 className="text-xl font-semibold text-gray-900">
               {editando ? "Editar produto" : "Novo produto"}
