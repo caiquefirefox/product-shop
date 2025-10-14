@@ -554,7 +554,7 @@ public sealed class PedidoService : IPedidoService
             query = query.Where(p => p.UsuarioId == usuarioAtualId);
         }
 
-        var pedidosTask = query.ToListAsync(ct);
+        var pedidos = await query.ToListAsync(ct);
 
         var limiteQuery = _pedidos.Query().AsNoTracking()
             .Where(p => p.DataHora >= de && p.DataHora <= ate)
@@ -570,10 +570,7 @@ public sealed class PedidoService : IPedidoService
             limiteQuery = limiteQuery.Where(p => p.UsuarioId == usuarioAtualId);
         }
 
-        var pedidosLimiteTask = limiteQuery.CountAsync(ct);
-
-        var pedidos = await pedidosTask;
-        var pedidosUtilizados = await pedidosLimiteTask;
+        var pedidosUtilizados = await limiteQuery.CountAsync(ct);
 
         var totalValor = pedidos.Sum(p => p.Itens.Sum(i => i.Preco * i.Quantidade));
         var totalItens = pedidos.Sum(p => p.Itens.Sum(i => i.Quantidade));
