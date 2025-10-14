@@ -53,18 +53,20 @@ export default function Pedidos() {
   const { isAdmin } = useUser();
   const { success, error: toastError } = useToast();
 
-  const [de, setDe] = useState(() => {
+  const defaultRange = useMemo(() => {
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    return formatDateBR(thirtyDaysAgo);
-  });
-  const [ate, setAte] = useState(() => formatDateBR(new Date()));
-  const [appliedDe, setAppliedDe] = useState(() => {
-    const now = new Date();
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    return formatDateBR(thirtyDaysAgo);
-  });
-  const [appliedAte, setAppliedAte] = useState(() => formatDateBR(new Date()));
+    return {
+      de: formatDateBR(thirtyDaysAgo),
+      ate: formatDateBR(now),
+    };
+  }, []);
+  const { de: defaultDe, ate: defaultAte } = defaultRange;
+
+  const [de, setDe] = useState(defaultDe);
+  const [ate, setAte] = useState(defaultAte);
+  const [appliedDe, setAppliedDe] = useState(defaultDe);
+  const [appliedAte, setAppliedAte] = useState(defaultAte);
   const [usuarioFiltro, setUsuarioFiltro] = useState("");
   const [appliedUsuarioFiltro, setAppliedUsuarioFiltro] = useState("");
   const [statusFiltro, setStatusFiltro] = useState("");
@@ -169,9 +171,28 @@ export default function Pedidos() {
     return isAdmin || editWindowActive;
   }, [pedidoSelecionado, isAdmin, editWindowActive]);
 
-  const progressPerc = useMemo(() => {
+  const hasActiveFilters = useMemo(() => {
+    const status = appliedStatusFiltro.trim();
+    const usuario = appliedUsuarioFiltro.trim();
+    return status || usuario || appliedDe !== defaultDe || appliedAte !== defaultAte;
+  }, [appliedAte, appliedDe, appliedStatusFiltro, appliedUsuarioFiltro, defaultAte, defaultDe]);
+
+  const isSingleUserList = useMemo(() => {
+    if (!isAdmin) return true;
+    if (pedidos.length === 0) return false;
+    const uniqueUsers = new Set(pedidos.map((pedido) => pedido.usuarioId)).size;
+    return uniqueUsers === 1;
+  }, [isAdmin, pedidos]);
+
+  const pesoProgressPerc = useMemo(() => {
     if (!resumo || resumo.limiteKg <= 0) return 0;
     return Math.min(100, Math.round((resumo.totalConsumidoKg / resumo.limiteKg) * 100));
+  }, [resumo]);
+
+  const pedidosProgressPerc = useMemo(() => {
+    if (!resumo || resumo.limitePedidos <= 0) return 0;
+    const utilizados = Math.min(resumo.pedidosUtilizados, resumo.limitePedidos);
+    return Math.min(100, Math.round((utilizados / resumo.limitePedidos) * 100));
   }, [resumo]);
 
   const loadPedidos = useCallback(async () => {
@@ -284,23 +305,18 @@ export default function Pedidos() {
   }, [ate, de, statusFiltro, usuarioFiltro]);
 
   const limparFiltros = useCallback(() => {
-    const agora = new Date();
-    const trintaDiasAtras = new Date(agora.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const dePadrao = formatDateBR(trintaDiasAtras);
-    const atePadrao = formatDateBR(agora);
-
-    setDe(dePadrao);
-    setAte(atePadrao);
+    setDe(defaultDe);
+    setAte(defaultAte);
     setUsuarioFiltro("");
     setStatusFiltro("");
     setPage(1);
-    setAppliedDe(dePadrao);
-    setAppliedAte(atePadrao);
+    setAppliedDe(defaultDe);
+    setAppliedAte(defaultAte);
     setAppliedUsuarioFiltro("");
     setAppliedStatusFiltro("");
     setListError(null);
     setResumoError(null);
-  }, []);
+  }, [defaultAte, defaultDe]);
 
   useEffect(() => {
     loadPedidos();
@@ -646,60 +662,58 @@ export default function Pedidos() {
     }
   };
 
-  const resumoCards = () => {
+  const renderIndicadores = () => {
+    if (!isSingleUserList) return null;
+
     if (resumoLoading) {
       return (
-        <div className="bg-white p-6 rounded-xl shadow text-sm text-gray-500">Carregando resumo...</div>
+        <div className="bg-white p-6 rounded-xl shadow text-sm text-gray-500">
+          Carregando indicadores do usuário...
+        </div>
       );
     }
+
     if (resumoError) {
       return (
         <div className="bg-white p-6 rounded-xl shadow text-sm text-red-600">{resumoError}</div>
       );
     }
-    if (!resumo) {
-      return null;
-    }
 
-    const limiteFormatado = formatPeso(resumo.limiteKg, "kg", { unit: "kg" });
-    const consumoFormatado = formatPeso(resumo.totalConsumidoKg, "kg", { unit: "kg" });
-    const periodoDescricao = `${appliedDe} → ${appliedAte}`;
-    const statusSelecionado = appliedStatusFiltro
-      ? statusOptions.find((option) => option.value === appliedStatusFiltro)?.label ?? "(desconhecido)"
-      : "Todos os status";
+    if (!resumo) return null;
+
+    const limitePesoFormatado = formatPeso(resumo.limiteKg, "kg", { unit: "kg" });
+    const consumoPesoFormatado = formatPeso(resumo.totalConsumidoKg, "kg", { unit: "kg" });
+    const pedidosUtilizados = Math.max(0, Math.min(resumo.pedidosUtilizados, resumo.limitePedidos));
+    const pedidosDisponiveis = Math.max(0, resumo.limitePedidos - pedidosUtilizados);
 
     return (
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="bg-white p-4 rounded-xl shadow border border-gray-100 md:col-span-3">
-          <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Resumo do período</div>
-          <div className="mt-2 text-sm text-gray-600">{periodoDescricao}</div>
-          <div className="text-sm text-gray-600">Status considerado: {statusSelecionado}</div>
-        </div>
-
+      <div className="grid gap-4 md:grid-cols-2">
         <div className="bg-white p-4 rounded-xl shadow border border-gray-100">
           <div className="text-sm text-gray-500">Consumo de peso (kg)</div>
-          <div className="mt-1 text-2xl font-semibold">{consumoFormatado}</div>
+          <div className="mt-1 text-2xl font-semibold">{consumoPesoFormatado}</div>
           <div className="mt-3 h-2 rounded-full bg-gray-200">
             <div
               className="h-2 rounded-full bg-indigo-500 transition-all"
-              style={{ width: `${progressPerc}%` }}
+              style={{ width: `${pesoProgressPerc}%` }}
             />
           </div>
           <div className="mt-2 text-xs text-gray-500">
-            {progressPerc}% do limite mensal de {limiteFormatado}
+            {pesoProgressPerc}% do limite mensal de {limitePesoFormatado}
           </div>
         </div>
 
         <div className="bg-white p-4 rounded-xl shadow border border-gray-100">
-          <div className="text-sm text-gray-500">Total em reais (período)</div>
-          <div className="mt-1 text-2xl font-semibold">{formatCurrencyBRL(resumo.totalValor)}</div>
-          <div className="mt-2 text-xs text-gray-500">{resumo.totalPedidos} pedido(s)</div>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl shadow border border-gray-100">
-          <div className="text-sm text-gray-500">Total de itens</div>
-          <div className="mt-1 text-2xl font-semibold">{resumo.totalItens}</div>
-          <div className="mt-2 text-xs text-gray-500">Incluindo todas as quantidades do período selecionado</div>
+          <div className="text-sm text-gray-500">Pedidos do mês</div>
+          <div className="mt-1 text-2xl font-semibold">{pedidosUtilizados}</div>
+          <div className="mt-3 h-2 rounded-full bg-gray-200">
+            <div
+              className="h-2 rounded-full bg-indigo-500 transition-all"
+              style={{ width: `${pedidosProgressPerc}%` }}
+            />
+          </div>
+          <div className="mt-2 text-xs text-gray-500">
+            {pedidosDisponiveis} pedido(s) disponível(is) de {resumo.limitePedidos}
+          </div>
         </div>
       </div>
     );
@@ -784,20 +798,22 @@ export default function Pedidos() {
         onChangeStatusId={setStatusFiltro}
         statusOptions={statusOptions}
         onApply={aplicarFiltros}
-        applyLabel={listLoading ? "Buscando..." : "Aplicar filtros"}
+        applyLabel={listLoading ? "Buscando..." : "Buscar"}
         disabled={listLoading || statusLoading}
       >
-        <button
-          type="button"
-          onClick={limparFiltros}
-          className="px-3 py-2 rounded-lg border border-gray-300 text-sm hover:bg-gray-50 disabled:opacity-50"
-          disabled={listLoading || statusLoading}
-        >
-          Limpar
-        </button>
+        {hasActiveFilters ? (
+          <button
+            type="button"
+            onClick={limparFiltros}
+            className="px-3 py-2 rounded-lg border border-gray-300 text-sm hover:bg-gray-50 disabled:opacity-50"
+            disabled={listLoading || statusLoading}
+          >
+            Limpar filtros
+          </button>
+        ) : null}
       </DateUserFilters>
 
-      {resumoCards()}
+      {renderIndicadores()}
 
       <div className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
         <div className="border-b border-gray-100 px-4 py-3 flex items-center justify-between">

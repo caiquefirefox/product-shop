@@ -5,5 +5,7 @@ public sealed record PedidoResumoMensalDto(
     decimal TotalConsumidoKg,
     decimal TotalValor,
     int TotalItens,
-    int TotalPedidos
+    int TotalPedidos,
+    int LimitePedidos,
+    int PedidosUtilizados
 );

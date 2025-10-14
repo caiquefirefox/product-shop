@@ -23,6 +23,7 @@ public sealed class PedidoService : IPedidoService
     private readonly IProdutoRepository _produtos;
     private readonly IUsuarioService _usuarios;
     public const decimal LIMITE_KG_MES = 30m;
+    public const int LIMITE_PEDIDOS_MES = 1;
 
     public PedidoService(IPedidoRepository ped, IProdutoRepository prod, IUsuarioService usuarios)
     {
@@ -553,7 +554,26 @@ public sealed class PedidoService : IPedidoService
             query = query.Where(p => p.UsuarioId == usuarioAtualId);
         }
 
-        var pedidos = await query.ToListAsync(ct);
+        var pedidosTask = query.ToListAsync(ct);
+
+        var limiteQuery = _pedidos.Query().AsNoTracking()
+            .Where(p => p.DataHora >= de && p.DataHora <= ate)
+            .Where(p => PedidoStatusIds.ContaParaLimite.Contains(p.StatusId));
+
+        if (isAdmin)
+        {
+            if (usuarioFiltroId is Guid filtroUsuario && filtroUsuario != Guid.Empty)
+                limiteQuery = limiteQuery.Where(p => p.UsuarioId == filtroUsuario);
+        }
+        else
+        {
+            limiteQuery = limiteQuery.Where(p => p.UsuarioId == usuarioAtualId);
+        }
+
+        var pedidosLimiteTask = limiteQuery.CountAsync(ct);
+
+        var pedidos = await pedidosTask;
+        var pedidosUtilizados = await pedidosLimiteTask;
 
         var totalValor = pedidos.Sum(p => p.Itens.Sum(i => i.Preco * i.Quantidade));
         var totalItens = pedidos.Sum(p => p.Itens.Sum(i => i.Quantidade));
@@ -565,7 +585,9 @@ public sealed class PedidoService : IPedidoService
             totalKg,
             totalValor,
             totalItens,
-            totalPedidos
+            totalPedidos,
+            LIMITE_PEDIDOS_MES,
+            pedidosUtilizados
         );
     }
 

@@ -41,7 +41,7 @@ export function DateUserFilters({
   onChangeStatusId,
   statusOptions,
   onApply,
-  applyLabel = "Aplicar filtros",
+  applyLabel = "Buscar",
   className = "",
   disabled = false,
   children,

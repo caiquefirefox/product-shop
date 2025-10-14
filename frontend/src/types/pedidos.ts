@@ -65,6 +65,8 @@ type PedidoResumoMensal = {
   totalValor: number;
   totalItens: number;
   totalPedidos: number;
+  limitePedidos: number;
+  pedidosUtilizados: number;
 };
 
 export type {
