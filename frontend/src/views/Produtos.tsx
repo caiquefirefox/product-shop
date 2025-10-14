@@ -339,6 +339,11 @@ export default function Produtos() {
   }, [imagemPreview]);
 
   const scrollFormIntoView = () => {
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+
     formContainerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
