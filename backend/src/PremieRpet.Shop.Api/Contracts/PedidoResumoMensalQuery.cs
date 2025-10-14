@@ -18,7 +18,7 @@ public sealed class PedidoResumoMensalQuery
         if (fim < inicio)
             (inicio, fim) = (fim, inicio);
 
-        var status = StatusId is int valor && valor > 0 ? valor : null;
+        int? status = StatusId is int valor && valor > 0 ? valor : (int?)null;
 
         return (inicio, fim, UsuarioId, status);
     }

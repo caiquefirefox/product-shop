@@ -221,8 +221,7 @@ public sealed class ShopDbContext : DbContext
                 .HasForeignKey(x => x.PorteOpcaoId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
-    }
-}
+
         b.Entity<PedidoStatus>(e =>
         {
             e.HasKey(x => x.Id);
@@ -234,3 +233,5 @@ public sealed class ShopDbContext : DbContext
                 new PedidoStatus { Id = PedidoStatusIds.Cancelado, Nome = "Cancelado" }
             );
         });
+    }
+}
