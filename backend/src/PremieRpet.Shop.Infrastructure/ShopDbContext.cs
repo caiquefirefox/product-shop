@@ -225,6 +225,7 @@ public sealed class ShopDbContext : DbContext
         b.Entity<PedidoStatus>(e =>
         {
             e.HasKey(x => x.Id);
+            e.Property(x => x.Id).ValueGeneratedNever();
             e.Property(x => x.Nome).HasMaxLength(64).IsRequired();
 
             e.HasData(
