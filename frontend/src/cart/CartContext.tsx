@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { CartItem, Produto } from "./types";
 import { useMsal } from "@azure/msal-react";
-import { cartTotals, minQtyFor, toKg } from "./calc";
+import { cartTotals, minQtyFor, normalizeQuantityToMultiple, resolveMinQty, toKg } from "./calc";
 
 type CartState = ReturnType<typeof cartTotals> & { items: CartItem[] };
 type CartActions = {
@@ -33,7 +33,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const addProduct: CartActions["addProduct"] = (p, q) => {
     const min = minQtyFor(p);
-    const qty = Math.max(min, q ?? min);
+    const qty = normalizeQuantityToMultiple(q ?? min, min, min);
     setItems(prev => {
       const idx = prev.findIndex(x => x.codigo === p.codigo);
       if (idx === -1) {
@@ -47,15 +47,31 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         }];
       } else {
         const copy = [...prev];
-        copy[idx] = { ...copy[idx], quantidade: copy[idx].quantidade + qty, minQty: copy[idx].minQty ?? min };
+        const current = copy[idx];
+        const effectiveMin = resolveMinQty(current.minQty ?? min);
+        const combined = current.quantidade + qty;
+        copy[idx] = {
+          ...current,
+          quantidade: normalizeQuantityToMultiple(combined, effectiveMin, current.quantidade),
+          minQty: effectiveMin,
+        };
         return copy;
       }
     });
   };
 
   const setQuantity: CartActions["setQuantity"] = (codigo, quantidade) => {
-    const q = Math.max(1, quantidade);
-    setItems(prev => prev.map(i => i.codigo === codigo ? { ...i, quantidade: q } : i));
+    setItems(prev =>
+      prev.map(i => {
+        if (i.codigo !== codigo) return i;
+        const min = resolveMinQty(i.minQty);
+        return {
+          ...i,
+          quantidade: normalizeQuantityToMultiple(quantidade, min, i.quantidade),
+          minQty: min,
+        };
+      })
+    );
   };
 
   const remove: CartActions["remove"] = (codigo) => {

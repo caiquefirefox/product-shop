@@ -39,7 +39,7 @@ export default function Carrinho() {
           <tbody>
             {items.map(i => {
               const below = isBelowMin(i);
-              const min = i.minQty ?? ENV.QTD_MINIMA_PADRAO;
+              const min = Math.max(1, i.minQty ?? ENV.QTD_MINIMA_PADRAO);
               return (
                 <tr key={i.codigo} className="border-t align-middle">
                   <td className="py-2 pr-4">
@@ -57,11 +57,12 @@ export default function Carrinho() {
                   <td className="py-2 pr-4">
                     <input
                       type="number"
-                      min={1}
+                      min={min}
+                      step={min}
                       value={i.quantidade}
-                      onChange={e => setQuantity(i.codigo, parseInt(e.target.value || "1"))}
+                      onChange={e => setQuantity(i.codigo, Number(e.target.value))}
                       className={`w-24 border rounded p-1 ${below ? "border-red-300 bg-red-50" : ""}`}
-                      title={below ? `Mínimo para este produto: ${min} un.` : ""}
+                      title={`Informe múltiplos de ${min} unidade(s).`}
                     />
                   </td>
                   <td className="py-2 pr-4">{itemSubtotal(i).toFixed(2)}</td>
