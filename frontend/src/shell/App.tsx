@@ -56,7 +56,7 @@ export default function App() {
         <header
           className={`fixed top-0 left-0 right-0 bg-white border-b transition-all duration-300 ${
             isScrolled ? "shadow-sm" : ""
-          }`}
+          } z-50`}
         >
           <div
             className={`max-w-6xl mx-auto px-4 flex items-center justify-between transition-all duration-300 ${
