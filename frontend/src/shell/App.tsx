@@ -6,6 +6,7 @@ import Carrinho from "../views/Carrinho";
 import Checkout from "../views/Checkout";
 import Produtos from "../views/Produtos";
 import Relatorios from "../views/Relatorios";
+import Pedidos from "../views/Pedidos";
 import Login from "../views/Login";
 import Protected from "../auth/Protected";
 import { useUser } from "../auth/useUser";
@@ -35,6 +36,7 @@ export default function App() {
           <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
             <nav className="flex items-center gap-4">
               <Link to="/" className="font-semibold">Catálogo</Link>
+              <Link to="/pedidos">Pedidos</Link>
               {isAdmin && <Link to="/produtos">Produtos</Link>}
               {isAdmin && <Link to="/relatorios">Relatórios</Link>}
             </nav>
@@ -72,6 +74,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<Protected><Catalogo/></Protected>} />
+          <Route path="/pedidos" element={<Protected><Pedidos/></Protected>} />
           <Route path="/carrinho" element={<Protected><Carrinho/></Protected>} />
           <Route path="/checkout" element={<Protected><Checkout/></Protected>} />
           <Route path="/produtos" element={<Protected requiredRole="Admin"><Produtos/></Protected>} />

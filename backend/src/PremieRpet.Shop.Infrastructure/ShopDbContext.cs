@@ -9,6 +9,7 @@ public sealed class ShopDbContext : DbContext
     public DbSet<Produto> Produtos => Set<Produto>();
     public DbSet<Pedido> Pedidos => Set<Pedido>();
     public DbSet<PedidoItem> PedidoItens => Set<PedidoItem>();
+    public DbSet<PedidoHistorico> PedidoHistoricos => Set<PedidoHistorico>();
     public DbSet<ProdutoEspecieOpcao> ProdutoEspecieOpcoes => Set<ProdutoEspecieOpcao>();
     public DbSet<ProdutoPorteOpcao> ProdutoPorteOpcoes => Set<ProdutoPorteOpcao>();
     public DbSet<ProdutoTipoOpcao> ProdutoTipoOpcoes => Set<ProdutoTipoOpcao>();
@@ -77,12 +78,41 @@ public sealed class ShopDbContext : DbContext
             e.Property(p => p.UsuarioCpf).HasMaxLength(11);
             e.Property(p => p.UnidadeEntrega).HasMaxLength(200).IsRequired();
             e.Property(p => p.DataHora);
+            e.Property(p => p.AtualizadoEm);
+            e.Property(p => p.AtualizadoPorUsuarioId);
             e.HasMany(p => p.Itens).WithOne(i => i.Pedido).HasForeignKey(i => i.PedidoId);
+            e.HasMany(p => p.Historicos).WithOne(h => h.Pedido).HasForeignKey(h => h.PedidoId);
+
+            e.HasIndex(p => p.AtualizadoPorUsuarioId);
 
             e.HasOne<Usuario>()
                 .WithMany()
                 .HasForeignKey(p => p.UsuarioId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne<Usuario>()
+                .WithMany()
+                .HasForeignKey(p => p.AtualizadoPorUsuarioId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_Pedidos_Usuarios_AtualizadoPorUsuarioId");
+        });
+
+        b.Entity<PedidoHistorico>(e =>
+        {
+            e.HasKey(h => h.Id);
+            e.Property(h => h.Tipo).HasMaxLength(64).IsRequired();
+            e.Property(h => h.Detalhes).HasColumnType("jsonb");
+            e.Property(h => h.UsuarioNome).HasMaxLength(200);
+            e.Property(h => h.DataHora);
+
+            e.HasIndex(h => h.PedidoId);
+            e.HasIndex(h => h.UsuarioId);
+
+            e.HasOne(h => h.Usuario)
+                .WithMany()
+                .HasForeignKey(h => h.UsuarioId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_PedidoHistoricos_Usuarios_UsuarioId");
         });
 
         b.Entity<Usuario>(e =>
