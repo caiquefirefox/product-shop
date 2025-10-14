@@ -802,7 +802,7 @@ export default function Produtos() {
       </div>
 
       {formAberto && (
-        <div ref={formContainerRef} className="rounded-3xl border border-gray-100 p-6 shadow-sm">
+        <div ref={formContainerRef} className="rounded-xl border border-gray-100 bg-white p-6 shadow">
           <div className="mb-6 space-y-2">
             <h2 className="text-xl font-semibold text-gray-900">
               {editando ? "Editar produto" : "Novo produto"}
