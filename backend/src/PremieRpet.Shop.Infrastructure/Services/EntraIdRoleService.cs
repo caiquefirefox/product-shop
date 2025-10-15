@@ -97,7 +97,10 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
 
         foreach (var assignment in toRemove)
         {
-            await RemoveAssignmentAsync(userGuid, assignment.Id, ct);
+            if (!string.IsNullOrWhiteSpace(assignment.Id))
+            {
+                await RemoveAssignmentAsync(userGuid, assignment.Id, ct);
+            }
         }
 
         var currentRoleIds = assignments
@@ -145,8 +148,14 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
         return payload.Value ?? Array.Empty<AppRoleAssignment>();
     }
 
-    private async Task RemoveAssignmentAsync(Guid userObjectId, Guid assignmentId, CancellationToken ct)
+    private async Task RemoveAssignmentAsync(Guid userObjectId, string assignmentId, CancellationToken ct)
     {
+        if (string.IsNullOrWhiteSpace(assignmentId))
+        {
+            _logger.LogWarning("Identificador da atribuição vazio ao tentar remover role do usuário {UserId}.", userObjectId);
+            return;
+        }
+
         var options = ValidateOptions();
         var enterpriseAppId = Guid.Parse(options.EnterpriseAppObjectId);
         var token = await GetAccessTokenAsync(ct);
@@ -154,7 +163,7 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
         client.BaseAddress = GraphBaseUri;
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        using var request = new HttpRequestMessage(HttpMethod.Delete, $"servicePrincipals/{enterpriseAppId}/appRoleAssignedTo/{assignmentId}");
+        using var request = new HttpRequestMessage(HttpMethod.Delete, $"servicePrincipals/{enterpriseAppId}/appRoleAssignedTo/{Uri.EscapeDataString(assignmentId)}");
         using var response = await client.SendAsync(request, ct);
 
         if (!response.IsSuccessStatusCode)
@@ -406,7 +415,7 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
 
     private sealed record AppRoleAssignment
     {
-        public Guid Id { get; init; }
+        public string? Id { get; init; }
         public Guid? AppRoleId { get; init; }
     }
 
