@@ -1,4 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import { CheckCircle2, ShoppingCart, X } from "lucide-react";
 import api from "../lib/api";
 import { useCart } from "../cart/CartContext";
@@ -50,6 +55,11 @@ export default function Catalogo() {
   const [expandedImage, setExpandedImage] = useState<
     { url: string; alt: string } | null
   >(null);
+  const [zoomState, setZoomState] = useState({
+    active: false,
+    x: 50,
+    y: 50,
+  });
   const hideTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const removeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [codigoFiltro, setCodigoFiltro] = useState("");
@@ -264,10 +274,27 @@ export default function Catalogo() {
 
   const handleExpandImage = (url: string, alt: string) => {
     setExpandedImage({ url, alt });
+    setZoomState({ active: false, x: 50, y: 50 });
   };
 
   const handleCloseExpandedImage = () => {
     setExpandedImage(null);
+  };
+
+  const handleZoomMove = (event: ReactMouseEvent<HTMLImageElement>) => {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const offsetX = ((event.clientX - bounds.left) / bounds.width) * 100;
+    const offsetY = ((event.clientY - bounds.top) / bounds.height) * 100;
+
+    setZoomState({
+      active: true,
+      x: Math.min(100, Math.max(0, offsetX)),
+      y: Math.min(100, Math.max(0, offsetY)),
+    });
+  };
+
+  const handleZoomEnd = () => {
+    setZoomState(prev => ({ ...prev, active: false }));
   };
 
   const handleAdd = (produto: Produto) => {
@@ -327,11 +354,28 @@ export default function Catalogo() {
             >
               <X className="h-5 w-5" aria-hidden="true" />
             </button>
-            <img
-              src={expandedImage.url}
-              alt={expandedImage.alt}
-              className="max-h-[70vh] w-full object-contain"
-            />
+            <div className="relative flex max-h-[70vh] w-full items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-black/20">
+              <img
+                src={expandedImage.url}
+                alt={expandedImage.alt}
+                className="max-h-[70vh] w-full object-contain transition-transform duration-200 ease-out"
+                onMouseMove={handleZoomMove}
+                onMouseLeave={handleZoomEnd}
+                style={{
+                  transformOrigin: `${zoomState.x}% ${zoomState.y}%`,
+                  transform: zoomState.active ? "scale(1.75)" : "scale(1)",
+                  cursor: "zoom-in",
+                  willChange: "transform",
+                }}
+              />
+              <div
+                className={`pointer-events-none absolute inset-x-0 bottom-0 flex justify-center px-4 pb-4 transition-opacity duration-200 ${zoomState.active ? "opacity-0" : "opacity-100"}`}
+              >
+                <span className="inline-flex items-center justify-center rounded-full bg-white/15 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white shadow-sm backdrop-blur">
+                  Passe o mouse para dar zoom
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       )}
