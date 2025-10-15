@@ -63,8 +63,13 @@ export function formatPeso(peso: number, tipoPeso: TipoPeso = "kg", options?: Fo
   let minimumFractionDigits = options?.minimumFractionDigits;
 
   if (displayUnit === "g") {
-    if (maximumFractionDigits === undefined) maximumFractionDigits = 0;
-    if (minimumFractionDigits === undefined) minimumFractionDigits = 0;
+    const isIntegerGram = Number.isInteger(value);
+    if (maximumFractionDigits === undefined) {
+      maximumFractionDigits = isIntegerGram ? 0 : 3;
+    }
+    if (minimumFractionDigits === undefined) {
+      minimumFractionDigits = isIntegerGram ? 0 : 0;
+    }
   } else {
     const isAuto = unitPreference === "auto";
     if (isAuto) {
@@ -83,8 +88,16 @@ export function formatPeso(peso: number, tipoPeso: TipoPeso = "kg", options?: Fo
         if (minimumFractionDigits === undefined) minimumFractionDigits = 0;
       }
     } else {
-      if (maximumFractionDigits === undefined) maximumFractionDigits = 3;
-      if (minimumFractionDigits === undefined) minimumFractionDigits = maximumFractionDigits;
+      if (maximumFractionDigits === undefined) {
+        if (displayUnit === "kg" && value > 0 && value < 0.01) {
+          maximumFractionDigits = 4;
+        } else {
+          maximumFractionDigits = 3;
+        }
+      }
+      if (minimumFractionDigits === undefined) {
+        minimumFractionDigits = maximumFractionDigits;
+      }
     }
   }
 
