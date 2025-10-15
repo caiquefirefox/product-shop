@@ -16,6 +16,12 @@
      }
    }
    ```
+
+   * **TenantId** – o identificador (GUID) do diretório Azure Entra onde sua aplicação está registrada. Você pode obtê-lo no portal, em *Azure Active Directory > Visão Geral > ID do locatário*.
+   * **ClientId** – o identificador da aplicação (também conhecido como *Application (client) ID*) da API que expõe o escopo usado pelo frontend. Ele é exibido na página de registro da sua aplicação no Azure Entra.
+   * **ClientSecret** – o segredo de cliente gerado em *Certificados e Segredos* para a mesma aplicação acima. A API usa esse segredo para adquirir tokens de aplicativo ao chamar a Microsoft Graph.
+   * **EnterpriseAppObjectId** – o *Object ID* da Enterprise Application (aplicativo corporativo) que representa a instância da sua API no locatário. Esse valor aparece em *Aplicativos empresariais > (seu aplicativo) > Visão Geral*.
+   * **RoleIds.Admin / RoleIds.Colaborador** – os identificadores (GUID) das app roles configuradas no registro da aplicação (ex.: `Admin`, `Colaborador`). Cada chave dentro de `RoleIds` deve apontar para o App Role ID correspondente, permitindo que o backend saiba qual role atribuir ou remover via Microsoft Graph.
 2) Rode as migrations (após adicionar EF Tools):  
 ```
 dotnet tool install --global dotnet-ef
