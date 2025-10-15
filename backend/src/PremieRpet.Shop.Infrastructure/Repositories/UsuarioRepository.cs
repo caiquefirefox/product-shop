@@ -51,34 +51,49 @@ public sealed class UsuarioRepository : IUsuarioRepository
 
     public async Task ReplaceRolesAsync(Guid usuarioId, IEnumerable<string> roles, CancellationToken ct)
     {
-        var usuario = await _db.Usuarios
-            .Include(u => u.Roles)
-            .FirstOrDefaultAsync(u => u.Id == usuarioId, ct);
-
-        if (usuario is null)
-            return;
-
         var normalized = new HashSet<string>(roles, StringComparer.OrdinalIgnoreCase);
 
-        var toRemove = usuario.Roles.Where(r => !normalized.Contains(r.Role)).ToList();
-        if (toRemove.Count > 0)
+        var existingRoles = await _db.UsuarioRoles
+            .Where(r => r.UsuarioId == usuarioId)
+            .ToListAsync(ct);
+
+        if (existingRoles.Count > 0)
         {
-            _db.UsuarioRoles.RemoveRange(toRemove);
+            var toRemove = existingRoles
+                .Where(r => !normalized.Contains(r.Role))
+                .ToList();
+
+            if (toRemove.Count > 0)
+            {
+                _db.UsuarioRoles.RemoveRange(toRemove);
+                foreach (var removed in toRemove)
+                {
+                    existingRoles.Remove(removed);
+                }
+            }
         }
 
         foreach (var role in normalized)
         {
-            if (!usuario.Roles.Any(r => string.Equals(r.Role, role, StringComparison.OrdinalIgnoreCase)))
+            if (!existingRoles.Any(r => string.Equals(r.Role, role, StringComparison.OrdinalIgnoreCase)))
             {
-                usuario.Roles.Add(new UsuarioRole
+                var novoRole = new UsuarioRole
                 {
-                    UsuarioId = usuario.Id,
+                    UsuarioId = usuarioId,
                     Role = role
-                });
+                };
+
+                _db.UsuarioRoles.Add(novoRole);
+                existingRoles.Add(novoRole);
             }
         }
 
-        usuario.AtualizadoEm = DateTimeOffset.UtcNow;
+        var usuario = await _db.Usuarios.FirstOrDefaultAsync(u => u.Id == usuarioId, ct);
+        if (usuario is not null)
+        {
+            usuario.AtualizadoEm = DateTimeOffset.UtcNow;
+        }
+
         await _db.SaveChangesAsync(ct);
     }
 }
