@@ -15,11 +15,11 @@ public sealed class UsuariosController(IUsuarioService usuarios) : ControllerBas
     [Authorize]
     public async Task<IActionResult> Me(CancellationToken ct)
     {
-        var usuarioId = User.GetUserId();
-        if (string.IsNullOrWhiteSpace(usuarioId))
-            return Problem(title: "Token sem identificador de usuário (oid/sub).", statusCode: StatusCodes.Status401Unauthorized);
+        var usuarioEmail = User.GetUserEmail();
+        if (string.IsNullOrWhiteSpace(usuarioEmail))
+            return Problem(title: "Token sem e-mail do usuário (preferred_username/email).", statusCode: StatusCodes.Status401Unauthorized);
 
-        var perfil = await usuarios.ObterOuCriarAsync(usuarioId, ct);
+        var perfil = await usuarios.ObterOuCriarAsync(usuarioEmail, ct);
         return Ok(perfil);
     }
 
@@ -37,7 +37,7 @@ public sealed class UsuariosController(IUsuarioService usuarios) : ControllerBas
     {
         try
         {
-            var resultado = await usuarios.UpsertAsync(request.MicrosoftId, request.Cpf, request.Roles, ct);
+            var resultado = await usuarios.UpsertAsync(request.Email, request.Cpf, request.Roles, ct);
             return Ok(resultado);
         }
         catch (InvalidOperationException ex)
@@ -50,13 +50,13 @@ public sealed class UsuariosController(IUsuarioService usuarios) : ControllerBas
     [Authorize]
     public async Task<IActionResult> DefinirCpf([FromBody] UsuarioCpfRequest request, CancellationToken ct)
     {
-        var usuarioId = User.GetUserId();
-        if (string.IsNullOrWhiteSpace(usuarioId))
-            return Problem(title: "Token sem identificador de usuário (oid/sub).", statusCode: StatusCodes.Status401Unauthorized);
+        var usuarioEmail = User.GetUserEmail();
+        if (string.IsNullOrWhiteSpace(usuarioEmail))
+            return Problem(title: "Token sem e-mail do usuário (preferred_username/email).", statusCode: StatusCodes.Status401Unauthorized);
 
         try
         {
-            var perfil = await usuarios.RegistrarCpfAsync(usuarioId, request.Cpf, ct);
+            var perfil = await usuarios.RegistrarCpfAsync(usuarioEmail, request.Cpf, ct);
             return Ok(perfil);
         }
         catch (InvalidOperationException ex)

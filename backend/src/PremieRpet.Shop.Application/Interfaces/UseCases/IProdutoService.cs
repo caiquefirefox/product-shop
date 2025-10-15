@@ -7,8 +7,8 @@ public interface IProdutoService
 {
     Task<ProdutoDto?> GetByCodigoAsync(string codigo, CancellationToken ct);
     Task<PagedResultDto<ProdutoDto>> ListAsync(ProdutoFiltroDto? filtro, CancellationToken ct);
-    Task CreateAsync(string codigo, ProdutoCreateUpdateDto dto, string usuarioMicrosoftId, CancellationToken ct);
-    Task UpdateAsync(string codigo, ProdutoCreateUpdateDto dto, string usuarioMicrosoftId, CancellationToken ct);
+    Task CreateAsync(string codigo, ProdutoCreateUpdateDto dto, string usuarioEmail, CancellationToken ct);
+    Task UpdateAsync(string codigo, ProdutoCreateUpdateDto dto, string usuarioEmail, CancellationToken ct);
     Task DeleteAsync(string codigo, CancellationToken ct);
     Task<IReadOnlyList<ProdutoOpcaoDto>> ListarEspeciesAsync(CancellationToken ct);
     Task<IReadOnlyList<ProdutoOpcaoDto>> ListarPortesAsync(CancellationToken ct);

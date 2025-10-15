@@ -40,12 +40,25 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
         _logger = logger;
     }
 
-    public async Task<IReadOnlyList<string>> GetUserRolesAsync(string userObjectId, CancellationToken ct)
+    private static string NormalizeEmail(string email)
     {
-        if (string.IsNullOrWhiteSpace(userObjectId))
-            throw new ArgumentException("Identificador do usuário inválido.", nameof(userObjectId));
+        if (string.IsNullOrWhiteSpace(email))
+            throw new InvalidOperationException("E-mail do usuário inválido.");
 
-        var userGuid = ParseObjectId(userObjectId);
+        var trimmed = email.Trim();
+        if (trimmed.Length == 0)
+            throw new InvalidOperationException("E-mail do usuário inválido.");
+
+        return trimmed.ToLowerInvariant();
+    }
+
+    public async Task<IReadOnlyList<string>> GetUserRolesAsync(string userEmail, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(userEmail))
+            throw new ArgumentException("E-mail do usuário inválido.", nameof(userEmail));
+
+        var normalizedEmail = NormalizeEmail(userEmail);
+        var userGuid = await ResolveUserIdAsync(normalizedEmail, ct);
         var assignments = await GetAssignmentsAsync(userGuid, ct);
         if (assignments.Count == 0)
             return Array.Empty<string>();
@@ -74,12 +87,13 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
             .ToArray();
     }
 
-    public async Task ReplaceUserRolesAsync(string userObjectId, IEnumerable<string> roles, CancellationToken ct)
+    public async Task ReplaceUserRolesAsync(string userEmail, IEnumerable<string> roles, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(userObjectId))
-            throw new ArgumentException("Identificador do usuário inválido.", nameof(userObjectId));
+        if (string.IsNullOrWhiteSpace(userEmail))
+            throw new ArgumentException("E-mail do usuário inválido.", nameof(userEmail));
 
-        var userGuid = ParseObjectId(userObjectId);
+        var normalizedEmail = NormalizeEmail(userEmail);
+        var userGuid = await ResolveUserIdAsync(normalizedEmail, ct);
         var desiredRoles = roles?.Where(r => !string.IsNullOrWhiteSpace(r)).Select(r => r.Trim()).ToArray() ?? Array.Empty<string>();
         var options = ValidateOptions();
 
@@ -115,6 +129,76 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
                 await AddAssignmentAsync(userGuid, roleId, ct);
             }
         }
+    }
+
+    private async Task<Guid> ResolveUserIdAsync(string email, CancellationToken ct)
+    {
+        var normalizedEmail = NormalizeEmail(email);
+        _ = ValidateOptions();
+        if (Guid.TryParse(normalizedEmail, out var legacyObjectId))
+            return legacyObjectId;
+
+        var token = await GetAccessTokenAsync(ct);
+        var client = _httpClientFactory.CreateClient();
+        client.BaseAddress = GraphBaseUri;
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var directUrl = $"users/{Uri.EscapeDataString(normalizedEmail)}?$select=id,mail,userPrincipalName";
+        using (var request = new HttpRequestMessage(HttpMethod.Get, directUrl))
+        using (var response = await client.SendAsync(request, ct))
+        {
+            if (response.IsSuccessStatusCode)
+            {
+                var user = await DeserializeUserAsync(response, ct);
+                if (user?.Id is not null && Guid.TryParse(user.Id, out var parsedId))
+                    return parsedId;
+
+                throw new InvalidOperationException($"Usuário '{normalizedEmail}' não retornou um identificador válido no Microsoft Graph.");
+            }
+
+            if (response.StatusCode != HttpStatusCode.NotFound)
+            {
+                var detail = await response.Content.ReadAsStringAsync(ct);
+                _logger.LogError("Falha ao localizar usuário {Email} ({Status}): {Detail}", normalizedEmail, response.StatusCode, detail);
+                throw CreateGraphException(
+                    response,
+                    detail,
+                    "Não foi possível localizar o usuário no Microsoft Graph.",
+                    GraphPermissionScope.UsersRead);
+            }
+        }
+
+        var escaped = normalizedEmail.Replace("'", "''");
+        var filter = $"mail eq '{escaped}' or userPrincipalName eq '{escaped}'";
+        var searchUrl = $"users?$select=id,mail,userPrincipalName&$filter={Uri.EscapeDataString(filter)}";
+        using var searchRequest = new HttpRequestMessage(HttpMethod.Get, searchUrl);
+        using var searchResponse = await client.SendAsync(searchRequest, ct);
+
+        if (!searchResponse.IsSuccessStatusCode)
+        {
+            var detail = await searchResponse.Content.ReadAsStringAsync(ct);
+            _logger.LogError("Falha ao pesquisar usuário {Email} ({Status}): {Detail}", normalizedEmail, searchResponse.StatusCode, detail);
+            throw CreateGraphException(
+                searchResponse,
+                detail,
+                "Não foi possível localizar o usuário no Microsoft Graph.",
+                GraphPermissionScope.UsersRead);
+        }
+
+        await using var stream = await searchResponse.Content.ReadAsStreamAsync(ct);
+        var users = await JsonSerializer.DeserializeAsync<GraphUsersResponse>(stream, JsonOptions, ct) ?? new GraphUsersResponse();
+        var match = users.Value?.FirstOrDefault();
+
+        if (match?.Id is null || !Guid.TryParse(match.Id, out var userId))
+            throw new InvalidOperationException($"Usuário '{normalizedEmail}' não encontrado no Microsoft Graph.");
+
+        return userId;
+    }
+
+    private static async Task<GraphUser?> DeserializeUserAsync(HttpResponseMessage response, CancellationToken ct)
+    {
+        await using var stream = await response.Content.ReadAsStreamAsync(ct);
+        return await JsonSerializer.DeserializeAsync<GraphUser>(stream, JsonOptions, ct);
     }
 
     private async Task<IReadOnlyList<AppRoleAssignment>> GetAssignmentsAsync(Guid userObjectId, CancellationToken ct)
@@ -211,14 +295,6 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
                 "Não foi possível atribuir a role ao usuário no Microsoft Graph.",
                 GraphPermissionScope.AssignmentsWrite);
         }
-    }
-
-    private static Guid ParseObjectId(string objectId)
-    {
-        if (!Guid.TryParse(objectId, out var guid))
-            throw new InvalidOperationException("Identificador do usuário não corresponde a um Object ID válido do Entra ID.");
-
-        return guid;
     }
 
     private async Task<string> GetAccessTokenAsync(CancellationToken ct)
@@ -375,16 +451,22 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
                 "A aplicação " + appIdentifier + " precisa da permissão de aplicativo 'AppRoleAssignment.ReadWrite.All' " +
                 "concedida no Microsoft Graph para listar os vínculos em `users/{id}/appRoleAssignments`. Abra o " +
                 "registro da API utilizado pelo backend (App registrations), inclua a permissão em Microsoft Graph > Application " +
-                "permissions e confirme o 'Grant admin consent'. Depois, em Aplicativos empresariais > (sua API) > Permissions, " +
-                "verifique se o status aparece como concedido; se necessário, clique em 'Grant admin consent' novamente ou execute `az ad app permission admin-consent --id <client-id>` com uma conta administradora." ,
+                "permissions e confirme o 'Grant admin consent'. Depois, em Aplicativos empresariais > (sua API) > Permissions," +
+                "verifique se o status aparece como concedido; se necessário, clique em 'Grant admin consent' novamente ou execute `az ad app permission admin-consent --id <client-id>` com uma conta administradora.",
             GraphPermissionScope.AssignmentsWrite =>
                 "A aplicação " + appIdentifier + " precisa da permissão de aplicativo 'AppRoleAssignment.ReadWrite.All' " +
                 "concedida no Microsoft Graph para criar e remover vínculos em `servicePrincipals/{appId}/appRoleAssignedTo`. " +
-                "Confirme a adição da permissão no registro da API, o 'Grant admin consent' e o status concedido também em Aplicativos empresariais > (sua API) > Permissions; se necessário, utilize 'Grant admin consent' novamente ou o comando `az ad app permission admin-consent --id <client-id>`." ,
+                "Confirme a adição da permissão no registro da API, o 'Grant admin consent' e o status concedido também em Aplicativos empresariais > (sua API) > Permissions; se necessário, utilize 'Grant admin consent' novamente ou o comando `az ad app permission admin-consent --id <client-id>`.",
+            GraphPermissionScope.UsersRead =>
+                "A aplicação " + appIdentifier + " precisa da permissão de aplicativo 'User.Read.All' " +
+                "concedida no Microsoft Graph para localizar usuários por e-mail. No registro da API (App registrations), " +
+                "adicione a permissão em Microsoft Graph > Application permissions e confirme o 'Grant admin consent'. " +
+                "Depois, valide em Aplicativos empresariais > (sua API) > Permissions se o status está concedido; se necessário, " +
+                "utilize 'Grant admin consent' novamente ou o comando `az ad app permission admin-consent --id <client-id>`.",
             GraphPermissionScope.Token =>
                 "A aplicação " + appIdentifier + " não conseguiu autenticar no Microsoft Graph com client credentials. Revise " +
                 "TenantId, ClientId e ClientSecret na configuração 'AzureEntra', confirme que o segredo não expirou em " +
-                "Certificados e segredos e que a aplicação recebeu 'Grant admin consent' para as permissões requeridas." ,
+                "Certificados e segredos e que a aplicação recebeu 'Grant admin consent' para as permissões requeridas.",
             _ =>
                 "A aplicação " + appIdentifier + " não possui permissões suficientes no Microsoft Graph. Conceda 'AppRoleAssignment.ReadWrite.All' como permissão de aplicativo e aplique 'Grant admin consent'."
         };
@@ -394,7 +476,22 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
     {
         AssignmentsRead,
         AssignmentsWrite,
+        UsersRead,
         Token
+    }
+    private sealed record GraphUsersResponse
+    {
+        public IReadOnlyList<GraphUser>? Value { get; init; }
+    }
+
+    private sealed record GraphUser
+    {
+        public string? Id { get; init; }
+
+        public string? Mail { get; init; }
+
+        [JsonPropertyName("userPrincipalName")]
+        public string? UserPrincipalName { get; init; }
     }
 
     private sealed record GraphAppRoleAssignmentsResponse

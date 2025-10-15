@@ -21,7 +21,7 @@ export default function Usuarios() {
   const [loading, setLoading] = useState(true);
   const [reloading, setReloading] = useState(false);
 
-  const [newMicrosoftId, setNewMicrosoftId] = useState("");
+  const [newEmail, setNewEmail] = useState("");
   const [newCpf, setNewCpf] = useState("");
   const [newIsAdmin, setNewIsAdmin] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -61,9 +61,9 @@ export default function Usuarios() {
 
   const handleCreate = async (event: FormEvent) => {
     event.preventDefault();
-    const microsoftId = newMicrosoftId.trim();
-    if (!microsoftId) {
-      toast.error("Informe o Object ID do usuário no Entra ID.");
+    const email = newEmail.trim();
+    if (!email) {
+      toast.error("Informe o e-mail do usuário no Entra ID.");
       return;
     }
     if (newCpfHasError) {
@@ -72,8 +72,8 @@ export default function Usuarios() {
     }
 
     const roles = buildRoles(newIsAdmin);
-    const payload: { microsoftId: string; cpf?: string; roles: string[] } = {
-      microsoftId,
+    const payload: { email: string; cpf?: string; roles: string[] } = {
+      email,
       roles,
     };
     if (newCpf) {
@@ -84,7 +84,7 @@ export default function Usuarios() {
     try {
       await api.post<UsuarioPerfil>("/usuarios", payload);
       toast.success("Usuário salvo com sucesso.");
-      setNewMicrosoftId("");
+      setNewEmail("");
       setNewCpf("");
       setNewIsAdmin(false);
       await fetchUsuarios();
@@ -131,7 +131,7 @@ export default function Usuarios() {
     setSavingId(usuario.id);
     try {
       await api.post<UsuarioPerfil>("/usuarios", {
-        microsoftId: usuario.microsoftId,
+        email: usuario.email,
         roles,
         cpf: cpfToSend,
       });
@@ -164,17 +164,17 @@ export default function Usuarios() {
       <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <h1 className="text-xl font-semibold text-gray-900 mb-4">Adicionar usuário</h1>
         <p className="text-sm text-gray-600 mb-6">
-          Informe o <strong>Object ID</strong> do usuário no Microsoft Entra ID. O perfil de Colaborador é atribuído automaticamente.
+          Informe o <strong>e-mail</strong> do usuário no Microsoft Entra ID. O perfil de Colaborador é atribuído automaticamente.
         </p>
         <form className="grid gap-4 md:grid-cols-2" onSubmit={handleCreate}>
           <label className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-gray-700">Microsoft Object ID *</span>
+            <span className="text-sm font-medium text-gray-700">E-mail *</span>
             <input
               type="text"
-              value={newMicrosoftId}
-              onChange={(event) => setNewMicrosoftId(event.target.value)}
+              value={newEmail}
+              onChange={(event) => setNewEmail(event.target.value)}
               className="h-11 rounded-xl border border-gray-200 px-3 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-100"
-              placeholder="00000000-0000-0000-0000-000000000000"
+              placeholder="usuario@empresa.com"
               required
             />
           </label>
@@ -212,7 +212,7 @@ export default function Usuarios() {
           <div className="md:col-span-2 flex justify-end">
             <button
               type="submit"
-              disabled={creating || !newMicrosoftId.trim() || newCpfHasError}
+              disabled={creating || !newEmail.trim() || newCpfHasError}
               className="inline-flex items-center rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-gray-300"
             >
               {creating ? "Salvando..." : "Adicionar usuário"}
@@ -245,7 +245,7 @@ export default function Usuarios() {
             <table className="min-w-full divide-y divide-gray-200 text-sm">
               <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                 <tr>
-                  <th className="px-4 py-3">Microsoft ID</th>
+                  <th className="px-4 py-3">E-mail</th>
                   <th className="px-4 py-3">CPF</th>
                   <th className="px-4 py-3">Perfis</th>
                   <th className="px-4 py-3">Atualizado em</th>
@@ -268,7 +268,7 @@ export default function Usuarios() {
 
                   return (
                     <tr key={usuario.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-mono text-xs text-gray-700">{usuario.microsoftId}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-gray-700">{usuario.email}</td>
                       <td className="px-4 py-3">
                         {usuario.cpf ? (
                           <span className="text-gray-700">{formatCpf(usuario.cpf)}</span>

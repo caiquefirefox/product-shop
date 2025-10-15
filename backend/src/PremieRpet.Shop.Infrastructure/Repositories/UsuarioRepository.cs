@@ -16,10 +16,10 @@ public sealed class UsuarioRepository : IUsuarioRepository
         _db = db;
     }
 
-    public Task<Usuario?> GetByMicrosoftIdAsync(string microsoftId, CancellationToken ct)
+    public Task<Usuario?> GetByEmailAsync(string email, CancellationToken ct)
         => _db.Usuarios
             .Include(u => u.Roles)
-            .FirstOrDefaultAsync(u => u.MicrosoftId == microsoftId, ct);
+            .FirstOrDefaultAsync(u => u.Email == email, ct);
 
     public Task<Usuario?> GetByIdAsync(Guid id, CancellationToken ct)
         => _db.Usuarios
@@ -31,7 +31,7 @@ public sealed class UsuarioRepository : IUsuarioRepository
         var usuarios = await _db.Usuarios
             .Include(u => u.Roles)
             .OrderBy(u => u.CriadoEm)
-            .ThenBy(u => u.MicrosoftId)
+            .ThenBy(u => u.Email)
             .ToListAsync(ct);
 
         return usuarios;

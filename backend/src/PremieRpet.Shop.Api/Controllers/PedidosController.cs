@@ -17,11 +17,11 @@ public sealed class PedidosController(IPedidoService pedidos, IUsuarioService us
     [Authorize]
     public async Task<ActionResult<PagedResultDto<PedidoDetalheDto>>> Listar([FromQuery] PedidoListQuery query, CancellationToken ct)
     {
-        var usuarioMicrosoftId = User.GetUserId();
-        if (string.IsNullOrWhiteSpace(usuarioMicrosoftId))
-            return Problem(title: "Token sem identificador de usuário (oid/sub).", statusCode: StatusCodes.Status401Unauthorized);
+        var usuarioEmail = User.GetUserEmail();
+        if (string.IsNullOrWhiteSpace(usuarioEmail))
+            return Problem(title: "Token sem e-mail do usuário (preferred_username/email).", statusCode: StatusCodes.Status401Unauthorized);
 
-        var usuario = await usuarios.ObterOuCriarAsync(usuarioMicrosoftId, ct);
+        var usuario = await usuarios.ObterOuCriarAsync(usuarioEmail, ct);
         var filtro = query?.ToDto() ?? new PedidoListFiltroDto(
             PedidoListFiltroDto.DefaultPage,
             PedidoListFiltroDto.DefaultPageSize,
@@ -40,11 +40,11 @@ public sealed class PedidosController(IPedidoService pedidos, IUsuarioService us
     [Authorize]
     public async Task<ActionResult<PedidoResumoMensalDto>> ResumoMensal([FromQuery] PedidoResumoMensalQuery query, CancellationToken ct)
     {
-        var usuarioMicrosoftId = User.GetUserId();
-        if (string.IsNullOrWhiteSpace(usuarioMicrosoftId))
-            return Problem(title: "Token sem identificador de usuário (oid/sub).", statusCode: StatusCodes.Status401Unauthorized);
+        var usuarioEmail = User.GetUserEmail();
+        if (string.IsNullOrWhiteSpace(usuarioEmail))
+            return Problem(title: "Token sem e-mail do usuário (preferred_username/email).", statusCode: StatusCodes.Status401Unauthorized);
 
-        var usuario = await usuarios.ObterOuCriarAsync(usuarioMicrosoftId, ct);
+        var usuario = await usuarios.ObterOuCriarAsync(usuarioEmail, ct);
         var agora = DateTimeOffset.UtcNow;
         var inicioPadrao = new DateTimeOffset(new DateTime(agora.Year, agora.Month, 1, 0, 0, 0, DateTimeKind.Utc));
         var fimPadrao = inicioPadrao.AddMonths(1).AddTicks(-1);
@@ -72,12 +72,12 @@ public sealed class PedidosController(IPedidoService pedidos, IUsuarioService us
     [Authorize("Admin")]
     public async Task<ActionResult<PedidoDetalheDto>> Aprovar(Guid id, CancellationToken ct)
     {
-        var usuarioMicrosoftId = User.GetUserId();
-        if (string.IsNullOrWhiteSpace(usuarioMicrosoftId))
-            return Problem(title: "Token sem identificador de usuário (oid/sub).", statusCode: StatusCodes.Status401Unauthorized);
+        var usuarioEmail = User.GetUserEmail();
+        if (string.IsNullOrWhiteSpace(usuarioEmail))
+            return Problem(title: "Token sem e-mail do usuário (preferred_username/email).", statusCode: StatusCodes.Status401Unauthorized);
 
         var usuarioNome = User.GetDisplayName() ?? string.Empty;
-        var usuario = await usuarios.ObterOuCriarAsync(usuarioMicrosoftId, ct);
+        var usuario = await usuarios.ObterOuCriarAsync(usuarioEmail, ct);
 
         try
         {
@@ -94,12 +94,12 @@ public sealed class PedidosController(IPedidoService pedidos, IUsuarioService us
     [Authorize]
     public async Task<ActionResult<PedidoDetalheDto>> Cancelar(Guid id, CancellationToken ct)
     {
-        var usuarioMicrosoftId = User.GetUserId();
-        if (string.IsNullOrWhiteSpace(usuarioMicrosoftId))
-            return Problem(title: "Token sem identificador de usuário (oid/sub).", statusCode: StatusCodes.Status401Unauthorized);
+        var usuarioEmail = User.GetUserEmail();
+        if (string.IsNullOrWhiteSpace(usuarioEmail))
+            return Problem(title: "Token sem e-mail do usuário (preferred_username/email).", statusCode: StatusCodes.Status401Unauthorized);
 
         var usuarioNome = User.GetDisplayName() ?? string.Empty;
-        var usuario = await usuarios.ObterOuCriarAsync(usuarioMicrosoftId, ct);
+        var usuario = await usuarios.ObterOuCriarAsync(usuarioEmail, ct);
 
         try
         {
@@ -116,11 +116,11 @@ public sealed class PedidosController(IPedidoService pedidos, IUsuarioService us
     [Authorize]
     public async Task<ActionResult<PedidoDetalheCompletoDto>> Obter(Guid id, CancellationToken ct)
     {
-        var usuarioMicrosoftId = User.GetUserId();
-        if (string.IsNullOrWhiteSpace(usuarioMicrosoftId))
-            return Problem(title: "Token sem identificador de usuário (oid/sub).", statusCode: StatusCodes.Status401Unauthorized);
+        var usuarioEmail = User.GetUserEmail();
+        if (string.IsNullOrWhiteSpace(usuarioEmail))
+            return Problem(title: "Token sem e-mail do usuário (preferred_username/email).", statusCode: StatusCodes.Status401Unauthorized);
 
-        var usuario = await usuarios.ObterOuCriarAsync(usuarioMicrosoftId, ct);
+        var usuario = await usuarios.ObterOuCriarAsync(usuarioEmail, ct);
         var detalhe = await pedidos.ObterPedidoCompletoAsync(id, usuario.Id, User.IsInRole("Admin"), ct);
         if (detalhe is null)
             return NotFound();
@@ -135,12 +135,12 @@ public sealed class PedidosController(IPedidoService pedidos, IUsuarioService us
         if (!ModelState.IsValid)
             return ValidationProblem(ModelState);
 
-        var usuarioMicrosoftId = User.GetUserId();
-        if (string.IsNullOrWhiteSpace(usuarioMicrosoftId))
-            return Problem(title: "Token sem identificador de usuário (oid/sub).", statusCode: StatusCodes.Status401Unauthorized);
+        var usuarioEmail = User.GetUserEmail();
+        if (string.IsNullOrWhiteSpace(usuarioEmail))
+            return Problem(title: "Token sem e-mail do usuário (preferred_username/email).", statusCode: StatusCodes.Status401Unauthorized);
 
         var usuarioNome = User.GetDisplayName() ?? "";
-        var usuario = await usuarios.ObterOuCriarAsync(usuarioMicrosoftId, ct);
+        var usuario = await usuarios.ObterOuCriarAsync(usuarioEmail, ct);
 
         try
         {

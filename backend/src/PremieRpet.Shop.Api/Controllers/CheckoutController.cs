@@ -4,8 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 using PremieRpet.Shop.Api.Security;
 using PremieRpet.Shop.Application.DTOs;
 using PremieRpet.Shop.Application.Interfaces.UseCases;
-using PremieRpet.Shop.Domain.Entities;
-using System.Security.Claims;
 
 namespace PremieRpet.Shop.Api.Controllers;
 
@@ -17,9 +15,9 @@ public class CheckoutController(IPedidoService pedidos, IHttpContextAccessor ctx
     [Authorize]
     public async Task<IActionResult> Criar([FromBody] PedidoCreateDto dto, CancellationToken ct)
     {
-        var usuarioMicrosoftId = User.GetUserId();
-        if (string.IsNullOrWhiteSpace(usuarioMicrosoftId))
-            return Problem(title: "Token sem identificador de usuário (oid/sub).", statusCode: StatusCodes.Status401Unauthorized);
+        var usuarioEmail = User.GetUserEmail();
+        if (string.IsNullOrWhiteSpace(usuarioEmail))
+            return Problem(title: "Token sem e-mail do usuário (preferred_username/email).", statusCode: StatusCodes.Status401Unauthorized);
 
         var usuarioNome = User.GetDisplayName();
         if (string.IsNullOrWhiteSpace(usuarioNome))
@@ -27,7 +25,7 @@ public class CheckoutController(IPedidoService pedidos, IHttpContextAccessor ctx
 
         try
         {
-            var pedido = await pedidos.CriarPedidoAsync(usuarioMicrosoftId, usuarioNome, dto, ct);
+            var pedido = await pedidos.CriarPedidoAsync(usuarioEmail, usuarioNome, dto, ct);
             return Ok(new { id = pedido.Id });
         }
         catch (InvalidOperationException ex)
