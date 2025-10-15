@@ -43,7 +43,15 @@
   > 2. Na tela **API permissions**, verifique se a coluna *Status* mostra `Granted for <tenant>` para **AppRoleAssignment.ReadWrite.All** e **User.Read.All**. Se não mostrar, clique novamente em **Grant admin consent**.
   > 3. Vá em **Enterprise applications > (sua API) > Permissions** e confirme que ambas as permissões aparecem como concedidas. Caso o portal indique que o consentimento ainda não foi aplicado, utilize o botão **Grant admin consent** ou execute `az ad app permission admin-consent --id <client-id>` com uma conta administradora.
   > 4. Depois do consentimento, aguarde alguns minutos e tente chamar a API novamente. A propagação pode levar alguns instantes.
-2) Rode as migrations (após adicionar EF Tools):  
+
+## Sincronização de usuários com o Microsoft Entra ID
+
+- A tabela `Usuarios` mantém o `MicrosoftId` (GUID da conta no Entra ID) como identificador principal e agora também persiste o `Email` normalizado informado na interface administrativa.
+- Ao cadastrar ou atualizar um usuário pela API, informe o e-mail corporativo; o serviço consulta o Microsoft Graph para resolver o `MicrosoftId`, atribui as roles configuradas e salva os dois campos na base.
+- Registros antigos que possuam apenas o `MicrosoftId` terão o `Email` preenchido automaticamente assim que o usuário acessar a aplicação ou for atualizado pelo painel administrativo.
+- A tela de administração lista o e-mail e o MicrosoftId de cada usuário para facilitar a conferência com a Enterprise Application do Entra ID.
+
+2) Rode as migrations (após adicionar EF Tools):
 ```
 dotnet tool install --global dotnet-ef
 cd backend/PremieRpet.Shop.Api

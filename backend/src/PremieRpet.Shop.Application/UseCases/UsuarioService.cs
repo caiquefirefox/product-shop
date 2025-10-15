@@ -26,29 +26,29 @@ public sealed class UsuarioService : IUsuarioService
 
     public async Task<UsuarioDto> ObterOuCriarAsync(string email, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(email))
-            throw new InvalidOperationException("E-mail do usuário inválido.");
-
         var normalizedEmail = NormalizeEmailValue(email);
-        var usuario = await _usuarios.GetByEmailAsync(normalizedEmail, ct);
+        var (usuario, microsoftId) = await FindExistingUsuarioAsync(normalizedEmail, ct);
+
         if (usuario is null)
         {
             var agora = DateTimeOffset.UtcNow;
-            var roles = await _entraRoles.GetUserRolesAsync(normalizedEmail, ct);
-            var normalizedRoles = NormalizeRoles(roles, strict: false);
+            var remoteRoles = await _entraRoles.GetUserRolesAsync(microsoftId, ct);
+            var normalizedRoles = NormalizeRoles(remoteRoles, strict: false);
 
             usuario = new Usuario
             {
+                MicrosoftId = microsoftId,
                 Email = normalizedEmail,
                 CriadoEm = agora,
                 AtualizadoEm = agora,
             };
+
             ApplyRoles(usuario, normalizedRoles);
             await _usuarios.AddAsync(usuario, ct);
         }
         else
         {
-            usuario = await EnsureRolesAsync(usuario, ct);
+            usuario = await EnsureRolesAsync(usuario, ct, microsoftId);
         }
 
         return ToDto(usuario);
@@ -56,48 +56,47 @@ public sealed class UsuarioService : IUsuarioService
 
     public async Task<UsuarioDto> RegistrarCpfAsync(string email, string cpf, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(email))
-            throw new InvalidOperationException("E-mail do usuário inválido.");
         if (string.IsNullOrWhiteSpace(cpf))
             throw new InvalidOperationException("CPF obrigatório.");
 
+        var normalizedEmail = NormalizeEmailValue(email);
         var sanitized = CpfRules.Sanitize(cpf);
         if (!CpfRules.IsValid(sanitized))
             throw new InvalidOperationException("CPF inválido.");
 
-        var normalizedEmail = NormalizeEmailValue(email);
-        var usuario = await _usuarios.GetByEmailAsync(normalizedEmail, ct);
+        var (usuario, microsoftId) = await FindExistingUsuarioAsync(normalizedEmail, ct);
         var agora = DateTimeOffset.UtcNow;
 
         if (usuario is null)
         {
-            var roles = await _entraRoles.GetUserRolesAsync(normalizedEmail, ct);
-            var normalizedRoles = NormalizeRoles(roles, strict: false);
+            var remoteRoles = await _entraRoles.GetUserRolesAsync(microsoftId, ct);
+            var normalizedRoles = NormalizeRoles(remoteRoles, strict: false);
 
             usuario = new Usuario
             {
+                MicrosoftId = microsoftId,
                 Email = normalizedEmail,
                 Cpf = sanitized,
                 CriadoEm = agora,
                 AtualizadoEm = agora,
             };
+
             ApplyRoles(usuario, normalizedRoles);
             await _usuarios.AddAsync(usuario, ct);
+            return ToDto(usuario);
         }
-        else
-        {
-            usuario = await EnsureRolesAsync(usuario, ct);
 
-            if (string.IsNullOrWhiteSpace(usuario.Cpf))
-            {
-                usuario.Cpf = sanitized;
-                usuario.AtualizadoEm = agora;
-                await _usuarios.UpdateAsync(usuario, ct);
-            }
-            else if (!string.Equals(usuario.Cpf, sanitized, StringComparison.Ordinal))
-            {
-                throw new InvalidOperationException("CPF já cadastrado e não pode ser alterado.");
-            }
+        usuario = await EnsureRolesAsync(usuario, ct, microsoftId);
+
+        if (string.IsNullOrWhiteSpace(usuario.Cpf))
+        {
+            usuario.Cpf = sanitized;
+            usuario.AtualizadoEm = agora;
+            await _usuarios.UpdateAsync(usuario, ct);
+        }
+        else if (!string.Equals(usuario.Cpf, sanitized, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("CPF já cadastrado e não pode ser alterado.");
         }
 
         return ToDto(usuario);
@@ -105,21 +104,37 @@ public sealed class UsuarioService : IUsuarioService
 
     public async Task<UsuarioDto> GarantirCpfAsync(string email, string? cpf, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(email))
-            throw new InvalidOperationException("E-mail do usuário inválido.");
-
         var normalizedEmail = NormalizeEmailValue(email);
-        var usuario = await _usuarios.GetByEmailAsync(normalizedEmail, ct);
+        var (usuario, microsoftId) = await FindExistingUsuarioAsync(normalizedEmail, ct);
+
         if (usuario is null)
         {
             if (string.IsNullOrWhiteSpace(cpf))
                 throw new InvalidOperationException("CPF obrigatório.");
 
-            var perfil = await RegistrarCpfAsync(normalizedEmail, cpf, ct);
-            return perfil;
+            var sanitized = CpfRules.Sanitize(cpf);
+            if (!CpfRules.IsValid(sanitized))
+                throw new InvalidOperationException("CPF inválido.");
+
+            var agora = DateTimeOffset.UtcNow;
+            var remoteRoles = await _entraRoles.GetUserRolesAsync(microsoftId, ct);
+            var normalizedRoles = NormalizeRoles(remoteRoles, strict: false);
+
+            usuario = new Usuario
+            {
+                MicrosoftId = microsoftId,
+                Email = normalizedEmail,
+                Cpf = sanitized,
+                CriadoEm = agora,
+                AtualizadoEm = agora,
+            };
+
+            ApplyRoles(usuario, normalizedRoles);
+            await _usuarios.AddAsync(usuario, ct);
+            return ToDto(usuario);
         }
 
-        usuario = await EnsureRolesAsync(usuario, ct);
+        usuario = await EnsureRolesAsync(usuario, ct, microsoftId);
 
         if (!string.IsNullOrWhiteSpace(usuario.Cpf))
         {
@@ -136,8 +151,15 @@ public sealed class UsuarioService : IUsuarioService
         if (string.IsNullOrWhiteSpace(cpf))
             throw new InvalidOperationException("CPF obrigatório.");
 
-        var atualizado = await RegistrarCpfAsync(normalizedEmail, cpf, ct);
-        return atualizado;
+        var novoCpf = CpfRules.Sanitize(cpf);
+        if (!CpfRules.IsValid(novoCpf))
+            throw new InvalidOperationException("CPF inválido.");
+
+        usuario.Cpf = novoCpf;
+        usuario.AtualizadoEm = DateTimeOffset.UtcNow;
+        await _usuarios.UpdateAsync(usuario, ct);
+
+        return ToDto(usuario);
     }
 
     public async Task<IReadOnlyCollection<UsuarioDto>> ListAsync(CancellationToken ct)
@@ -163,25 +185,28 @@ public sealed class UsuarioService : IUsuarioService
         var normalizedRoles = NormalizeRoles(roles);
         var sanitizedCpf = SanitizeCpfOrNull(cpf);
 
-        var usuario = await _usuarios.GetByEmailAsync(normalizedEmail, ct);
+        var (usuario, microsoftId) = await FindExistingUsuarioAsync(normalizedEmail, ct);
         var agora = DateTimeOffset.UtcNow;
 
         if (usuario is null)
         {
             usuario = new Usuario
             {
+                MicrosoftId = microsoftId,
                 Email = normalizedEmail,
                 Cpf = sanitizedCpf,
                 CriadoEm = agora,
                 AtualizadoEm = agora,
             };
+
             ApplyRoles(usuario, normalizedRoles);
             await _usuarios.AddAsync(usuario, ct);
-            await _entraRoles.ReplaceUserRolesAsync(normalizedEmail, normalizedRoles, ct);
+            await _entraRoles.ReplaceUserRolesAsync(microsoftId, normalizedRoles, ct);
+
             return ToDto(usuario);
         }
 
-        usuario = await EnsureRolesAsync(usuario, ct);
+        usuario = await EnsureRolesAsync(usuario, ct, microsoftId);
 
         if (!string.IsNullOrWhiteSpace(sanitizedCpf))
         {
@@ -194,15 +219,106 @@ public sealed class UsuarioService : IUsuarioService
             }
         }
 
+        if (!string.IsNullOrWhiteSpace(normalizedEmail) && !string.Equals(usuario.Email, normalizedEmail, StringComparison.OrdinalIgnoreCase))
+        {
+            usuario.Email = normalizedEmail;
+        }
+
         usuario.AtualizadoEm = agora;
         await _usuarios.UpdateAsync(usuario, ct);
-        await _entraRoles.ReplaceUserRolesAsync(usuario.Email, normalizedRoles, ct);
         await _usuarios.ReplaceRolesAsync(usuario.Id, normalizedRoles, ct);
+        await _entraRoles.ReplaceUserRolesAsync(microsoftId, normalizedRoles, ct);
 
-        var atualizado = await _usuarios.GetByEmailAsync(normalizedEmail, ct)
+        var atualizado = await _usuarios.GetByMicrosoftIdAsync(microsoftId, ct)
             ?? throw new InvalidOperationException("Usuário não encontrado após atualização.");
 
         return ToDto(atualizado);
+    }
+
+    private async Task<(Usuario? usuario, string microsoftId)> FindExistingUsuarioAsync(string normalizedEmail, CancellationToken ct)
+    {
+        var existente = await _usuarios.GetByEmailAsync(normalizedEmail, ct);
+        if (existente is not null)
+        {
+            var ensuredId = await EnsureMicrosoftIdAsync(existente, normalizedEmail, ct);
+            return (existente, ensuredId);
+        }
+
+        var resolvedId = await _entraRoles.ResolveUserIdAsync(normalizedEmail, ct);
+        var microsoftId = resolvedId.ToString("D");
+
+        var porId = await _usuarios.GetByMicrosoftIdAsync(microsoftId, ct);
+        if (porId is not null)
+        {
+            var ensuredId = await EnsureMicrosoftIdAsync(porId, normalizedEmail, ct);
+            return (porId, ensuredId);
+        }
+
+        return (null, microsoftId);
+    }
+
+    private async Task<string> EnsureMicrosoftIdAsync(Usuario usuario, string? normalizedEmail, CancellationToken ct)
+    {
+        var emailParaUso = normalizedEmail ?? TryNormalizeEmail(usuario.Email);
+        var needsUpdate = false;
+
+        if (!string.IsNullOrWhiteSpace(usuario.MicrosoftId) && Guid.TryParse(usuario.MicrosoftId, out var parsed))
+        {
+            var normalizedId = parsed.ToString("D");
+            if (!string.Equals(usuario.MicrosoftId, normalizedId, StringComparison.Ordinal))
+            {
+                usuario.MicrosoftId = normalizedId;
+                needsUpdate = true;
+            }
+        }
+        else
+        {
+            if (string.IsNullOrWhiteSpace(emailParaUso))
+                throw new InvalidOperationException("Não foi possível determinar o usuário no Microsoft Entra ID.");
+
+            var resolved = await _entraRoles.ResolveUserIdAsync(emailParaUso, ct);
+            usuario.MicrosoftId = resolved.ToString("D");
+            needsUpdate = true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(emailParaUso) && !string.Equals(usuario.Email, emailParaUso, StringComparison.OrdinalIgnoreCase))
+        {
+            usuario.Email = emailParaUso;
+            needsUpdate = true;
+        }
+
+        if (needsUpdate)
+        {
+            usuario.AtualizadoEm = DateTimeOffset.UtcNow;
+            await _usuarios.UpdateAsync(usuario, ct);
+        }
+
+        return usuario.MicrosoftId;
+    }
+
+    private async Task<Usuario> EnsureRolesAsync(Usuario usuario, CancellationToken ct, string? knownMicrosoftId = null)
+    {
+        var normalizedEmail = TryNormalizeEmail(usuario.Email);
+        var microsoftId = knownMicrosoftId;
+
+        if (string.IsNullOrWhiteSpace(microsoftId) ||
+            string.IsNullOrWhiteSpace(usuario.MicrosoftId) ||
+            !string.Equals(usuario.MicrosoftId, microsoftId, StringComparison.OrdinalIgnoreCase))
+        {
+            microsoftId = await EnsureMicrosoftIdAsync(usuario, normalizedEmail, ct);
+        }
+
+        if (usuario.Roles.Any())
+            return usuario;
+
+        var remoteRoles = await _entraRoles.GetUserRolesAsync(microsoftId!, ct);
+        var normalized = remoteRoles.Count > 0
+            ? NormalizeRoles(remoteRoles, strict: false)
+            : NormalizeRoles(null);
+
+        await _usuarios.ReplaceRolesAsync(usuario.Id, normalized, ct);
+        var atualizado = await _usuarios.GetByIdAsync(usuario.Id, ct);
+        return atualizado ?? usuario;
     }
 
     private static void ApplyRoles(Usuario usuario, IReadOnlyCollection<string> roles)
@@ -216,21 +332,6 @@ public sealed class UsuarioService : IUsuarioService
                 Usuario = usuario
             });
         }
-    }
-
-    private async Task<Usuario> EnsureRolesAsync(Usuario usuario, CancellationToken ct)
-    {
-        if (usuario.Roles.Any())
-            return usuario;
-
-        var remoteRoles = await _entraRoles.GetUserRolesAsync(usuario.Email, ct);
-        var normalized = remoteRoles.Count > 0
-            ? NormalizeRoles(remoteRoles, strict: false)
-            : NormalizeRoles(null);
-
-        await _usuarios.ReplaceRolesAsync(usuario.Id, normalized, ct);
-        var atualizado = await _usuarios.GetByIdAsync(usuario.Id, ct);
-        return atualizado ?? usuario;
     }
 
     private static UsuarioDto ToDto(Usuario usuario)
@@ -247,19 +348,34 @@ public sealed class UsuarioService : IUsuarioService
             roles = NormalizeRoles(null).ToArray();
         }
 
-        return new UsuarioDto(usuario.Id, usuario.Email, usuario.Cpf, roles, usuario.CriadoEm, usuario.AtualizadoEm);
+        var microsoftId = !string.IsNullOrWhiteSpace(usuario.MicrosoftId)
+            ? usuario.MicrosoftId
+            : string.Empty;
+
+        var email = usuario.Email ?? string.Empty;
+
+        return new UsuarioDto(usuario.Id, microsoftId, email, usuario.Cpf, roles, usuario.CriadoEm, usuario.AtualizadoEm);
+    }
+
+    private static string? TryNormalizeEmail(string? email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return null;
+
+        var trimmed = email.Trim();
+        if (trimmed.Length == 0 || !trimmed.Contains('@'))
+            return null;
+
+        return trimmed.ToLowerInvariant();
     }
 
     private static string NormalizeEmailValue(string email)
     {
-        if (string.IsNullOrWhiteSpace(email))
+        var normalized = TryNormalizeEmail(email);
+        if (normalized is null)
             throw new InvalidOperationException("E-mail do usuário inválido.");
 
-        var trimmed = email.Trim();
-        if (trimmed.Length == 0)
-            throw new InvalidOperationException("E-mail do usuário inválido.");
-
-        return trimmed.ToLowerInvariant();
+        return normalized;
     }
 
     private static IReadOnlyList<string> NormalizeRoles(IEnumerable<string>? roles, bool strict = true)

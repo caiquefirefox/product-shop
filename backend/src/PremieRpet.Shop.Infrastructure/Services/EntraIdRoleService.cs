@@ -52,13 +52,22 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
         return trimmed.ToLowerInvariant();
     }
 
+    public Task<Guid> ResolveUserIdAsync(string userEmail, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(userEmail))
+            throw new ArgumentException("E-mail do usuário inválido.", nameof(userEmail));
+
+        var normalizedEmail = NormalizeEmail(userEmail);
+        return ResolveUserIdInternalAsync(normalizedEmail, ct);
+    }
+
     public async Task<IReadOnlyList<string>> GetUserRolesAsync(string userEmail, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(userEmail))
             throw new ArgumentException("E-mail do usuário inválido.", nameof(userEmail));
 
         var normalizedEmail = NormalizeEmail(userEmail);
-        var userGuid = await ResolveUserIdAsync(normalizedEmail, ct);
+        var userGuid = await ResolveUserIdInternalAsync(normalizedEmail, ct);
         var assignments = await GetAssignmentsAsync(userGuid, ct);
         if (assignments.Count == 0)
             return Array.Empty<string>();
@@ -93,7 +102,7 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
             throw new ArgumentException("E-mail do usuário inválido.", nameof(userEmail));
 
         var normalizedEmail = NormalizeEmail(userEmail);
-        var userGuid = await ResolveUserIdAsync(normalizedEmail, ct);
+        var userGuid = await ResolveUserIdInternalAsync(normalizedEmail, ct);
         var desiredRoles = roles?.Where(r => !string.IsNullOrWhiteSpace(r)).Select(r => r.Trim()).ToArray() ?? Array.Empty<string>();
         var options = ValidateOptions();
 
@@ -131,7 +140,7 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
         }
     }
 
-    private async Task<Guid> ResolveUserIdAsync(string email, CancellationToken ct)
+    private async Task<Guid> ResolveUserIdInternalAsync(string email, CancellationToken ct)
     {
         var normalizedEmail = NormalizeEmail(email);
         _ = ValidateOptions();

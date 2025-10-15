@@ -266,9 +266,16 @@ export default function Usuarios() {
                   const hasChanges = isAdminDraft !== isAdminOriginal || cpfChanged;
                   const isSaving = savingId === usuario.id;
 
+                  const displayEmail = usuario.email || "—";
+
                   return (
                     <tr key={usuario.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-mono text-xs text-gray-700">{usuario.email}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col gap-1">
+                          <span className="font-mono text-xs text-gray-700">{displayEmail}</span>
+                          <span className="font-mono text-[10px] text-gray-400">{usuario.microsoftId}</span>
+                        </div>
+                      </td>
                       <td className="px-4 py-3">
                         {usuario.cpf ? (
                           <span className="text-gray-700">{formatCpf(usuario.cpf)}</span>

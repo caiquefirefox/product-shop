@@ -129,8 +129,10 @@ public sealed class ShopDbContext : DbContext
         b.Entity<Usuario>(e =>
         {
             e.HasKey(u => u.Id);
-        e.Property(u => u.Email).HasMaxLength(200).IsRequired();
-        e.HasIndex(u => u.Email).IsUnique();
+            e.Property(u => u.MicrosoftId).HasMaxLength(200).IsRequired();
+            e.HasIndex(u => u.MicrosoftId).IsUnique();
+            e.Property(u => u.Email).HasMaxLength(200);
+            e.HasIndex(u => u.Email).IsUnique();
             e.Property(u => u.Cpf).HasMaxLength(11);
             e.HasIndex(u => u.Cpf).IsUnique();
             e.Property(u => u.CriadoEm);
