@@ -22,6 +22,19 @@
    * **ClientSecret** – o segredo de cliente gerado em *Certificados e Segredos* para a mesma aplicação acima. A API usa esse segredo para adquirir tokens de aplicativo ao chamar a Microsoft Graph.
    * **EnterpriseAppObjectId** – o *Object ID* da Enterprise Application (aplicativo corporativo) que representa a instância da sua API no locatário. Esse valor aparece em *Aplicativos empresariais > (seu aplicativo) > Visão Geral*.
    * **RoleIds.Admin / RoleIds.Colaborador** – os identificadores (GUID) das app roles configuradas no registro da aplicação (ex.: `Admin`, `Colaborador`). Cada chave dentro de `RoleIds` deve apontar para o App Role ID correspondente, permitindo que o backend saiba qual role atribuir ou remover via Microsoft Graph.
+
+   > **Permissões necessárias no Microsoft Graph**
+   >
+   > Para consultar, adicionar e remover app roles pelo serviço `EntraIdRoleService`, o registro da aplicação **precisa** ter a permissão de aplicativo **Microsoft Graph > AppRoleAssignment.ReadWrite.All** e o **consentimento de administrador** concedido. Sem isso, o Graph retorna `Authorization_RequestDenied` (HTTP 403) informando "Insufficient privileges to complete the operation".
+   >
+   > Passo a passo no portal:
+   > 1. Abra o registro da aplicação que representa a API (`App registrations`).
+   > 2. Em **API Permissions**, clique em **Add a permission** > **Microsoft Graph** > **Application permissions**.
+   > 3. Marque **AppRoleAssignment.ReadWrite.All** e confirme.
+   > 4. De volta à tela de permissões, clique em **Grant admin consent** para o tenant.
+   > 5. Aguarde alguns minutos para a propagação antes de chamar novamente a API.
+   >
+   > Além disso, certifique-se de que a Enterprise Application correspondente permita atribuições de usuários e que o usuário administrativo possua autorização para gerenciar essas atribuições.
 2) Rode as migrations (após adicionar EF Tools):  
 ```
 dotnet tool install --global dotnet-ef

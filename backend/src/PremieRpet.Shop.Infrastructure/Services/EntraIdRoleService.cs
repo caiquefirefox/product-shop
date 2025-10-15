@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -130,7 +131,10 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
         {
             var detail = await response.Content.ReadAsStringAsync(ct);
             _logger.LogError("Falha ao consultar roles no Graph ({Status}): {Detail}", response.StatusCode, detail);
-            throw new InvalidOperationException("Não foi possível consultar as roles do usuário no Microsoft Graph.");
+            throw CreateGraphException(
+                response,
+                detail,
+                "Não foi possível consultar as roles do usuário no Microsoft Graph.");
         }
 
         await using var stream = await response.Content.ReadAsStreamAsync(ct);
@@ -154,7 +158,10 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
         {
             var detail = await response.Content.ReadAsStringAsync(ct);
             _logger.LogError("Falha ao remover role ({Status}): {Detail}", response.StatusCode, detail);
-            throw new InvalidOperationException("Não foi possível remover a role do usuário no Microsoft Graph.");
+            throw CreateGraphException(
+                response,
+                detail,
+                "Não foi possível remover a role do usuário no Microsoft Graph.");
         }
     }
 
@@ -185,7 +192,10 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
         {
             var detail = await response.Content.ReadAsStringAsync(ct);
             _logger.LogError("Falha ao adicionar role ({Status}): {Detail}", response.StatusCode, detail);
-            throw new InvalidOperationException("Não foi possível atribuir a role ao usuário no Microsoft Graph.");
+            throw CreateGraphException(
+                response,
+                detail,
+                "Não foi possível atribuir a role ao usuário no Microsoft Graph.");
         }
     }
 
@@ -229,7 +239,10 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
             {
                 var detail = await response.Content.ReadAsStringAsync(ct);
                 _logger.LogError("Falha ao obter token do Microsoft Identity ({Status}): {Detail}", response.StatusCode, detail);
-                throw new InvalidOperationException("Não foi possível autenticar na API do Microsoft Graph.");
+                throw CreateGraphException(
+                    response,
+                    detail,
+                    "Não foi possível autenticar na API do Microsoft Graph.");
             }
 
             await using var stream = await response.Content.ReadAsStreamAsync(ct);
@@ -282,9 +295,69 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
         return lookup;
     }
 
+    private Exception CreateGraphException(HttpResponseMessage response, string? detail, string defaultMessage)
+    {
+        if (string.IsNullOrWhiteSpace(detail))
+            return new InvalidOperationException(defaultMessage);
+
+        try
+        {
+            var error = JsonSerializer.Deserialize<GraphErrorResponse>(detail, JsonOptions);
+            if (error?.Error is GraphError graphError)
+            {
+                if (IsAuthorizationDenied(response, graphError))
+                {
+                    return new InvalidOperationException(
+                        "A aplicação não possui permissões suficientes no Microsoft Graph para gerenciar app roles. " +
+                        "Garanta que o registro da API tenha a permissão de aplicativo 'AppRoleAssignment.ReadWrite.All' " +
+                        "com consentimento de administrador e que o Enterprise Application esteja configurado para permitir atribuições.");
+                }
+
+                if (!string.IsNullOrWhiteSpace(graphError.Message))
+                {
+                    return new InvalidOperationException($"{defaultMessage} Detalhes: {graphError.Message}");
+                }
+            }
+        }
+        catch (JsonException)
+        {
+            // Ignora erros de parsing e cai no retorno padrão com o detalhe bruto.
+        }
+
+        if (response.StatusCode == HttpStatusCode.Forbidden)
+        {
+            return new InvalidOperationException(
+                "A aplicação não possui permissões suficientes no Microsoft Graph para gerenciar app roles. " +
+                "Garanta que o registro da API tenha a permissão de aplicativo 'AppRoleAssignment.ReadWrite.All' " +
+                "com consentimento de administrador e que o Enterprise Application esteja configurado para permitir atribuições.");
+        }
+
+        return new InvalidOperationException($"{defaultMessage} Detalhes: {detail}");
+    }
+
+    private static bool IsAuthorizationDenied(HttpResponseMessage response, GraphError graphError)
+    {
+        if (response.StatusCode == HttpStatusCode.Forbidden)
+            return true;
+
+        return string.Equals(graphError.Code, "Authorization_RequestDenied", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(graphError.Code, "AuthorizationFailed", StringComparison.OrdinalIgnoreCase);
+    }
+
     private sealed record GraphAppRoleAssignmentsResponse
     {
         public IReadOnlyList<AppRoleAssignment>? Value { get; init; }
+    }
+
+    private sealed record GraphErrorResponse
+    {
+        public GraphError? Error { get; init; }
+    }
+
+    private sealed record GraphError
+    {
+        public string? Code { get; init; }
+        public string? Message { get; init; }
     }
 
     private sealed record AppRoleAssignment
