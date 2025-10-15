@@ -136,7 +136,7 @@ public sealed class UsuarioService : IUsuarioService
         if (string.IsNullOrWhiteSpace(cpf))
             throw new InvalidOperationException("CPF obrigatório.");
 
-        var atualizado = await RegistrarCpfAsync(microsoftId, cpf, ct);
+        var atualizado = await RegistrarCpfAsync(normalizedEmail, cpf, ct);
         return atualizado;
     }
 
