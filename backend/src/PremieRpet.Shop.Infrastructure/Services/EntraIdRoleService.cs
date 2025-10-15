@@ -1,0 +1,300 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using PremieRpet.Shop.Application.Interfaces.Services;
+using PremieRpet.Shop.Infrastructure.Options;
+
+namespace PremieRpet.Shop.Infrastructure.Services;
+
+public sealed class EntraIdRoleService : IEntraIdRoleService
+{
+    private static readonly Uri GraphBaseUri = new("https://graph.microsoft.com/v1.0/");
+
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IOptions<EntraIdAppRoleOptions> _options;
+    private readonly ILogger<EntraIdRoleService> _logger;
+
+    private readonly SemaphoreSlim _tokenLock = new(1, 1);
+    private string? _cachedToken;
+    private DateTimeOffset _tokenExpiresAt = DateTimeOffset.MinValue;
+
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
+    public EntraIdRoleService(IHttpClientFactory httpClientFactory, IOptions<EntraIdAppRoleOptions> options, ILogger<EntraIdRoleService> logger)
+    {
+        _httpClientFactory = httpClientFactory;
+        _options = options;
+        _logger = logger;
+    }
+
+    public async Task<IReadOnlyList<string>> GetUserRolesAsync(string userObjectId, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(userObjectId))
+            throw new ArgumentException("Identificador do usuário inválido.", nameof(userObjectId));
+
+        var userGuid = ParseObjectId(userObjectId);
+        var assignments = await GetAssignmentsAsync(userGuid, ct);
+        if (assignments.Count == 0)
+            return Array.Empty<string>();
+
+        var roleIds = GetRoleIdLookup();
+        var result = new List<string>();
+
+        foreach (var assignment in assignments)
+        {
+            if (assignment.AppRoleId is null)
+                continue;
+
+            if (roleIds.TryGetValue(assignment.AppRoleId.Value, out var roleName))
+            {
+                result.Add(roleName);
+            }
+            else
+            {
+                _logger.LogWarning("Role {RoleId} não está configurada no mapeamento e será ignorada.", assignment.AppRoleId.Value);
+            }
+        }
+
+        return result
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(r => r, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    public async Task ReplaceUserRolesAsync(string userObjectId, IEnumerable<string> roles, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(userObjectId))
+            throw new ArgumentException("Identificador do usuário inválido.", nameof(userObjectId));
+
+        var userGuid = ParseObjectId(userObjectId);
+        var desiredRoles = roles?.Where(r => !string.IsNullOrWhiteSpace(r)).Select(r => r.Trim()).ToArray() ?? Array.Empty<string>();
+        var options = ValidateOptions();
+
+        var assignments = await GetAssignmentsAsync(userGuid, ct);
+        var desiredRoleIds = new HashSet<Guid>(desiredRoles.Select(role =>
+        {
+            if (!options.RoleIds.TryGetValue(role, out var idValue) || !Guid.TryParse(idValue, out var parsed))
+                throw new InvalidOperationException($"Perfil '{role}' não está configurado na aplicação Entra ID.");
+            return parsed;
+        }));
+
+        var toRemove = assignments
+            .Where(a => a.AppRoleId is not null && !desiredRoleIds.Contains(a.AppRoleId.Value))
+            .ToList();
+
+        foreach (var assignment in toRemove)
+        {
+            await RemoveAssignmentAsync(userGuid, assignment.Id, ct);
+        }
+
+        var currentRoleIds = assignments
+            .Where(a => a.AppRoleId is not null)
+            .Select(a => a.AppRoleId!.Value)
+            .ToHashSet();
+
+        foreach (var roleId in desiredRoleIds)
+        {
+            if (!currentRoleIds.Contains(roleId))
+            {
+                await AddAssignmentAsync(userGuid, roleId, ct);
+            }
+        }
+    }
+
+    private async Task<IReadOnlyList<AppRoleAssignment>> GetAssignmentsAsync(Guid userObjectId, CancellationToken ct)
+    {
+        var options = ValidateOptions();
+        var token = await GetAccessTokenAsync(ct);
+        var client = _httpClientFactory.CreateClient();
+        client.BaseAddress = GraphBaseUri;
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var enterpriseAppId = Guid.Parse(options.EnterpriseAppObjectId);
+        var url = $"users/{userObjectId}/appRoleAssignments?$filter=resourceId eq {enterpriseAppId}";
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        using var response = await client.SendAsync(request, ct);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var detail = await response.Content.ReadAsStringAsync(ct);
+            _logger.LogError("Falha ao consultar roles no Graph ({Status}): {Detail}", response.StatusCode, detail);
+            throw new InvalidOperationException("Não foi possível consultar as roles do usuário no Microsoft Graph.");
+        }
+
+        await using var stream = await response.Content.ReadAsStreamAsync(ct);
+        var payload = await JsonSerializer.DeserializeAsync<GraphAppRoleAssignmentsResponse>(stream, JsonOptions, ct)
+            ?? new GraphAppRoleAssignmentsResponse();
+
+        return payload.Value ?? Array.Empty<AppRoleAssignment>();
+    }
+
+    private async Task RemoveAssignmentAsync(Guid userObjectId, Guid assignmentId, CancellationToken ct)
+    {
+        var token = await GetAccessTokenAsync(ct);
+        var client = _httpClientFactory.CreateClient();
+        client.BaseAddress = GraphBaseUri;
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        using var request = new HttpRequestMessage(HttpMethod.Delete, $"users/{userObjectId}/appRoleAssignments/{assignmentId}");
+        using var response = await client.SendAsync(request, ct);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var detail = await response.Content.ReadAsStringAsync(ct);
+            _logger.LogError("Falha ao remover role ({Status}): {Detail}", response.StatusCode, detail);
+            throw new InvalidOperationException("Não foi possível remover a role do usuário no Microsoft Graph.");
+        }
+    }
+
+    private async Task AddAssignmentAsync(Guid userObjectId, Guid roleId, CancellationToken ct)
+    {
+        var options = ValidateOptions();
+        var enterpriseAppId = Guid.Parse(options.EnterpriseAppObjectId);
+        var token = await GetAccessTokenAsync(ct);
+        var client = _httpClientFactory.CreateClient();
+        client.BaseAddress = GraphBaseUri;
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var payload = new
+        {
+            principalId = userObjectId,
+            resourceId = enterpriseAppId,
+            appRoleId = roleId
+        };
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"users/{userObjectId}/appRoleAssignments")
+        {
+            Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
+        };
+
+        using var response = await client.SendAsync(request, ct);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var detail = await response.Content.ReadAsStringAsync(ct);
+            _logger.LogError("Falha ao adicionar role ({Status}): {Detail}", response.StatusCode, detail);
+            throw new InvalidOperationException("Não foi possível atribuir a role ao usuário no Microsoft Graph.");
+        }
+    }
+
+    private static Guid ParseObjectId(string objectId)
+    {
+        if (!Guid.TryParse(objectId, out var guid))
+            throw new InvalidOperationException("Identificador do usuário não corresponde a um Object ID válido do Entra ID.");
+
+        return guid;
+    }
+
+    private async Task<string> GetAccessTokenAsync(CancellationToken ct)
+    {
+        if (!string.IsNullOrEmpty(_cachedToken) && _tokenExpiresAt > DateTimeOffset.UtcNow.AddMinutes(1))
+            return _cachedToken!;
+
+        await _tokenLock.WaitAsync(ct);
+        try
+        {
+            if (!string.IsNullOrEmpty(_cachedToken) && _tokenExpiresAt > DateTimeOffset.UtcNow.AddMinutes(1))
+                return _cachedToken!;
+
+            var options = ValidateOptions();
+            var client = _httpClientFactory.CreateClient();
+            var tokenEndpoint = new Uri($"https://login.microsoftonline.com/{options.TenantId}/oauth2/v2.0/token");
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, tokenEndpoint)
+            {
+                Content = new FormUrlEncodedContent(new Dictionary<string, string>
+                {
+                    ["client_id"] = options.ClientId,
+                    ["client_secret"] = options.ClientSecret,
+                    ["scope"] = "https://graph.microsoft.com/.default",
+                    ["grant_type"] = "client_credentials"
+                })
+            };
+
+            using var response = await client.SendAsync(request, ct);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var detail = await response.Content.ReadAsStringAsync(ct);
+                _logger.LogError("Falha ao obter token do Microsoft Identity ({Status}): {Detail}", response.StatusCode, detail);
+                throw new InvalidOperationException("Não foi possível autenticar na API do Microsoft Graph.");
+            }
+
+            await using var stream = await response.Content.ReadAsStreamAsync(ct);
+            var token = await JsonSerializer.DeserializeAsync<TokenResponse>(stream, JsonOptions, ct)
+                ?? throw new InvalidOperationException("Resposta inválida ao solicitar token do Microsoft Graph.");
+
+            if (string.IsNullOrWhiteSpace(token.AccessToken))
+                throw new InvalidOperationException("Resposta inválida ao solicitar token do Microsoft Graph.");
+
+            _cachedToken = token.AccessToken;
+            var expiresIn = token.ExpiresIn > 0 ? token.ExpiresIn : 3600;
+            _tokenExpiresAt = DateTimeOffset.UtcNow.AddSeconds(expiresIn - 60);
+
+            return _cachedToken;
+        }
+        finally
+        {
+            _tokenLock.Release();
+        }
+    }
+
+    private EntraIdAppRoleOptions ValidateOptions()
+    {
+        var options = _options.Value;
+        if (string.IsNullOrWhiteSpace(options.TenantId)
+            || string.IsNullOrWhiteSpace(options.ClientId)
+            || string.IsNullOrWhiteSpace(options.ClientSecret)
+            || string.IsNullOrWhiteSpace(options.EnterpriseAppObjectId))
+        {
+            throw new InvalidOperationException("Configuração do Azure Entra ID incompleta.");
+        }
+
+        if (!Guid.TryParse(options.EnterpriseAppObjectId, out _))
+            throw new InvalidOperationException("Enterprise Application (service principal) inválida na configuração do Azure Entra ID.");
+
+        return options;
+    }
+
+    private Dictionary<Guid, string> GetRoleIdLookup()
+    {
+        var options = ValidateOptions();
+        var lookup = new Dictionary<Guid, string>();
+
+        foreach (var pair in options.RoleIds)
+        {
+            if (Guid.TryParse(pair.Value, out var id))
+                lookup[id] = pair.Key;
+        }
+
+        return lookup;
+    }
+
+    private sealed record GraphAppRoleAssignmentsResponse
+    {
+        public IReadOnlyList<AppRoleAssignment>? Value { get; init; }
+    }
+
+    private sealed record AppRoleAssignment
+    {
+        public Guid Id { get; init; }
+        public Guid? AppRoleId { get; init; }
+    }
+
+    private sealed record TokenResponse
+    {
+        public string? AccessToken { get; init; }
+        public int ExpiresIn { get; init; }
+    }
+}

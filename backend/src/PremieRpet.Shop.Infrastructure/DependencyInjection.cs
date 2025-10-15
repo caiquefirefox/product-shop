@@ -18,8 +18,11 @@ public static class DependencyInjection
         services.AddScoped<IProdutoRepository, ProdutoRepository>();
         services.AddScoped<IPedidoRepository, PedidoRepository>();
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+        services.AddHttpClient();
         services.Configure<AzureBlobStorageOptions>(configuration.GetSection("AzureStorage"));
         services.AddSingleton<IProdutoImagemStorageService, AzureProdutoImagemStorageService>();
+        services.Configure<EntraIdAppRoleOptions>(configuration.GetSection(EntraIdAppRoleOptions.SectionName));
+        services.AddScoped<IEntraIdRoleService, EntraIdRoleService>();
         return services;
     }
 }

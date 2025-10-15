@@ -1,9 +1,19 @@
 # PremieRpet Shop - Backend (.NET 9)
-1) Configure `appsettings.json` com seu Postgres, TenantId, Audience (api://...) e as chaves de armazenamento:
+1) Configure `appsettings.json` com seu Postgres, TenantId, Audience (api://...), credenciais do Azure Entra ID e as chaves de armazenamento:
    ```json
    "AzureStorage": {
      "ConnectionString": "<connection-string-do-blob>",
      "ProdutosContainer": "produtos"
+   },
+   "AzureEntra": {
+     "TenantId": "<tenant-id>",
+     "ClientId": "<client-id-da-api>",
+     "ClientSecret": "<client-secret-da-api>",
+     "EnterpriseAppObjectId": "<object-id-da-enterprise-application>",
+     "RoleIds": {
+       "Admin": "<app-role-id-admin>",
+       "Colaborador": "<app-role-id-colaborador>"
+     }
    }
    ```
 2) Rode as migrations (após adicionar EF Tools):  

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using PremieRpet.Shop.Application.DTOs;
 using PremieRpet.Shop.Application.Interfaces.Repositories;
+using PremieRpet.Shop.Application.Interfaces.Services;
 using PremieRpet.Shop.Application.Interfaces.UseCases;
 using PremieRpet.Shop.Domain.Entities;
 using PremieRpet.Shop.Domain.Rules;
@@ -15,10 +16,12 @@ public sealed class UsuarioService : IUsuarioService
     private const string DefaultRole = "Colaborador";
 
     private readonly IUsuarioRepository _usuarios;
+    private readonly IEntraIdRoleService _entraRoles;
 
-    public UsuarioService(IUsuarioRepository usuarios)
+    public UsuarioService(IUsuarioRepository usuarios, IEntraIdRoleService entraRoles)
     {
         _usuarios = usuarios;
+        _entraRoles = entraRoles;
     }
 
     public async Task<UsuarioDto> ObterOuCriarAsync(string microsoftId, CancellationToken ct)
@@ -30,13 +33,16 @@ public sealed class UsuarioService : IUsuarioService
         if (usuario is null)
         {
             var agora = DateTimeOffset.UtcNow;
+            var roles = await _entraRoles.GetUserRolesAsync(microsoftId, ct);
+            var normalizedRoles = NormalizeRoles(roles, strict: false);
+
             usuario = new Usuario
             {
                 MicrosoftId = microsoftId,
                 CriadoEm = agora,
                 AtualizadoEm = agora,
             };
-            ApplyRoles(usuario, NormalizeRoles(null));
+            ApplyRoles(usuario, normalizedRoles);
             await _usuarios.AddAsync(usuario, ct);
         }
         else
@@ -63,6 +69,9 @@ public sealed class UsuarioService : IUsuarioService
 
         if (usuario is null)
         {
+            var roles = await _entraRoles.GetUserRolesAsync(microsoftId, ct);
+            var normalizedRoles = NormalizeRoles(roles, strict: false);
+
             usuario = new Usuario
             {
                 MicrosoftId = microsoftId,
@@ -70,7 +79,7 @@ public sealed class UsuarioService : IUsuarioService
                 CriadoEm = agora,
                 AtualizadoEm = agora,
             };
-            ApplyRoles(usuario, NormalizeRoles(null));
+            ApplyRoles(usuario, normalizedRoles);
             await _usuarios.AddAsync(usuario, ct);
         }
         else
@@ -165,6 +174,7 @@ public sealed class UsuarioService : IUsuarioService
             };
             ApplyRoles(usuario, normalizedRoles);
             await _usuarios.AddAsync(usuario, ct);
+            await _entraRoles.ReplaceUserRolesAsync(trimmedMicrosoftId, normalizedRoles, ct);
             return ToDto(usuario);
         }
 
@@ -183,6 +193,7 @@ public sealed class UsuarioService : IUsuarioService
 
         usuario.AtualizadoEm = agora;
         await _usuarios.UpdateAsync(usuario, ct);
+        await _entraRoles.ReplaceUserRolesAsync(usuario.MicrosoftId, normalizedRoles, ct);
         await _usuarios.ReplaceRolesAsync(usuario.Id, normalizedRoles, ct);
 
         var atualizado = await _usuarios.GetByMicrosoftIdAsync(trimmedMicrosoftId, ct)
@@ -209,7 +220,11 @@ public sealed class UsuarioService : IUsuarioService
         if (usuario.Roles.Any())
             return usuario;
 
-        var normalized = NormalizeRoles(null);
+        var remoteRoles = await _entraRoles.GetUserRolesAsync(usuario.MicrosoftId, ct);
+        var normalized = remoteRoles.Count > 0
+            ? NormalizeRoles(remoteRoles, strict: false)
+            : NormalizeRoles(null);
+
         await _usuarios.ReplaceRolesAsync(usuario.Id, normalized, ct);
         var atualizado = await _usuarios.GetByIdAsync(usuario.Id, ct);
         return atualizado ?? usuario;
@@ -232,7 +247,7 @@ public sealed class UsuarioService : IUsuarioService
         return new UsuarioDto(usuario.Id, usuario.MicrosoftId, usuario.Cpf, roles, usuario.CriadoEm, usuario.AtualizadoEm);
     }
 
-    private static IReadOnlyList<string> NormalizeRoles(IEnumerable<string>? roles)
+    private static IReadOnlyList<string> NormalizeRoles(IEnumerable<string>? roles, bool strict = true)
     {
         var normalized = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -246,7 +261,12 @@ public sealed class UsuarioService : IUsuarioService
                 var trimmed = role.Trim();
                 var allowed = AllowedRoles.FirstOrDefault(r => r.Equals(trimmed, StringComparison.OrdinalIgnoreCase));
                 if (allowed is null)
-                    throw new InvalidOperationException($"Perfil inválido: {trimmed}.");
+                {
+                    if (strict)
+                        throw new InvalidOperationException($"Perfil inválido: {trimmed}.");
+
+                    continue;
+                }
 
                 normalized.Add(allowed);
             }
