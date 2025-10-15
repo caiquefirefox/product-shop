@@ -201,18 +201,73 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                     b.ToTable("PedidoItens");
                 });
 
+            modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.PedidoHistorico", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("DataHora")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Detalhes")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<Guid>("PedidoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid?>("UsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("UsuarioNome")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PedidoId");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("PedidoHistoricos");
+                });
+
             modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.PedidoStatus", b =>
                 {
                     b.Property<int>("Id")
                         .HasColumnType("integer");
 
-                    b.Property<string>("Descricao")
+                    b.Property<string>("Nome")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.HasKey("Id");
 
                     b.ToTable("PedidoStatus");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Nome = "Solicitado"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Nome = "Aprovado"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Nome = "Cancelado"
+                        });
                 });
 
             modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.Produto", b =>
@@ -221,22 +276,10 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<DateTimeOffset?>("AtualizadoEm")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("AtualizadoPorUsuarioId")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("Codigo")
                         .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
-
-                    b.Property<DateTimeOffset>("CriadoEm")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("CriadoPorUsuarioId")
-                        .HasColumnType("uuid");
 
                     b.Property<string>("Descricao")
                         .IsRequired()
@@ -253,9 +296,11 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                         .HasMaxLength(1024)
                         .HasColumnType("character varying(1024)");
 
-                    b.Property<int>("QuantidadeMinimaDeCompra")
-                        .HasColumnType("integer")
-                        .HasDefaultValue(1);
+                    b.Property<DateTimeOffset?>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("AtualizadoPorUsuarioId")
+                        .HasColumnType("uuid");
 
                     b.Property<decimal>("Peso")
                         .HasColumnType("decimal(18,4)");
@@ -263,11 +308,26 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                     b.Property<decimal>("Preco")
                         .HasColumnType("numeric(18,2)");
 
-                    b.Property<Guid>("TipoProdutoOpcaoId")
-                        .HasColumnType("uuid");
+                    b.Property<int>("QuantidadeMinimaDeCompra")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
+                    b.Property<string>("Sabores")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<int>("TipoPeso")
                         .HasColumnType("int");
+
+                    b.Property<Guid>("TipoProdutoOpcaoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CriadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CriadoPorUsuarioId")
+                        .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
@@ -276,43 +336,15 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                     b.HasIndex("Codigo")
                         .IsUnique();
 
-                    b.HasIndex("CriadoPorUsuarioId");
-
                     b.HasIndex("EspecieOpcaoId");
 
                     b.HasIndex("FaixaEtariaOpcaoId");
 
+                    b.HasIndex("CriadoPorUsuarioId");
+
                     b.HasIndex("TipoProdutoOpcaoId");
 
                     b.ToTable("Produtos");
-
-                    b.HasOne("PremieRpet.Shop.Domain.Entities.Usuario", null)
-                        .WithMany()
-                        .HasForeignKey("AtualizadoPorUsuarioId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("PremieRpet.Shop.Domain.Entities.Usuario", null)
-                        .WithMany()
-                        .HasForeignKey("CriadoPorUsuarioId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("PremieRpet.Shop.Domain.Entities.ProdutoEspecieOpcao", "EspecieOpcao")
-                        .WithMany("Produtos")
-                        .HasForeignKey("EspecieOpcaoId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("PremieRpet.Shop.Domain.Entities.ProdutoFaixaEtariaOpcao", "FaixaEtariaOpcao")
-                        .WithMany("Produtos")
-                        .HasForeignKey("FaixaEtariaOpcaoId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("PremieRpet.Shop.Domain.Entities.ProdutoTipoOpcao", "TipoProdutoOpcao")
-                        .WithMany("Produtos")
-                        .HasForeignKey("TipoProdutoOpcaoId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.ProdutoEspecieOpcao", b =>
@@ -332,6 +364,18 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("ProdutoEspecieOpcoes");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("729ab7c1-d382-41d7-9324-8f9c4da49a98"),
+                            Nome = "Cães"
+                        },
+                        new
+                        {
+                            Id = new Guid("1582b871-a8ab-404b-9745-b5d2d7b028d1"),
+                            Nome = "Gato"
+                        });
                 });
 
             modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.ProdutoFaixaEtariaOpcao", b =>
@@ -351,25 +395,41 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("ProdutoFaixaEtariaOpcoes");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("8e29fa8e-f3bd-4f4a-a73c-82009fcb2998"),
+                            Nome = "Filhote"
+                        },
+                        new
+                        {
+                            Id = new Guid("1bb02ce7-54c9-43c6-9d28-68c9323fc86e"),
+                            Nome = "Adulto"
+                        },
+                        new
+                        {
+                            Id = new Guid("d815602e-b739-497c-bb92-2ff27c51a638"),
+                            Nome = "Senior"
+                        },
+                        new
+                        {
+                            Id = new Guid("87ba6774-1929-4ada-97ec-385fc846ab51"),
+                            Nome = "Todas"
+                        });
                 });
 
             modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.ProdutoPorte", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
                     b.Property<Guid>("ProdutoId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("ProdutoPorteOpcaoId")
+                    b.Property<Guid>("PorteOpcaoId")
                         .HasColumnType("uuid");
 
-                    b.HasKey("Id");
+                    b.HasKey("ProdutoId", "PorteOpcaoId");
 
-                    b.HasIndex("ProdutoId");
-
-                    b.HasIndex("ProdutoPorteOpcaoId");
+                    b.HasIndex("PorteOpcaoId");
 
                     b.ToTable("ProdutoPortes");
                 });
@@ -391,6 +451,38 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("ProdutoPorteOpcoes");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("d97fd958-c42a-4e45-8448-46eec579ed3c"),
+                            Nome = "Pequeno"
+                        },
+                        new
+                        {
+                            Id = new Guid("ce1dc193-dc38-4805-8ba0-7cb732f4eac6"),
+                            Nome = "Médio"
+                        },
+                        new
+                        {
+                            Id = new Guid("d29df7b6-989e-46e7-820b-49e221056a4c"),
+                            Nome = "Grande"
+                        },
+                        new
+                        {
+                            Id = new Guid("f04e38ce-f558-4bb9-8642-6750cf8145fd"),
+                            Nome = "Gigante"
+                        },
+                        new
+                        {
+                            Id = new Guid("d3541027-0408-4f9a-9937-18f4ae808fc9"),
+                            Nome = "NA"
+                        },
+                        new
+                        {
+                            Id = new Guid("78c01073-e9a1-4f06-b825-2a9af0032aa6"),
+                            Nome = "Mini"
+                        });
                 });
 
             modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.ProdutoTipoOpcao", b =>
@@ -410,23 +502,135 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("ProdutoTipoOpcoes");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("5006ea85-e9b1-4185-ba5d-08cecbcaf998"),
+                            Nome = "Alimento Seco"
+                        },
+                        new
+                        {
+                            Id = new Guid("1e2e7740-36e1-4961-96a5-308c6e48b457"),
+                            Nome = "Cookie"
+                        },
+                        new
+                        {
+                            Id = new Guid("601026f0-606b-4f67-bad7-eaefa16c62c6"),
+                            Nome = "Alimento Úmido"
+                        });
                 });
 
-            modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.Usuario", b =>
+            modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.PedidoItem", b =>
                 {
-                    b.Navigation("Roles");
+                    b.HasOne("PremieRpet.Shop.Domain.Entities.Pedido", "Pedido")
+                        .WithMany("Itens")
+                        .HasForeignKey("PedidoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PremieRpet.Shop.Domain.Entities.Produto", "Produto")
+                        .WithMany()
+                        .HasForeignKey("ProdutoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Pedido");
+
+                    b.Navigation("Produto");
+                });
+
+            modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.PedidoHistorico", b =>
+                {
+                    b.HasOne("PremieRpet.Shop.Domain.Entities.Pedido", "Pedido")
+                        .WithMany("Historicos")
+                        .HasForeignKey("PedidoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PremieRpet.Shop.Domain.Entities.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Pedido");
+
+                    b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.Produto", b =>
+                {
+                    b.HasOne("PremieRpet.Shop.Domain.Entities.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("AtualizadoPorUsuarioId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("FK_Produtos_Usuarios_AtualizadoPorUsuarioId");
+
+                    b.HasOne("PremieRpet.Shop.Domain.Entities.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("CriadoPorUsuarioId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("FK_Produtos_Usuarios_CriadoPorUsuarioId");
+
+                    b.HasOne("PremieRpet.Shop.Domain.Entities.ProdutoEspecieOpcao", "EspecieOpcao")
+                        .WithMany("Produtos")
+                        .HasForeignKey("EspecieOpcaoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PremieRpet.Shop.Domain.Entities.ProdutoFaixaEtariaOpcao", "FaixaEtariaOpcao")
+                        .WithMany("Produtos")
+                        .HasForeignKey("FaixaEtariaOpcaoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PremieRpet.Shop.Domain.Entities.ProdutoTipoOpcao", "TipoProdutoOpcao")
+                        .WithMany("Produtos")
+                        .HasForeignKey("TipoProdutoOpcaoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("EspecieOpcao");
+
+                    b.Navigation("FaixaEtariaOpcao");
+
+                    b.Navigation("TipoProdutoOpcao");
+                });
+
+            modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.ProdutoPorte", b =>
+                {
+                    b.HasOne("PremieRpet.Shop.Domain.Entities.ProdutoPorteOpcao", "PorteOpcao")
+                        .WithMany("Produtos")
+                        .HasForeignKey("PorteOpcaoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PremieRpet.Shop.Domain.Entities.Produto", "Produto")
+                        .WithMany("Portes")
+                        .HasForeignKey("ProdutoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PorteOpcao");
+
+                    b.Navigation("Produto");
                 });
 
             modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.Pedido", b =>
                 {
                     b.Navigation("Historicos");
-
                     b.Navigation("Itens");
+                    b.Navigation("Status");
                 });
 
             modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.PedidoStatus", b =>
                 {
                     b.Navigation("Pedidos");
+                });
+
+            modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.Produto", b =>
+                {
+                    b.Navigation("Portes");
                 });
 
             modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.ProdutoEspecieOpcao", b =>
@@ -447,6 +651,11 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
             modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.ProdutoTipoOpcao", b =>
                 {
                     b.Navigation("Produtos");
+                });
+
+            modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.Usuario", b =>
+                {
+                    b.Navigation("Roles");
                 });
 #pragma warning restore 612, 618
         }
