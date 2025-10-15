@@ -134,7 +134,8 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
             throw CreateGraphException(
                 response,
                 detail,
-                "Não foi possível consultar as roles do usuário no Microsoft Graph.");
+                "Não foi possível consultar as roles do usuário no Microsoft Graph.",
+                GraphPermissionScope.AssignmentsRead);
         }
 
         await using var stream = await response.Content.ReadAsStreamAsync(ct);
@@ -161,7 +162,8 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
             throw CreateGraphException(
                 response,
                 detail,
-                "Não foi possível remover a role do usuário no Microsoft Graph.");
+                "Não foi possível remover a role do usuário no Microsoft Graph.",
+                GraphPermissionScope.AssignmentsWrite);
         }
     }
 
@@ -195,7 +197,8 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
             throw CreateGraphException(
                 response,
                 detail,
-                "Não foi possível atribuir a role ao usuário no Microsoft Graph.");
+                "Não foi possível atribuir a role ao usuário no Microsoft Graph.",
+                GraphPermissionScope.AssignmentsWrite);
         }
     }
 
@@ -242,7 +245,8 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
                 throw CreateGraphException(
                     response,
                     detail,
-                    "Não foi possível autenticar na API do Microsoft Graph.");
+                    "Não foi possível autenticar na API do Microsoft Graph.",
+                    GraphPermissionScope.Token);
             }
 
             await using var stream = await response.Content.ReadAsStreamAsync(ct);
@@ -295,9 +299,13 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
         return lookup;
     }
 
-    private Exception CreateGraphException(HttpResponseMessage response, string? detail, string defaultMessage)
+    private Exception CreateGraphException(
+        HttpResponseMessage response,
+        string? detail,
+        string defaultMessage,
+        GraphPermissionScope scope)
     {
-        var permissionHelp = BuildPermissionHelpMessage();
+        var permissionHelp = BuildPermissionHelpMessage(scope);
 
         if (string.IsNullOrWhiteSpace(detail))
             return new InvalidOperationException($"{defaultMessage} {permissionHelp}");
@@ -340,20 +348,42 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
             || string.Equals(graphError.Code, "AuthorizationFailed", StringComparison.OrdinalIgnoreCase);
     }
 
-    private string BuildPermissionHelpMessage()
+    private string BuildPermissionHelpMessage(GraphPermissionScope scope)
     {
         var clientId = _options.Value.ClientId;
         var appIdentifier = string.IsNullOrWhiteSpace(clientId)
             ? "configurada em AzureEntra"
             : $"({clientId}) configurada em AzureEntra";
 
-        return
-            "A aplicação " + appIdentifier + " não possui permissões suficientes no Microsoft Graph para gerenciar app roles. " +
-            "No portal do Azure, abra o registro da API utilizado pelo backend (App registrations) e confirme que a permissão " +
-            "de aplicativo 'AppRoleAssignment.ReadWrite.All' está adicionada em Microsoft Graph e com 'Grant admin consent' " +
-            "concedido. Depois, em Aplicativos empresariais > (sua API) > Permissões, verifique se o status também aparece " +
-            "como concedido e, se necessário, utilize 'Grant admin consent' novamente ou o comando `az ad app permission " +
-            "admin-consent --id <client-id>` para finalizar o consentimento.";
+        return scope switch
+        {
+            GraphPermissionScope.AssignmentsRead =>
+                "A aplicação " + appIdentifier + " precisa das permissões de aplicativo 'AppRoleAssignment.ReadWrite.All' e " +
+                "'User.Read.All' concedidas no Microsoft Graph para consultar as roles dos usuários. Abra o registro da API " +
+                "utilizado pelo backend (App registrations), inclua ambas as permissões em Microsoft Graph > Application " +
+                "permissions e confirme o 'Grant admin consent'. Depois, em Aplicativos empresariais > (sua API) > Permissions, " +
+                "verifique se as duas permissões aparecem como concedidas; se necessário, clique em 'Grant admin consent' " +
+                "novamente ou execute `az ad app permission admin-consent --id <client-id>` com uma conta administradora." ,
+            GraphPermissionScope.AssignmentsWrite =>
+                "A aplicação " + appIdentifier + " precisa da permissão de aplicativo 'AppRoleAssignment.ReadWrite.All' " +
+                "concedida no Microsoft Graph para gerenciar app roles (e manter 'User.Read.All' para consultar os usuários). " +
+                "Confirme a adição das permissões no registro da API, o 'Grant admin consent' e o status concedido também em " +
+                "Aplicativos empresariais > (sua API) > Permissions; se necessário, utilize 'Grant admin consent' novamente ou " +
+                "o comando `az ad app permission admin-consent --id <client-id>`." ,
+            GraphPermissionScope.Token =>
+                "A aplicação " + appIdentifier + " não conseguiu autenticar no Microsoft Graph com client credentials. Revise " +
+                "TenantId, ClientId e ClientSecret na configuração 'AzureEntra', confirme que o segredo não expirou em " +
+                "Certificados e segredos e que a aplicação recebeu 'Grant admin consent' para as permissões requeridas." ,
+            _ =>
+                "A aplicação " + appIdentifier + " não possui permissões suficientes no Microsoft Graph. Conceda 'AppRoleAssignment.ReadWrite.All' e 'User.Read.All' como permissões de aplicativo e aplique 'Grant admin consent'."
+        };
+    }
+
+    private enum GraphPermissionScope
+    {
+        AssignmentsRead,
+        AssignmentsWrite,
+        Token
     }
 
     private sealed record GraphAppRoleAssignmentsResponse

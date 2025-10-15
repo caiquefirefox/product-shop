@@ -25,23 +25,24 @@
 
    > **Permissões necessárias no Microsoft Graph**
    >
-   > Para consultar, adicionar e remover app roles pelo serviço `EntraIdRoleService`, o registro da aplicação **precisa** ter a permissão de aplicativo **Microsoft Graph > AppRoleAssignment.ReadWrite.All** e o **consentimento de administrador** concedido. Sem isso, o Graph retorna `Authorization_RequestDenied` (HTTP 403) informando "Insufficient privileges to complete the operation".
+  > Para consultar, adicionar e remover app roles pelo serviço `EntraIdRoleService`, o registro da aplicação **precisa** ter as permissões de aplicativo **Microsoft Graph > AppRoleAssignment.ReadWrite.All** e **Microsoft Graph > User.Read.All**, ambas com **consentimento de administrador** concedido. Sem isso, o Graph retorna `Authorization_RequestDenied` (HTTP 403) informando "Insufficient privileges to complete the operation".
    >
    > Passo a passo no portal:
    > 1. Abra o registro da aplicação que representa a API (`App registrations`).
    > 2. Em **API Permissions**, clique em **Add a permission** > **Microsoft Graph** > **Application permissions**.
-   > 3. Marque **AppRoleAssignment.ReadWrite.All** e confirme.
-   > 4. De volta à tela de permissões, clique em **Grant admin consent** para o tenant.
-   > 5. Aguarde alguns minutos para a propagação antes de chamar novamente a API.
+  > 3. Marque **AppRoleAssignment.ReadWrite.All** e **User.Read.All** e confirme.
+  > 4. De volta à tela de permissões, clique em **Grant admin consent** para o tenant.
+  > 5. Em **Enterprise applications > (sua API) > Permissions**, confirme que ambas aparecem como *Granted*. Se necessário, clique em **Grant admin consent** novamente.
+  > 6. Aguarde alguns minutos para a propagação antes de chamar novamente a API.
    >
    > Além disso, certifique-se de que a Enterprise Application correspondente permita atribuições de usuários e que o usuário administrativo possua autorização para gerenciar essas atribuições.
 
    > **Como diagnosticar `Authorization_RequestDenied`**
    >
    > 1. Confira se o `ClientId` usado em `AzureEntra` pertence ao **mesmo** registro de aplicação onde você adicionou a permissão.
-   > 2. Na tela **API permissions**, verifique se a coluna *Status* mostra `Granted for <tenant>`. Se não mostrar, clique novamente em **Grant admin consent**.
-   > 3. Vá em **Enterprise applications > (sua API) > Permissions** e confirme que as permissões aparecem como concedidas. Caso o portal indique que o consentimento ainda não foi aplicado, utilize o botão **Grant admin consent** ou execute `az ad app permission admin-consent --id <client-id>` com uma conta administradora.
-   > 4. Depois do consentimento, aguarde alguns minutos e tente chamar a API novamente. A propagação pode levar alguns instantes.
+  > 2. Na tela **API permissions**, verifique se a coluna *Status* mostra `Granted for <tenant>` para **AppRoleAssignment.ReadWrite.All** e **User.Read.All**. Se não mostrar, clique novamente em **Grant admin consent**.
+  > 3. Vá em **Enterprise applications > (sua API) > Permissions** e confirme que ambas as permissões aparecem como concedidas. Caso o portal indique que o consentimento ainda não foi aplicado, utilize o botão **Grant admin consent** ou execute `az ad app permission admin-consent --id <client-id>` com uma conta administradora.
+  > 4. Depois do consentimento, aguarde alguns minutos e tente chamar a API novamente. A propagação pode levar alguns instantes.
 2) Rode as migrations (após adicionar EF Tools):  
 ```
 dotnet tool install --global dotnet-ef
