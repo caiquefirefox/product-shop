@@ -430,6 +430,7 @@ export default function Catalogo() {
               const gradient = gradientClasses[index % gradientClasses.length];
               const precoFormatado = formatCurrencyBRL(p.preco);
               const portes = p.porteNomes.length ? p.porteNomes.join(", ") : "Todos os portes";
+              const imageUrl = p.imagemUrl;
 
               return (
                 <article
@@ -441,12 +442,12 @@ export default function Catalogo() {
                       className={`flex w-full flex-shrink-0 flex-col justify-center rounded-2xl border border-indigo-50 bg-gradient-to-br ${gradient} p-4 sm:w-[220px] lg:w-[240px]`}
                     >
                       <div className="group/image relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl border border-white/70 bg-white/80 shadow-inner">
-                        {p.imagemUrl ? (
+                        {imageUrl ? (
                           <button
                             type="button"
                             onClick={() =>
                               handleExpandImage(
-                                p.imagemUrl,
+                                imageUrl,
                                 `Imagem ilustrativa do produto ${p.descricao}`,
                               )
                             }
@@ -454,7 +455,7 @@ export default function Catalogo() {
                             aria-label={`Ampliar imagem do produto ${p.descricao}`}
                           >
                             <img
-                              src={p.imagemUrl}
+                              src={imageUrl}
                               alt={`Imagem ilustrativa do produto ${p.descricao}`}
                               className="h-full w-full object-contain"
                               loading="lazy"
