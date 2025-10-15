@@ -123,7 +123,7 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         var enterpriseAppId = Guid.Parse(options.EnterpriseAppObjectId);
-        var url = $"servicePrincipals/{enterpriseAppId}/appRoleAssignedTo?$filter=principalId eq {FormatGuid(userObjectId)}";
+        var url = $"users/{FormatGuid(userObjectId)}/appRoleAssignments?$filter=resourceId eq {FormatGuid(enterpriseAppId)}";
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         using var response = await client.SendAsync(request, ct);
 
@@ -364,7 +364,7 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
         {
             GraphPermissionScope.AssignmentsRead =>
                 "A aplicação " + appIdentifier + " precisa da permissão de aplicativo 'AppRoleAssignment.ReadWrite.All' " +
-                "concedida no Microsoft Graph para listar os vínculos em `servicePrincipals/{appId}/appRoleAssignedTo`. Abra o " +
+                "concedida no Microsoft Graph para listar os vínculos em `users/{id}/appRoleAssignments`. Abra o " +
                 "registro da API utilizado pelo backend (App registrations), inclua a permissão em Microsoft Graph > Application " +
                 "permissions e confirme o 'Grant admin consent'. Depois, em Aplicativos empresariais > (sua API) > Permissions, " +
                 "verifique se o status aparece como concedido; se necessário, clique em 'Grant admin consent' novamente ou execute `az ad app permission admin-consent --id <client-id>` com uma conta administradora." ,
