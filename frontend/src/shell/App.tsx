@@ -7,6 +7,7 @@ import Carrinho from "../views/Carrinho";
 import Checkout from "../views/Checkout";
 import Produtos from "../views/Produtos";
 import Relatorios from "../views/Relatorios";
+import Usuarios from "../views/Usuarios";
 import Pedidos from "../views/Pedidos";
 import Login from "../views/Login";
 import Protected from "../auth/Protected";
@@ -80,6 +81,11 @@ export default function App() {
                   Relatórios
                 </NavLink>
               )}
+              {isAdmin && (
+                <NavLink to="/usuarios" className={navLinkClassName}>
+                  Usuários
+                </NavLink>
+              )}
             </nav>
 
             <div className="flex items-center gap-4">
@@ -124,6 +130,7 @@ export default function App() {
           <Route path="/checkout" element={<Protected><Checkout/></Protected>} />
           <Route path="/produtos" element={<Protected requiredRole="Admin"><Produtos/></Protected>} />
           <Route path="/relatorios" element={<Protected requiredRole="Admin"><Relatorios/></Protected>} />
+          <Route path="/usuarios" element={<Protected requiredRole="Admin"><Usuarios/></Protected>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

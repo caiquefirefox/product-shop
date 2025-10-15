@@ -1,78 +1,63 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMsal } from "@azure/msal-react";
 import { pca } from "./msal";
+import api from "../lib/api";
+import type { UsuarioPerfil } from "../types/user";
 
-const LS_KEY = "premier:roles:v1";
-
-function decodeJwt<T = any>(jwt: string): T {
-  const base64Url = jwt.split(".")[1];
-  const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-  const json = decodeURIComponent(
-    atob(base64)
-      .split("")
-      .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-      .join("")
-  );
-  return JSON.parse(json) as T;
-}
+const LS_KEY = "premier:roles:v2";
 
 export function useUser() {
   const { accounts } = useMsal();
   const account = accounts[0] ?? pca.getActiveAccount() ?? pca.getAllAccounts()[0];
 
-  // 1) carrega do cache p/ evitar "flash" após F5
-  const cached = useMemo<string[]>(
+  const cachedRoles = useMemo<string[]>(
     () => JSON.parse(localStorage.getItem(LS_KEY) || "[]"),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [account?.homeAccountId] // se trocar de conta, o efeito abaixo atualiza
+    [account?.homeAccountId]
   );
 
-  const [roles, setRoles] = useState<string[]>(cached);
+  const [roles, setRoles] = useState<string[]>(cachedRoles);
+  const [profile, setProfile] = useState<UsuarioPerfil | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  async function refreshRoles() {
+  const refreshProfile = useCallback(async () => {
     if (!account) {
+      setProfile(null);
       setRoles([]);
       localStorage.removeItem(LS_KEY);
       setIsLoading(false);
       return;
     }
 
-    // roles do ID token (se a SPA tiver roles próprias)
-    const idRoles = ((account.idTokenClaims as any)?.roles ?? []) as string[];
-
+    setIsLoading(true);
     try {
-      const res = await pca.acquireTokenSilent({
-        account,
-        scopes: [import.meta.env.VITE_API_SCOPE as string],
-      });
-      const access = decodeJwt<any>(res.accessToken);
-      const apiRoles = (access?.roles ?? []) as string[];
-      const merged = Array.from(new Set([...idRoles, ...apiRoles]));
-      setRoles(merged);
-      localStorage.setItem(LS_KEY, JSON.stringify(merged));
+      const { data } = await api.get<UsuarioPerfil>("/usuarios/me");
+      const uniqueRoles = Array.from(new Set(data.roles ?? []));
+      setProfile(data);
+      setRoles(uniqueRoles);
+      localStorage.setItem(LS_KEY, JSON.stringify(uniqueRoles));
     } catch {
-      // sem access token: usa o que tiver (ID token / cache)
-      const merged = Array.from(new Set([...idRoles, ...cached]));
-      setRoles(merged);
-      localStorage.setItem(LS_KEY, JSON.stringify(merged));
+      // mantém o cache atual, mas remove o perfil até nova tentativa
+      setProfile(null);
+      if (cachedRoles.length === 0) {
+        setRoles([]);
+      }
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [account?.homeAccountId, cachedRoles]);
 
   useEffect(() => {
-    setIsLoading(true);
-    refreshRoles();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [account?.homeAccountId]);
+    refreshProfile();
+  }, [refreshProfile]);
 
   return {
     account,
     roles,
+    profile,
     isAdmin: roles.includes("Admin"),
     isLoading,
-    refreshRoles,
+    refreshRoles: refreshProfile,
     clearRolesCache: () => localStorage.removeItem(LS_KEY),
   };
 }

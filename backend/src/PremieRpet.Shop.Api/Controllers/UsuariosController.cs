@@ -23,6 +23,29 @@ public sealed class UsuariosController(IUsuarioService usuarios) : ControllerBas
         return Ok(perfil);
     }
 
+    [HttpGet]
+    [Authorize("Admin")]
+    public async Task<IActionResult> Listar(CancellationToken ct)
+    {
+        var lista = await usuarios.ListAsync(ct);
+        return Ok(lista);
+    }
+
+    [HttpPost]
+    [Authorize("Admin")]
+    public async Task<IActionResult> Upsert([FromBody] UsuarioUpsertRequest request, CancellationToken ct)
+    {
+        try
+        {
+            var resultado = await usuarios.UpsertAsync(request.MicrosoftId, request.Cpf, request.Roles, ct);
+            return Ok(resultado);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Problem(detail: ex.Message, statusCode: StatusCodes.Status400BadRequest);
+        }
+    }
+
     [HttpPut("me/cpf")]
     [Authorize]
     public async Task<IActionResult> DefinirCpf([FromBody] UsuarioCpfRequest request, CancellationToken ct)
