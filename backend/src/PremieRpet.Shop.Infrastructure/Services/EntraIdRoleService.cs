@@ -297,8 +297,10 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
 
     private Exception CreateGraphException(HttpResponseMessage response, string? detail, string defaultMessage)
     {
+        var permissionHelp = BuildPermissionHelpMessage();
+
         if (string.IsNullOrWhiteSpace(detail))
-            return new InvalidOperationException(defaultMessage);
+            return new InvalidOperationException($"{defaultMessage} {permissionHelp}");
 
         try
         {
@@ -307,15 +309,12 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
             {
                 if (IsAuthorizationDenied(response, graphError))
                 {
-                    return new InvalidOperationException(
-                        "A aplicação não possui permissões suficientes no Microsoft Graph para gerenciar app roles. " +
-                        "Garanta que o registro da API tenha a permissão de aplicativo 'AppRoleAssignment.ReadWrite.All' " +
-                        "com consentimento de administrador e que o Enterprise Application esteja configurado para permitir atribuições.");
+                    return new InvalidOperationException(permissionHelp);
                 }
 
                 if (!string.IsNullOrWhiteSpace(graphError.Message))
                 {
-                    return new InvalidOperationException($"{defaultMessage} Detalhes: {graphError.Message}");
+                    return new InvalidOperationException($"{defaultMessage} Detalhes: {graphError.Message}. {permissionHelp}");
                 }
             }
         }
@@ -326,13 +325,10 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
 
         if (response.StatusCode == HttpStatusCode.Forbidden)
         {
-            return new InvalidOperationException(
-                "A aplicação não possui permissões suficientes no Microsoft Graph para gerenciar app roles. " +
-                "Garanta que o registro da API tenha a permissão de aplicativo 'AppRoleAssignment.ReadWrite.All' " +
-                "com consentimento de administrador e que o Enterprise Application esteja configurado para permitir atribuições.");
+            return new InvalidOperationException(permissionHelp);
         }
 
-        return new InvalidOperationException($"{defaultMessage} Detalhes: {detail}");
+        return new InvalidOperationException($"{defaultMessage} Detalhes: {detail}. {permissionHelp}");
     }
 
     private static bool IsAuthorizationDenied(HttpResponseMessage response, GraphError graphError)
@@ -342,6 +338,22 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
 
         return string.Equals(graphError.Code, "Authorization_RequestDenied", StringComparison.OrdinalIgnoreCase)
             || string.Equals(graphError.Code, "AuthorizationFailed", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private string BuildPermissionHelpMessage()
+    {
+        var clientId = _options.Value.ClientId;
+        var appIdentifier = string.IsNullOrWhiteSpace(clientId)
+            ? "configurada em AzureEntra"
+            : $"({clientId}) configurada em AzureEntra";
+
+        return
+            "A aplicação " + appIdentifier + " não possui permissões suficientes no Microsoft Graph para gerenciar app roles. " +
+            "No portal do Azure, abra o registro da API utilizado pelo backend (App registrations) e confirme que a permissão " +
+            "de aplicativo 'AppRoleAssignment.ReadWrite.All' está adicionada em Microsoft Graph e com 'Grant admin consent' " +
+            "concedido. Depois, em Aplicativos empresariais > (sua API) > Permissões, verifique se o status também aparece " +
+            "como concedido e, se necessário, utilize 'Grant admin consent' novamente ou o comando `az ad app permission " +
+            "admin-consent --id <client-id>` para finalizar o consentimento.";
     }
 
     private sealed record GraphAppRoleAssignmentsResponse

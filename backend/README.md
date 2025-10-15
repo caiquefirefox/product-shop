@@ -35,6 +35,13 @@
    > 5. Aguarde alguns minutos para a propagação antes de chamar novamente a API.
    >
    > Além disso, certifique-se de que a Enterprise Application correspondente permita atribuições de usuários e que o usuário administrativo possua autorização para gerenciar essas atribuições.
+
+   > **Como diagnosticar `Authorization_RequestDenied`**
+   >
+   > 1. Confira se o `ClientId` usado em `AzureEntra` pertence ao **mesmo** registro de aplicação onde você adicionou a permissão.
+   > 2. Na tela **API permissions**, verifique se a coluna *Status* mostra `Granted for <tenant>`. Se não mostrar, clique novamente em **Grant admin consent**.
+   > 3. Vá em **Enterprise applications > (sua API) > Permissions** e confirme que as permissões aparecem como concedidas. Caso o portal indique que o consentimento ainda não foi aplicado, utilize o botão **Grant admin consent** ou execute `az ad app permission admin-consent --id <client-id>` com uma conta administradora.
+   > 4. Depois do consentimento, aguarde alguns minutos e tente chamar a API novamente. A propagação pode levar alguns instantes.
 2) Rode as migrations (após adicionar EF Tools):  
 ```
 dotnet tool install --global dotnet-ef
