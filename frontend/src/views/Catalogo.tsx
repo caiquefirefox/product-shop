@@ -348,13 +348,13 @@ export default function Catalogo() {
           >
             <button
               type="button"
-              className="absolute right-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white shadow-lg ring-1 ring-white/20 transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="absolute right-4 top-4 z-20 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white shadow-lg ring-1 ring-white/20 transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
               onClick={handleCloseExpandedImage}
               aria-label="Fechar visualização da imagem"
             >
               <X className="h-5 w-5" aria-hidden="true" />
             </button>
-            <div className="relative flex max-h-[70vh] w-full items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-black/20">
+            <div className="relative z-10 flex max-h-[70vh] w-full items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-black/20">
               <img
                 src={expandedImage.url}
                 alt={expandedImage.alt}
