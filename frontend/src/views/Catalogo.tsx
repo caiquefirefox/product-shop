@@ -1,5 +1,10 @@
-import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, ShoppingCart } from "lucide-react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
+import { CheckCircle2, ShoppingCart, X } from "lucide-react";
 import api from "../lib/api";
 import { useCart } from "../cart/CartContext";
 import type { Produto } from "../cart/types";
@@ -47,6 +52,14 @@ export default function Catalogo() {
   const { addProduct } = useCart();
   const [feedback, setFeedback] = useState<AddToCartFeedback | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [expandedImage, setExpandedImage] = useState<
+    { url: string; alt: string } | null
+  >(null);
+  const [zoomState, setZoomState] = useState({
+    active: false,
+    x: 50,
+    y: 50,
+  });
   const hideTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const removeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [codigoFiltro, setCodigoFiltro] = useState("");
@@ -238,6 +251,52 @@ export default function Catalogo() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!expandedImage) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setExpandedImage(null);
+      }
+    };
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [expandedImage]);
+
+  const handleExpandImage = (url: string, alt: string) => {
+    setExpandedImage({ url, alt });
+    setZoomState({ active: false, x: 50, y: 50 });
+  };
+
+  const handleCloseExpandedImage = () => {
+    setExpandedImage(null);
+  };
+
+  const handleZoomMove = (event: ReactMouseEvent<HTMLImageElement>) => {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const offsetX = ((event.clientX - bounds.left) / bounds.width) * 100;
+    const offsetY = ((event.clientY - bounds.top) / bounds.height) * 100;
+
+    setZoomState({
+      active: true,
+      x: Math.min(100, Math.max(0, offsetX)),
+      y: Math.min(100, Math.max(0, offsetY)),
+    });
+  };
+
+  const handleZoomEnd = () => {
+    setZoomState(prev => ({ ...prev, active: false }));
+  };
+
   const handleAdd = (produto: Produto) => {
     const quantidade = minQtyFor(produto);
     addProduct(produto, quantidade);
@@ -275,6 +334,52 @@ export default function Catalogo() {
 
   return (
     <div className="space-y-4">
+      {expandedImage && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/80 p-6 backdrop-blur"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Visualização ampliada da imagem do produto"
+          onClick={handleCloseExpandedImage}
+        >
+          <div
+            className="relative flex max-h-full w-full max-w-4xl items-center justify-center overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 shadow-2xl"
+            onClick={event => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="absolute right-4 top-4 z-20 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white shadow-lg ring-1 ring-white/20 transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              onClick={handleCloseExpandedImage}
+              aria-label="Fechar visualização da imagem"
+            >
+              <X className="h-5 w-5" aria-hidden="true" />
+            </button>
+            <div className="relative z-10 flex max-h-[70vh] w-full items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-black/20">
+              <img
+                src={expandedImage.url}
+                alt={expandedImage.alt}
+                className="max-h-[70vh] w-full object-contain transition-transform duration-200 ease-out"
+                onMouseMove={handleZoomMove}
+                onMouseLeave={handleZoomEnd}
+                style={{
+                  transformOrigin: `${zoomState.x}% ${zoomState.y}%`,
+                  transform: zoomState.active ? "scale(1.75)" : "scale(1)",
+                  cursor: "zoom-in",
+                  willChange: "transform",
+                }}
+              />
+              <div
+                className={`pointer-events-none absolute inset-x-0 bottom-0 flex justify-center px-4 pb-4 transition-opacity duration-200 ${zoomState.active ? "opacity-0" : "opacity-100"}`}
+              >
+                <span className="inline-flex items-center justify-center rounded-full bg-white/15 px-3 py-1 text-xs font-medium uppercase tracking-wide text-white shadow-sm backdrop-blur">
+                  Passe o mouse para dar zoom
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="pointer-events-none fixed inset-x-0 top-4 z-50 flex justify-center sm:top-8">
         {feedback && (
           <div
@@ -325,6 +430,7 @@ export default function Catalogo() {
               const gradient = gradientClasses[index % gradientClasses.length];
               const precoFormatado = formatCurrencyBRL(p.preco);
               const portes = p.porteNomes.length ? p.porteNomes.join(", ") : "Todos os portes";
+              const imageUrl = p.imagemUrl;
 
               return (
                 <article
@@ -335,14 +441,29 @@ export default function Catalogo() {
                     <div
                       className={`flex w-full flex-shrink-0 flex-col justify-center rounded-2xl border border-indigo-50 bg-gradient-to-br ${gradient} p-4 sm:w-[220px] lg:w-[240px]`}
                     >
-                      <div className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl border border-white/70 bg-white/80 shadow-inner">
-                        {p.imagemUrl ? (
-                          <img
-                            src={p.imagemUrl}
-                            alt={`Imagem ilustrativa do produto ${p.descricao}`}
-                            className="h-full w-full object-contain"
-                            loading="lazy"
-                          />
+                      <div className="group/image relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl border border-white/70 bg-white/80 shadow-inner">
+                        {imageUrl ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleExpandImage(
+                                imageUrl,
+                                `Imagem ilustrativa do produto ${p.descricao}`,
+                              )
+                            }
+                            className="relative flex h-full w-full items-center justify-center outline-none transition focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                            aria-label={`Ampliar imagem do produto ${p.descricao}`}
+                          >
+                            <img
+                              src={imageUrl}
+                              alt={`Imagem ilustrativa do produto ${p.descricao}`}
+                              className="h-full w-full object-contain"
+                              loading="lazy"
+                            />
+                            <span className="pointer-events-none absolute inset-x-3 bottom-3 flex items-center justify-center rounded-full bg-slate-900/80 px-3 py-1 text-[11px] font-medium text-white opacity-0 backdrop-blur transition group-hover/image:opacity-100">
+                              Clique para ampliar
+                            </span>
+                          </button>
                         ) : (
                           <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Sem imagem</span>
                         )}
