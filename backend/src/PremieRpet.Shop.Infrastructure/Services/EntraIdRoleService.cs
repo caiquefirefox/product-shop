@@ -123,7 +123,7 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         var enterpriseAppId = Guid.Parse(options.EnterpriseAppObjectId);
-        var url = $"users/{userObjectId}/appRoleAssignments?$filter=resourceId eq {enterpriseAppId}";
+        var url = $"servicePrincipals/{enterpriseAppId}/appRoleAssignedTo?$filter=principalId eq {FormatGuid(userObjectId)}";
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         using var response = await client.SendAsync(request, ct);
 
@@ -147,12 +147,14 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
 
     private async Task RemoveAssignmentAsync(Guid userObjectId, Guid assignmentId, CancellationToken ct)
     {
+        var options = ValidateOptions();
+        var enterpriseAppId = Guid.Parse(options.EnterpriseAppObjectId);
         var token = await GetAccessTokenAsync(ct);
         var client = _httpClientFactory.CreateClient();
         client.BaseAddress = GraphBaseUri;
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        using var request = new HttpRequestMessage(HttpMethod.Delete, $"users/{userObjectId}/appRoleAssignments/{assignmentId}");
+        using var request = new HttpRequestMessage(HttpMethod.Delete, $"servicePrincipals/{enterpriseAppId}/appRoleAssignedTo/{assignmentId}");
         using var response = await client.SendAsync(request, ct);
 
         if (!response.IsSuccessStatusCode)
@@ -183,7 +185,7 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
             appRoleId = roleId
         };
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, $"users/{userObjectId}/appRoleAssignments")
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"servicePrincipals/{enterpriseAppId}/appRoleAssignedTo")
         {
             Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
         };
@@ -299,6 +301,9 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
         return lookup;
     }
 
+    private static string FormatGuid(Guid value)
+        => $"guid'{value}'";
+
     private Exception CreateGraphException(
         HttpResponseMessage response,
         string? detail,
@@ -358,24 +363,21 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
         return scope switch
         {
             GraphPermissionScope.AssignmentsRead =>
-                "A aplicação " + appIdentifier + " precisa das permissões de aplicativo 'AppRoleAssignment.ReadWrite.All' e " +
-                "'User.Read.All' concedidas no Microsoft Graph para consultar as roles dos usuários. Abra o registro da API " +
-                "utilizado pelo backend (App registrations), inclua ambas as permissões em Microsoft Graph > Application " +
+                "A aplicação " + appIdentifier + " precisa da permissão de aplicativo 'AppRoleAssignment.ReadWrite.All' " +
+                "concedida no Microsoft Graph para listar os vínculos em `servicePrincipals/{appId}/appRoleAssignedTo`. Abra o " +
+                "registro da API utilizado pelo backend (App registrations), inclua a permissão em Microsoft Graph > Application " +
                 "permissions e confirme o 'Grant admin consent'. Depois, em Aplicativos empresariais > (sua API) > Permissions, " +
-                "verifique se as duas permissões aparecem como concedidas; se necessário, clique em 'Grant admin consent' " +
-                "novamente ou execute `az ad app permission admin-consent --id <client-id>` com uma conta administradora." ,
+                "verifique se o status aparece como concedido; se necessário, clique em 'Grant admin consent' novamente ou execute `az ad app permission admin-consent --id <client-id>` com uma conta administradora." ,
             GraphPermissionScope.AssignmentsWrite =>
                 "A aplicação " + appIdentifier + " precisa da permissão de aplicativo 'AppRoleAssignment.ReadWrite.All' " +
-                "concedida no Microsoft Graph para gerenciar app roles (e manter 'User.Read.All' para consultar os usuários). " +
-                "Confirme a adição das permissões no registro da API, o 'Grant admin consent' e o status concedido também em " +
-                "Aplicativos empresariais > (sua API) > Permissions; se necessário, utilize 'Grant admin consent' novamente ou " +
-                "o comando `az ad app permission admin-consent --id <client-id>`." ,
+                "concedida no Microsoft Graph para criar e remover vínculos em `servicePrincipals/{appId}/appRoleAssignedTo`. " +
+                "Confirme a adição da permissão no registro da API, o 'Grant admin consent' e o status concedido também em Aplicativos empresariais > (sua API) > Permissions; se necessário, utilize 'Grant admin consent' novamente ou o comando `az ad app permission admin-consent --id <client-id>`." ,
             GraphPermissionScope.Token =>
                 "A aplicação " + appIdentifier + " não conseguiu autenticar no Microsoft Graph com client credentials. Revise " +
                 "TenantId, ClientId e ClientSecret na configuração 'AzureEntra', confirme que o segredo não expirou em " +
                 "Certificados e segredos e que a aplicação recebeu 'Grant admin consent' para as permissões requeridas." ,
             _ =>
-                "A aplicação " + appIdentifier + " não possui permissões suficientes no Microsoft Graph. Conceda 'AppRoleAssignment.ReadWrite.All' e 'User.Read.All' como permissões de aplicativo e aplique 'Grant admin consent'."
+                "A aplicação " + appIdentifier + " não possui permissões suficientes no Microsoft Graph. Conceda 'AppRoleAssignment.ReadWrite.All' como permissão de aplicativo e aplique 'Grant admin consent'."
         };
     }
 
