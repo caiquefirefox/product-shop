@@ -302,7 +302,7 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
     }
 
     private static string FormatGuid(Guid value)
-        => $"guid'{value}'";
+        => value.ToString("D");
 
     private Exception CreateGraphException(
         HttpResponseMessage response,
