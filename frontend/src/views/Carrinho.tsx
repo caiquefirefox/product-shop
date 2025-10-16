@@ -1,15 +1,19 @@
 import { useCart } from "../cart/CartContext";
 import { useNavigate } from "react-router-dom";
-import { ENV } from "../config/env";
 import { isBelowMin, itemSubtotal } from "../cart/calc";
 import { formatPeso } from "../lib/format";
+import { ENV } from "../config/env";
+import { useMonthlyLimit } from "../hooks/useMonthlyLimit";
 
 export default function Carrinho() {
   const { items, totalUnidades, totalValor, totalPesoKg, setQuantity, remove, clear, anyBelowMinimum } = useCart();
   const navigate = useNavigate();
-  const passouLimite = totalPesoKg > ENV.LIMIT_KG_MES;
+  const { limitKg: limiteMensalKg, loading: limiteLoading, error: limiteErro } = useMonthlyLimit();
+  const passouLimite = limiteMensalKg > 0 && totalPesoKg > limiteMensalKg;
   const totalPesoFormatado = formatPeso(totalPesoKg, "kg", { unit: "kg" });
-  const limiteMensalFormatado = formatPeso(ENV.LIMIT_KG_MES, "kg");
+  const limiteMensalFormatado = limiteMensalKg > 0
+    ? formatPeso(limiteMensalKg, "kg", { unit: "kg" })
+    : "Não configurado";
 
   if (!items.length) {
     return (
@@ -98,6 +102,12 @@ export default function Carrinho() {
       {anyBelowMinimum && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
           Existem itens abaixo da quantidade mínima exigida. Ajuste as quantidades (veja os rótulos "mínimo").
+        </div>
+      )}
+
+      {limiteErro && !limiteLoading && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          {limiteErro}
         </div>
       )}
 

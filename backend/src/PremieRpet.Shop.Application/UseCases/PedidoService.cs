@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
@@ -26,6 +27,7 @@ public sealed class PedidoService : IPedidoService
     private readonly IUsuarioService _usuarios;
     private readonly PedidoSettings _settings;
     private readonly decimal _limiteKgMes;
+    private static readonly CultureInfo CulturePtBr = CultureInfo.GetCultureInfo("pt-BR");
 
     public PedidoService(
         IPedidoRepository ped,
@@ -68,6 +70,12 @@ public sealed class PedidoService : IPedidoService
             normalized.InitialStatusId = PedidoStatusIds.Solicitado;
 
         return normalized;
+    }
+
+    private string FormatarLimiteMensal()
+    {
+        var arredondado = decimal.Round(_limiteKgMes, 3, MidpointRounding.AwayFromZero);
+        return arredondado.ToString("N3", CulturePtBr);
     }
 
     private static PedidoDetalheDto MapToDetalhe(Pedido pedido)
@@ -254,7 +262,7 @@ public sealed class PedidoService : IPedidoService
             var pesoNovo = pesoAcumulado + (pesoUnitKg * item.Quantidade);
 
             if (pesoNovo > _limiteKgMes)
-                throw new InvalidOperationException($"Limite mensal de {_limiteKgMes} kg excedido.");
+                throw new InvalidOperationException($"Limite mensal de {FormatarLimiteMensal()} kg excedido.");
 
             pesoAcumulado = pesoNovo;
 
@@ -548,7 +556,7 @@ public sealed class PedidoService : IPedidoService
         }
 
         if (pesoBase + pesoNovoPedido > _limiteKgMes)
-            throw new InvalidOperationException($"Limite mensal de {_limiteKgMes} kg excedido.");
+            throw new InvalidOperationException($"Limite mensal de {FormatarLimiteMensal()} kg excedido.");
 
         var unidadeAnterior = pedido.UnidadeEntrega;
         pedido.UnidadeEntrega = dto.UnidadeEntrega;

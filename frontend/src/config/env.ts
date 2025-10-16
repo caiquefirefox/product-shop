@@ -56,7 +56,6 @@ const editWindowClosingDay = Math.max(
 );
 
 export const ENV = {
-  LIMIT_KG_MES: num(import.meta.env.VITE_LIMIT_KG_MES, 33.1),
   QTD_MINIMA_PADRAO: num(import.meta.env.VITE_QTD_MINIMA_PADRAO, 1),
   PEDIDOS_EDIT_WINDOW_OPENING_DAY: editWindowOpeningDay,
   PEDIDOS_EDIT_WINDOW_CLOSING_DAY: editWindowClosingDay,

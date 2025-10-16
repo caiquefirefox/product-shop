@@ -193,11 +193,6 @@ export default function Pedidos() {
   }, [isAdmin, pedidos]);
 
   const limiteMensalKg = useMemo(() => {
-    const envLimit = ENV.LIMIT_KG_MES;
-    if (Number.isFinite(envLimit) && envLimit > 0) {
-      return envLimit;
-    }
-
     const resumoLimit = resumo?.limiteKg ?? 0;
     return resumoLimit > 0 ? resumoLimit : 0;
   }, [resumo]);
