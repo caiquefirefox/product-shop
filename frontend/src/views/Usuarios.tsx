@@ -497,7 +497,14 @@ export default function Usuarios() {
             </label>
           </div>
 
-          <div className="md:col-span-2 flex justify-end">
+          <div className="md:col-span-2 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={handleCloseCreatePanel}
+              className="inline-flex items-center rounded-xl border border-gray-300 px-5 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2"
+            >
+              Cancelar
+            </button>
             <button
               type="submit"
               disabled={creating || !selectedSuggestion || newCpfHasError}
