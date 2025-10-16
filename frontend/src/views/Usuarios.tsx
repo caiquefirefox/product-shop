@@ -250,15 +250,36 @@ export default function Usuarios() {
   const handleSyncUsuarios = async () => {
     setSyncing(true);
     try {
-      const { data } = await api.post<{ inseridos?: number }>("/usuarios/sincronizar");
+      const { data } = await api.post<{ inseridos?: number; atualizados?: number }>("/usuarios/sincronizar");
       const inseridos = typeof data?.inseridos === "number" ? data.inseridos : 0;
-      if (inseridos > 0) {
-        const message = inseridos === 1
-          ? "1 novo usuário foi importado."
-          : `${inseridos} novos usuários foram importados.`;
-        toast.success("Sincronização concluída", message);
+      const atualizados = typeof data?.atualizados === "number" ? data.atualizados : 0;
+
+      if (inseridos > 0 || atualizados > 0) {
+        const importMessage = inseridos > 0
+          ? inseridos === 1
+            ? "1 novo usuário foi importado"
+            : `${inseridos} novos usuários foram importados`
+          : null;
+
+        const updateMessage = atualizados > 0
+          ? atualizados === 1
+            ? "O e-mail de 1 usuário foi atualizado"
+            : `Os e-mails de ${atualizados} usuários foram atualizados`
+          : null;
+
+        const parts: string[] = [];
+        if (importMessage) {
+          parts.push(importMessage);
+        }
+        if (updateMessage) {
+          parts.push(updateMessage);
+        }
+
+        const detail = parts.length > 0 ? `${parts.join(" e ")}.` : undefined;
+
+        toast.success("Sincronização concluída", detail);
       } else {
-        toast.info("Sincronização concluída", "Nenhum usuário novo encontrado.");
+        toast.info("Sincronização concluída", "Nenhuma alteração encontrada.");
       }
       await fetchUsuarios();
     } catch (error: any) {

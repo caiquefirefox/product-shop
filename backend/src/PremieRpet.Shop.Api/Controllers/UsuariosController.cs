@@ -68,8 +68,8 @@ public sealed class UsuariosController(IUsuarioService usuarios) : ControllerBas
     {
         try
         {
-            var inseridos = await usuarios.SincronizarAsync(ct);
-            return Ok(new UsuarioSyncResponse(inseridos));
+            var resultado = await usuarios.SincronizarAsync(ct);
+            return Ok(new UsuarioSyncResponse(resultado.Inseridos, resultado.Atualizados));
         }
         catch (InvalidOperationException ex)
         {

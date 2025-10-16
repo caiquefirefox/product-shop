@@ -271,40 +271,84 @@ public sealed class UsuarioService : IUsuarioService
         return resultados;
     }
 
-    public async Task<int> SincronizarAsync(CancellationToken ct)
+    public async Task<UsuarioSyncResult> SincronizarAsync(CancellationToken ct)
     {
         var remoteUsuarios = await _entraRoles.ListApplicationUsersAsync(ct);
         if (remoteUsuarios.Count == 0)
-            return 0;
+            return new UsuarioSyncResult(0, 0);
 
         var existentes = await _usuarios.ListAsync(ct);
-        var existentesPorId = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var existentesPorEmail = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var existentesPorId = new Dictionary<string, Usuario>(StringComparer.OrdinalIgnoreCase);
+        var existentesPorEmail = new Dictionary<string, Usuario>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var usuario in existentes)
         {
-            if (!string.IsNullOrWhiteSpace(usuario.MicrosoftId))
-                existentesPorId.Add(usuario.MicrosoftId);
+            if (!string.IsNullOrWhiteSpace(usuario.MicrosoftId) && !existentesPorId.ContainsKey(usuario.MicrosoftId))
+                existentesPorId[usuario.MicrosoftId] = usuario;
 
             var normalizado = TryNormalizeEmail(usuario.Email);
-            if (!string.IsNullOrWhiteSpace(normalizado))
-                existentesPorEmail.Add(normalizado);
+            if (!string.IsNullOrWhiteSpace(normalizado) && !existentesPorEmail.ContainsKey(normalizado))
+                existentesPorEmail[normalizado] = usuario;
         }
 
         var novos = new List<Usuario>();
+        var atualizados = new List<Usuario>();
+        var atualizadosPorId = new HashSet<Guid>();
         var agora = DateTimeOffset.UtcNow;
 
         foreach (var remoto in remoteUsuarios)
         {
-            if (existentesPorId.Contains(remoto.MicrosoftId))
-                continue;
-
             var emailNormalizado = TryNormalizeEmail(remoto.Email);
             if (string.IsNullOrWhiteSpace(emailNormalizado))
                 continue;
 
-            if (existentesPorEmail.Contains(emailNormalizado))
+            if (existentesPorId.TryGetValue(remoto.MicrosoftId, out var existentePorId))
+            {
+                var emailAtual = TryNormalizeEmail(existentePorId.Email);
+                if (!string.Equals(emailAtual, emailNormalizado, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!string.IsNullOrWhiteSpace(emailAtual) &&
+                        existentesPorEmail.TryGetValue(emailAtual, out var usuarioAtual) &&
+                        usuarioAtual.Id == existentePorId.Id)
+                    {
+                        existentesPorEmail.Remove(emailAtual);
+                    }
+
+                    existentePorId.Email = emailNormalizado;
+                    existentePorId.AtualizadoEm = agora;
+
+                    if (atualizadosPorId.Add(existentePorId.Id))
+                        atualizados.Add(existentePorId);
+
+                    existentesPorEmail[emailNormalizado] = existentePorId;
+                }
+
+                existentesPorId[remoto.MicrosoftId] = existentePorId;
                 continue;
+            }
+
+            if (existentesPorEmail.TryGetValue(emailNormalizado, out var existentePorEmail))
+            {
+                if (!string.Equals(existentePorEmail.MicrosoftId, remoto.MicrosoftId, StringComparison.OrdinalIgnoreCase))
+                {
+                    var antigoId = existentePorEmail.MicrosoftId;
+                    existentePorEmail.MicrosoftId = remoto.MicrosoftId;
+                    existentePorEmail.AtualizadoEm = agora;
+
+                    if (atualizadosPorId.Add(existentePorEmail.Id))
+                        atualizados.Add(existentePorEmail);
+
+                    if (!string.IsNullOrWhiteSpace(antigoId) &&
+                        existentesPorId.TryGetValue(antigoId, out var usuarioAntigo) &&
+                        usuarioAntigo.Id == existentePorEmail.Id)
+                    {
+                        existentesPorId.Remove(antigoId);
+                    }
+                }
+
+                existentesPorId[remoto.MicrosoftId] = existentePorEmail;
+                continue;
+            }
 
             var roles = remoto.Roles.Count > 0
                 ? NormalizeRoles(remoto.Roles, strict: false)
@@ -320,14 +364,17 @@ public sealed class UsuarioService : IUsuarioService
 
             ApplyRoles(novoUsuario, roles);
             novos.Add(novoUsuario);
-            existentesPorId.Add(remoto.MicrosoftId);
-            existentesPorEmail.Add(emailNormalizado);
+            existentesPorId[remoto.MicrosoftId] = novoUsuario;
+            existentesPorEmail[emailNormalizado] = novoUsuario;
         }
 
         if (novos.Count > 0)
             await _usuarios.AddRangeAsync(novos, ct);
 
-        return novos.Count;
+        if (atualizados.Count > 0)
+            await _usuarios.UpdateRangeAsync(atualizados, ct);
+
+        return new UsuarioSyncResult(novos.Count, atualizados.Count);
     }
 
     private async Task<(Usuario? usuario, string microsoftId)> FindExistingUsuarioAsync(string normalizedEmail, CancellationToken ct)

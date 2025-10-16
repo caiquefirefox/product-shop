@@ -61,6 +61,12 @@ public sealed class UsuarioRepository : IUsuarioRepository
         await _db.SaveChangesAsync(ct);
     }
 
+    public async Task UpdateRangeAsync(IEnumerable<Usuario> usuarios, CancellationToken ct)
+    {
+        _db.Usuarios.UpdateRange(usuarios);
+        await _db.SaveChangesAsync(ct);
+    }
+
     public async Task ReplaceRolesAsync(Guid usuarioId, IEnumerable<string> roles, CancellationToken ct)
     {
         var normalized = new HashSet<string>(roles, StringComparer.OrdinalIgnoreCase);
