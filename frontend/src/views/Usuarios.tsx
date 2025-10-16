@@ -2,7 +2,7 @@ import { ChangeEvent, FormEvent, useCallback, useEffect, useState } from "react"
 import api from "../lib/api";
 import { useToast } from "../ui/toast";
 import { formatCpf, isValidCpf, sanitizeCpf } from "../lib/cpf";
-import type { UsuarioPerfil } from "../types/user";
+import type { UsuarioPerfil, UsuarioLookup } from "../types/user";
 import { useUser } from "../auth/useUser";
 
 const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
@@ -13,6 +13,8 @@ const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
 function buildRoles(isAdmin: boolean) {
   return isAdmin ? ["Admin", "Colaborador"] : ["Colaborador"];
 }
+
+const MIN_SEARCH_LENGTH = 3;
 
 export default function Usuarios() {
   const toast = useToast();
@@ -26,6 +28,11 @@ export default function Usuarios() {
   const [newIsAdmin, setNewIsAdmin] = useState(false);
   const [creating, setCreating] = useState(false);
 
+  const [searchResults, setSearchResults] = useState<UsuarioLookup[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [selectedSuggestion, setSelectedSuggestion] = useState<UsuarioLookup | null>(null);
+
   const [draftAdmins, setDraftAdmins] = useState<Record<string, boolean>>({});
   const [draftCpfs, setDraftCpfs] = useState<Record<string, string>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -34,6 +41,7 @@ export default function Usuarios() {
   const newCpfIncomplete = newCpf.length > 0 && !newCpfComplete;
   const newCpfInvalid = newCpfComplete && !isValidCpf(newCpf);
   const newCpfHasError = newCpfIncomplete || newCpfInvalid;
+  const trimmedEmail = newEmail.trim();
 
   const fetchUsuarios = useCallback(async () => {
     setReloading(true);
@@ -55,15 +63,91 @@ export default function Usuarios() {
     fetchUsuarios();
   }, [fetchUsuarios]);
 
+  useEffect(() => {
+    const query = newEmail.trim();
+
+    if (!query) {
+      setSearchResults([]);
+      setSearchError(null);
+      setSearching(false);
+      return;
+    }
+
+    if (query.length < MIN_SEARCH_LENGTH) {
+      setSearchResults([]);
+      setSearchError(null);
+      setSearching(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    setSearching(true);
+    setSearchError(null);
+
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const { data } = await api.get<UsuarioLookup[]>("/usuarios/buscar", {
+          params: { termo: query },
+          signal: controller.signal
+        });
+        const resultados = Array.isArray(data) ? data : [];
+        setSearchResults(resultados);
+        if (
+          selectedSuggestion &&
+          !resultados.some((item) => item.microsoftId === selectedSuggestion.microsoftId)
+        ) {
+          setSelectedSuggestion(null);
+        }
+      } catch (error: any) {
+        if (error?.code === "ERR_CANCELED" || controller.signal.aborted) {
+          return;
+        }
+        const detail = error?.response?.data?.detail as string | undefined;
+        setSearchError(detail ?? "Não foi possível buscar o usuário no Microsoft Entra ID.");
+        setSearchResults([]);
+        setSelectedSuggestion(null);
+      } finally {
+        setSearching(false);
+      }
+    }, 400);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timeoutId);
+    };
+  }, [newEmail]);
+
+  useEffect(() => {
+    if (!selectedSuggestion) {
+      return;
+    }
+
+    const normalized = newEmail.trim().toLowerCase();
+    if (!normalized || selectedSuggestion.email !== normalized) {
+      setSelectedSuggestion(null);
+    }
+  }, [newEmail, selectedSuggestion]);
+
   const handleNewCpfChange = (event: ChangeEvent<HTMLInputElement>) => {
     setNewCpf(sanitizeCpf(event.target.value));
   };
 
+  const handleSelectSuggestion = (suggestion: UsuarioLookup) => {
+    setSelectedSuggestion(suggestion);
+    setNewEmail(suggestion.email);
+    setSearchError(null);
+  };
+
   const handleCreate = async (event: FormEvent) => {
     event.preventDefault();
-    const email = newEmail.trim();
+    const chosenUser = selectedSuggestion;
+    const email = chosenUser?.email ?? newEmail.trim();
     if (!email) {
       toast.error("Informe o e-mail do usuário no Entra ID.");
+      return;
+    }
+    if (!chosenUser) {
+      toast.error("Selecione o usuário correspondente encontrado no Microsoft Entra ID.");
       return;
     }
     if (newCpfHasError) {
@@ -87,6 +171,9 @@ export default function Usuarios() {
       setNewEmail("");
       setNewCpf("");
       setNewIsAdmin(false);
+      setSelectedSuggestion(null);
+      setSearchResults([]);
+      setSearchError(null);
       await fetchUsuarios();
       await refreshRoles();
     } catch (error: any) {
@@ -179,6 +266,74 @@ export default function Usuarios() {
             />
           </label>
 
+          {trimmedEmail.length > 0 && (
+            <div className="md:col-span-2 rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-gray-700">
+                  Confirme o usuário localizado no Microsoft Entra ID
+                </h3>
+                {searching && <span className="text-xs text-gray-500">Buscando...</span>}
+              </div>
+              {trimmedEmail.length < MIN_SEARCH_LENGTH ? (
+                <p className="text-xs text-gray-500">
+                  Digite ao menos {MIN_SEARCH_LENGTH} caracteres para consultar o diretório.
+                </p>
+              ) : searchError ? (
+                <p className="text-xs text-red-600">{searchError}</p>
+              ) : searchResults.length === 0 ? (
+                <p className="text-xs text-gray-500">
+                  Nenhum usuário encontrado com o e-mail informado.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    {searchResults.map((usuario) => {
+                      const isSelected = selectedSuggestion?.microsoftId === usuario.microsoftId;
+                      const labelClass = [
+                        "flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 transition",
+                        isSelected
+                          ? "border-indigo-400 bg-white shadow-sm ring-2 ring-indigo-200"
+                          : "border-transparent bg-white hover:border-indigo-200 hover:shadow-sm"
+                      ].join(" ");
+
+                      return (
+                        <label
+                          key={usuario.microsoftId}
+                          className={labelClass}
+                        >
+                          <input
+                            type="radio"
+                            name="usuario-encontrado"
+                            className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                            checked={isSelected}
+                            onChange={() => handleSelectSuggestion(usuario)}
+                          />
+                          <div className="flex flex-col gap-1">
+                            <span className="text-sm font-semibold text-gray-900">
+                              {usuario.displayName ?? usuario.email}
+                            </span>
+                            <span className="font-mono text-xs text-gray-700">{usuario.email}</span>
+                            {usuario.userPrincipalName && usuario.userPrincipalName !== usuario.email && (
+                              <span className="font-mono text-[10px] text-gray-500">
+                                {usuario.userPrincipalName}
+                              </span>
+                            )}
+                            <span className="font-mono text-[10px] text-gray-400">{usuario.microsoftId}</span>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {!selectedSuggestion && (
+                    <p className="text-xs text-gray-500">
+                      Selecione um usuário da lista acima para confirmar o cadastro.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           <label className="flex flex-col gap-1">
             <span className="text-sm font-medium text-gray-700">CPF (opcional)</span>
             <input
@@ -212,7 +367,7 @@ export default function Usuarios() {
           <div className="md:col-span-2 flex justify-end">
             <button
               type="submit"
-              disabled={creating || !newEmail.trim() || newCpfHasError}
+              disabled={creating || !selectedSuggestion || newCpfHasError}
               className="inline-flex items-center rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-gray-300"
             >
               {creating ? "Salvando..." : "Adicionar usuário"}

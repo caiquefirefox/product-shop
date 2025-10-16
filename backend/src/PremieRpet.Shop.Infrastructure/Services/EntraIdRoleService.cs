@@ -96,6 +96,77 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
             .ToArray();
     }
 
+    public async Task<IReadOnlyList<EntraUserResult>> SearchUsersAsync(string query, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+            return Array.Empty<EntraUserResult>();
+
+        var trimmed = query.Trim();
+        if (trimmed.Length == 0)
+            return Array.Empty<EntraUserResult>();
+
+        var token = await GetAccessTokenAsync(ct);
+        var client = _httpClientFactory.CreateClient();
+        client.BaseAddress = GraphBaseUri;
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var resultados = new List<EntraUserResult>();
+        var dedupe = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        var directUrl = $"users/{Uri.EscapeDataString(trimmed)}?$select=id,displayName,mail,userPrincipalName";
+        using (var directRequest = new HttpRequestMessage(HttpMethod.Get, directUrl))
+        using (var directResponse = await client.SendAsync(directRequest, ct))
+        {
+            if (directResponse.IsSuccessStatusCode)
+            {
+                var usuario = await DeserializeUserAsync(directResponse, ct);
+                var mapped = MapGraphUser(usuario);
+                if (mapped is not null && dedupe.Add(mapped.MicrosoftId))
+                    resultados.Add(mapped);
+            }
+            else if (directResponse.StatusCode != HttpStatusCode.NotFound)
+            {
+                var detail = await directResponse.Content.ReadAsStringAsync(ct);
+                _logger.LogError("Falha ao localizar usuário {Query} ({Status}): {Detail}", trimmed, directResponse.StatusCode, detail);
+                throw CreateGraphException(directResponse, detail, "Não foi possível localizar usuários no Microsoft Graph.", GraphPermissionScope.UsersRead);
+            }
+        }
+
+        if (trimmed.Length >= 3 || resultados.Count == 0)
+        {
+            var filter = BuildSearchFilter(trimmed);
+            if (!string.IsNullOrWhiteSpace(filter))
+            {
+                var searchUrl = $"users?$select=id,displayName,mail,userPrincipalName&$top=10&$filter={Uri.EscapeDataString(filter)}";
+                using var searchRequest = new HttpRequestMessage(HttpMethod.Get, searchUrl);
+                using var searchResponse = await client.SendAsync(searchRequest, ct);
+
+                if (!searchResponse.IsSuccessStatusCode)
+                {
+                    var detail = await searchResponse.Content.ReadAsStringAsync(ct);
+                    _logger.LogError("Falha ao pesquisar usuários {Query} ({Status}): {Detail}", trimmed, searchResponse.StatusCode, detail);
+                    throw CreateGraphException(searchResponse, detail, "Não foi possível localizar usuários no Microsoft Graph.", GraphPermissionScope.UsersRead);
+                }
+
+                await using var stream = await searchResponse.Content.ReadAsStreamAsync(ct);
+                var payload = await JsonSerializer.DeserializeAsync<GraphUsersResponse>(stream, JsonOptions, ct)
+                    ?? new GraphUsersResponse();
+
+                if (payload.Value is not null)
+                {
+                    foreach (var user in payload.Value)
+                    {
+                        var mapped = MapGraphUser(user);
+                        if (mapped is not null && dedupe.Add(mapped.MicrosoftId))
+                            resultados.Add(mapped);
+                    }
+                }
+            }
+        }
+
+        return resultados;
+    }
+
     public async Task ReplaceUserRolesAsync(string userEmail, IEnumerable<string> roles, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(userEmail))
@@ -208,6 +279,62 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
     {
         await using var stream = await response.Content.ReadAsStreamAsync(ct);
         return await JsonSerializer.DeserializeAsync<GraphUser>(stream, JsonOptions, ct);
+    }
+
+    private static string? BuildSearchFilter(string query)
+    {
+        if (Guid.TryParse(query, out var parsedGuid))
+            return $"id eq {FormatGuid(parsedGuid)}";
+
+        var lowered = query.ToLowerInvariant();
+        var escaped = lowered.Replace("'", "''");
+
+        if (query.Contains('@', StringComparison.Ordinal))
+        {
+            return $"tolower(mail) eq '{escaped}' or tolower(userPrincipalName) eq '{escaped}'";
+        }
+
+        if (query.Length < 3)
+            return string.Empty;
+
+        return $"startswith(tolower(mail),'{escaped}') or startswith(tolower(userPrincipalName),'{escaped}') or startswith(tolower(displayName),'{escaped}')";
+    }
+
+    private static EntraUserResult? MapGraphUser(GraphUser? user)
+    {
+        if (user is null)
+            return null;
+
+        if (string.IsNullOrWhiteSpace(user.Id) || !Guid.TryParse(user.Id, out var parsed))
+            return null;
+
+        var normalizedMail = TryNormalizeGraphEmail(user.Mail);
+        var normalizedUpn = TryNormalizeGraphEmail(user.UserPrincipalName);
+        var email = normalizedMail ?? normalizedUpn;
+        if (string.IsNullOrWhiteSpace(email))
+            return null;
+
+        return new EntraUserResult(
+            parsed.ToString("D"),
+            email,
+            normalizedMail,
+            normalizedUpn,
+            user.DisplayName);
+    }
+
+    private static string? TryNormalizeGraphEmail(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+
+        try
+        {
+            return NormalizeEmail(value);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private async Task<IReadOnlyList<AppRoleAssignment>> GetAssignmentsAsync(Guid userObjectId, CancellationToken ct)
@@ -496,6 +623,8 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
     private sealed record GraphUser
     {
         public string? Id { get; init; }
+
+        public string? DisplayName { get; init; }
 
         public string? Mail { get; init; }
 

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PremieRpet.Shop.Api.Contracts;
 using PremieRpet.Shop.Api.Security;
+using PremieRpet.Shop.Application.DTOs;
 using PremieRpet.Shop.Application.Interfaces.UseCases;
 
 namespace PremieRpet.Shop.Api.Controllers;
@@ -29,6 +30,21 @@ public sealed class UsuariosController(IUsuarioService usuarios) : ControllerBas
     {
         var lista = await usuarios.ListAsync(ct);
         return Ok(lista);
+    }
+
+    [HttpGet("buscar")]
+    [Authorize("Admin")]
+    public async Task<IActionResult> Buscar([FromQuery] string termo, CancellationToken ct)
+    {
+        try
+        {
+            var resultados = await usuarios.BuscarEntraAsync(termo, ct);
+            return Ok(resultados);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Problem(detail: ex.Message, statusCode: StatusCodes.Status400BadRequest);
+        }
     }
 
     [HttpPost]

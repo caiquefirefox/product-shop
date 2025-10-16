@@ -8,4 +8,12 @@ type UsuarioPerfil = {
   atualizadoEm: string;
 };
 
-export type { UsuarioPerfil };
+type UsuarioLookup = {
+  microsoftId: string;
+  email: string;
+  mail: string | null;
+  userPrincipalName: string | null;
+  displayName: string | null;
+};
+
+export type { UsuarioPerfil, UsuarioLookup };

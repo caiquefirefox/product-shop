@@ -235,6 +235,42 @@ public sealed class UsuarioService : IUsuarioService
         return ToDto(atualizado);
     }
 
+    public async Task<IReadOnlyCollection<UsuarioLookupDto>> BuscarEntraAsync(string termo, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(termo))
+            return Array.Empty<UsuarioLookupDto>();
+
+        var trimmed = termo.Trim();
+
+        if (trimmed.Length < 3 && !Guid.TryParse(trimmed, out _))
+            return Array.Empty<UsuarioLookupDto>();
+
+        var encontrados = await _entraRoles.SearchUsersAsync(trimmed, ct);
+        if (encontrados.Count == 0)
+            return Array.Empty<UsuarioLookupDto>();
+
+        var resultados = new List<UsuarioLookupDto>(encontrados.Count);
+        var dedupe = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var resultado in encontrados)
+        {
+            if (string.IsNullOrWhiteSpace(resultado.Email))
+                continue;
+
+            if (!dedupe.Add(resultado.Email))
+                continue;
+
+            resultados.Add(new UsuarioLookupDto(
+                resultado.MicrosoftId,
+                resultado.Email,
+                resultado.Mail,
+                resultado.UserPrincipalName,
+                resultado.DisplayName));
+        }
+
+        return resultados;
+    }
+
     private async Task<(Usuario? usuario, string microsoftId)> FindExistingUsuarioAsync(string normalizedEmail, CancellationToken ct)
     {
         var existente = await _usuarios.GetByEmailAsync(normalizedEmail, ct);
