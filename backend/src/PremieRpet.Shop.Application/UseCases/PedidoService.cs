@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
@@ -25,7 +26,9 @@ public sealed class PedidoService : IPedidoService
     private readonly IProdutoRepository _produtos;
     private readonly IUsuarioService _usuarios;
     private readonly PedidoSettings _settings;
-    public const decimal LIMITE_KG_MES = 30m;
+    private readonly decimal _limiteKgMes;
+    private readonly int _quantidadeMinimaPadrao;
+    private static readonly CultureInfo CulturePtBr = CultureInfo.GetCultureInfo("pt-BR");
 
     public PedidoService(
         IPedidoRepository ped,
@@ -37,16 +40,32 @@ public sealed class PedidoService : IPedidoService
         _produtos = prod;
         _usuarios = usuarios;
         _settings = Normalizar(settings?.Value ?? new PedidoSettings());
+        _limiteKgMes = _settings.LimitKgPerUserPerMonth;
+        _quantidadeMinimaPadrao = _settings.DefaultMinQuantity;
     }
 
     private static PedidoSettings Normalizar(PedidoSettings settings)
     {
+        var limiteKg = settings.LimitKgPerUserPerMonth;
+        if (limiteKg <= 0)
+        {
+            limiteKg = PedidoSettings.DefaultLimitKgPerUserPerMonth;
+        }
+        else
+        {
+            limiteKg = decimal.Round(limiteKg, 3, MidpointRounding.AwayFromZero);
+        }
+
         var normalized = new PedidoSettings
         {
             EditWindowOpeningDay = Math.Clamp(settings.EditWindowOpeningDay, 1, 31),
             EditWindowClosingDay = Math.Clamp(settings.EditWindowClosingDay, 1, 31),
             MaxOrdersPerUserPerMonth = Math.Max(0, settings.MaxOrdersPerUserPerMonth),
-            InitialStatusId = settings.InitialStatusId > 0 ? settings.InitialStatusId : PedidoStatusIds.Solicitado
+            InitialStatusId = settings.InitialStatusId > 0 ? settings.InitialStatusId : PedidoStatusIds.Solicitado,
+            LimitKgPerUserPerMonth = limiteKg,
+            DefaultMinQuantity = settings.DefaultMinQuantity > 0
+                ? settings.DefaultMinQuantity
+                : PedidoSettings.DefaultMinQuantityValue
         };
 
         if (normalized.EditWindowClosingDay < normalized.EditWindowOpeningDay)
@@ -58,14 +77,27 @@ public sealed class PedidoService : IPedidoService
         return normalized;
     }
 
-    private static PedidoDetalheDto MapToDetalhe(Pedido pedido)
+    private string FormatarLimiteMensal()
+    {
+        var arredondado = decimal.Round(_limiteKgMes, 3, MidpointRounding.AwayFromZero);
+        return arredondado.ToString("N3", CulturePtBr);
+    }
+
+    private int ObterQuantidadeMinima(Produto? produto)
+    {
+        var quantidadeConfigurada = produto?.QuantidadeMinimaDeCompra ?? 0;
+        var efetivo = Math.Max(_quantidadeMinimaPadrao, quantidadeConfigurada);
+        return Math.Max(1, efetivo);
+    }
+
+    private PedidoDetalheDto MapToDetalhe(Pedido pedido)
     {
         var itens = pedido.Itens
             .OrderBy(i => i.Descricao)
             .Select(i =>
             {
                 var pesoUnitKg = PesoRules.ToKg(i.Peso, i.TipoPeso);
-                var quantidadeMinima = Math.Max(1, i.Produto?.QuantidadeMinimaDeCompra ?? 1);
+                var quantidadeMinima = ObterQuantidadeMinima(i.Produto);
                 return new PedidoDetalheItemDto(
                     i.ProdutoCodigo,
                     i.Descricao,
@@ -190,13 +222,13 @@ public sealed class PedidoService : IPedidoService
         return new DateTimeOffset(new DateTime(ano, mes, 1, 0, 0, 0, DateTimeKind.Utc));
     }
 
-    public async Task<PedidoResumoDto> CriarPedidoAsync(string usuarioEmail, string usuarioNome, PedidoCreateDto dto, CancellationToken ct)
+    public async Task<PedidoResumoDto> CriarPedidoAsync(string usuarioEmail, string? usuarioMicrosoftId, string usuarioNome, PedidoCreateDto dto, CancellationToken ct)
     {
         if (!UnidadesEntrega.Todas.Contains(dto.UnidadeEntrega))
             throw new InvalidOperationException("Unidade de entrega inválida.");
 
         var agora = DateTimeOffset.UtcNow;
-        var perfil = await _usuarios.GarantirCpfAsync(usuarioEmail, dto.Cpf, ct);
+        var perfil = await _usuarios.GarantirCpfAsync(usuarioEmail, usuarioMicrosoftId, dto.Cpf, ct);
         var pesoAcumulado = await PesoAcumuladoMesEmKgAsync(perfil.Id, agora, ct);
 
         var inicioMes = InicioMesUtc(agora.Year, agora.Month);
@@ -228,7 +260,7 @@ public sealed class PedidoService : IPedidoService
                 .FirstOrDefaultAsync(p => p.Codigo == item.ProdutoCodigo, ct)
                 ?? throw new InvalidOperationException($"Produto {item.ProdutoCodigo} não encontrado");
 
-            var quantidadeMinima = Math.Max(1, prod.QuantidadeMinimaDeCompra);
+            var quantidadeMinima = ObterQuantidadeMinima(prod);
             if (item.Quantidade < quantidadeMinima)
                 throw new InvalidOperationException($"Quantidade mínima para {prod.Descricao} é {quantidadeMinima} unidade(s).");
 
@@ -241,8 +273,8 @@ public sealed class PedidoService : IPedidoService
             var pesoUnitKg = PesoRules.ToKg(pesoOriginal, tipoPesoOriginal);
             var pesoNovo = pesoAcumulado + (pesoUnitKg * item.Quantidade);
 
-            if (pesoNovo > LIMITE_KG_MES)
-                throw new InvalidOperationException($"Limite mensal de {LIMITE_KG_MES} kg excedido.");
+            if (pesoNovo > _limiteKgMes)
+                throw new InvalidOperationException($"Limite mensal de {FormatarLimiteMensal()} kg excedido.");
 
             pesoAcumulado = pesoNovo;
 
@@ -467,11 +499,11 @@ public sealed class PedidoService : IPedidoService
         foreach (var item in itensNormalizados)
         {
             var prod = produtos[item.ProdutoCodigo];
-            var quantidadeMinima = Math.Max(1, prod.QuantidadeMinimaDeCompra);
-            if (item.Quantidade < quantidadeMinima)
-                throw new InvalidOperationException($"Quantidade mínima para {prod.Descricao} é {quantidadeMinima} unidade(s).");
+        var quantidadeMinima = ObterQuantidadeMinima(prod);
+        if (item.Quantidade < quantidadeMinima)
+            throw new InvalidOperationException($"Quantidade mínima para {prod.Descricao} é {quantidadeMinima} unidade(s).");
 
-            if (item.Quantidade % quantidadeMinima != 0)
+        if (item.Quantidade % quantidadeMinima != 0)
                 throw new InvalidOperationException($"A quantidade para {prod.Descricao} deve ser múltipla de {quantidadeMinima} unidade(s).");
 
             var pesoUnitKg = PesoRules.ToKg(prod.Peso, (int)prod.TipoPeso);
@@ -535,8 +567,8 @@ public sealed class PedidoService : IPedidoService
             }
         }
 
-        if (pesoBase + pesoNovoPedido > LIMITE_KG_MES)
-            throw new InvalidOperationException($"Limite mensal de {LIMITE_KG_MES} kg excedido.");
+        if (pesoBase + pesoNovoPedido > _limiteKgMes)
+            throw new InvalidOperationException($"Limite mensal de {FormatarLimiteMensal()} kg excedido.");
 
         var unidadeAnterior = pedido.UnidadeEntrega;
         pedido.UnidadeEntrega = dto.UnidadeEntrega;
@@ -630,13 +662,14 @@ public sealed class PedidoService : IPedidoService
         var totalKg = pedidos.Sum(p => PesoRules.SumTotalKg(p.Itens));
 
         return new PedidoResumoMensalDto(
-            LIMITE_KG_MES,
+            _limiteKgMes,
             totalKg,
             totalValor,
             totalItens,
             totalPedidos,
             _settings.MaxOrdersPerUserPerMonth,
-            pedidosUtilizados
+            pedidosUtilizados,
+            _quantidadeMinimaPadrao
         );
     }
 

@@ -12,6 +12,9 @@ public static class UserClaimsExtensions
     private const string Upn = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn";
     private const string EmailXml = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name";
     private const string NameId = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier";
+    private const string ObjectId = "http://schemas.microsoft.com/identity/claims/objectidentifier";
+    private const string Oid = "oid";
+    private const string Sub = "sub";
     private const string Name = "name";
 
     public static string? GetUserEmail(this ClaimsPrincipal user)
@@ -29,7 +32,13 @@ public static class UserClaimsExtensions
     }
 
     public static string? GetUserId(this ClaimsPrincipal user)
-        => user.GetUserEmail();
+        => user.GetUserObjectId();
+
+    public static string? GetUserObjectId(this ClaimsPrincipal user)
+        => user.FindFirstValue(ObjectId)
+            ?? user.FindFirstValue(Oid)
+            ?? user.FindFirstValue(NameId)
+            ?? user.FindFirstValue(Sub);
 
     public static string? GetDisplayName(this ClaimsPrincipal user)
     {

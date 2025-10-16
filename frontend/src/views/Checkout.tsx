@@ -2,18 +2,21 @@ import { useEffect, useState } from "react";
 import api from "../lib/api";
 import { useCart } from "../cart/CartContext";
 import { useNavigate } from "react-router-dom";
-import { ENV } from "../config/env";
 import { useToast } from "../ui/toast";
 import { formatPeso } from "../lib/format";
 import { sanitizeCpf, isValidCpf, formatCpf } from "../lib/cpf";
 import type { UsuarioPerfil } from "../types/user";
+import { usePedidosConfig } from "../hooks/usePedidosConfig";
 
 type UnidadeEntrega = string;
 
 export default function Checkout() {
   const { items, totalValor, totalPesoKg, clear, anyBelowMinimum } = useCart();
   const pesoTotalFormatado = formatPeso(totalPesoKg, "kg", { unit: "kg" });
-  const limiteMensalFormatado = formatPeso(ENV.LIMIT_KG_MES, "kg");
+  const { limitKg: limiteMensalKg, loading: limiteLoading, error: limiteErro } = usePedidosConfig();
+  const limiteMensalFormatado = limiteMensalKg > 0
+    ? formatPeso(limiteMensalKg, "kg", { unit: "kg" })
+    : "Não configurado";
   const [unidades, setUnidades] = useState<UnidadeEntrega[]>([]);
   const [unidade, setUnidade] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -177,7 +180,7 @@ export default function Checkout() {
           <div className="text-gray-600">Valor total</div>
           <div>R$ {totalValor.toFixed(2)}</div>
           <div className="text-gray-600">Limite mensal</div>
-          <div>{limiteMensalFormatado}</div>
+          <div>{limiteLoading ? "Carregando..." : limiteMensalFormatado}</div>
         </div>
 
         {anyBelowMinimum && (
@@ -186,9 +189,15 @@ export default function Checkout() {
           </div>
         )}
 
-        {totalPesoKg > ENV.LIMIT_KG_MES && (
+        {limiteErro && !limiteLoading && (
           <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-            Atenção: seu carrinho tem {pesoTotalFormatado}. O limite mensal é {limiteMensalFormatado} (validado no backend).
+            {limiteErro}
+          </div>
+        )}
+
+        {limiteMensalKg > 0 && totalPesoKg > limiteMensalKg && (
+          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            Atenção: seu carrinho tem {pesoTotalFormatado}. O limite mensal é {limiteMensalFormatado}.
           </div>
         )}
 

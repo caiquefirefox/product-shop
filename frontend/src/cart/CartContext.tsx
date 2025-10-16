@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { CartItem, Produto } from "./types";
 import { useMsal } from "@azure/msal-react";
 import { cartTotals, minQtyFor, normalizeQuantityToMultiple, resolveMinQty, toKg } from "./calc";
+import { usePedidosConfig } from "../hooks/usePedidosConfig";
 
 type CartState = ReturnType<typeof cartTotals> & { items: CartItem[] };
 type CartActions = {
@@ -17,6 +18,8 @@ const Ctx = createContext<CartContext | null>(null);
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const { accounts } = useMsal();
   const account = accounts[0];
+  const { minQtyPadrao } = usePedidosConfig();
+  const fallbackMinQty = minQtyPadrao > 0 ? minQtyPadrao : 1;
   const storeKey = useMemo(
     () => `premier:cart:${account?.homeAccountId ?? "anon"}`,
     [account?.homeAccountId]
@@ -29,10 +32,29 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => { localStorage.setItem(storeKey, JSON.stringify(items)); }, [items, storeKey]);
 
-  const totals = useMemo(() => cartTotals(items), [items]);
+  useEffect(() => {
+    setItems((prev) => {
+      let changed = false;
+      const updated = prev.map((item) => {
+        const min = resolveMinQty(item.minQty, fallbackMinQty);
+        if (item.minQty === min) {
+          return item;
+        }
+        changed = true;
+        return {
+          ...item,
+          minQty: min,
+          quantidade: normalizeQuantityToMultiple(item.quantidade, min, item.quantidade),
+        };
+      });
+      return changed ? updated : prev;
+    });
+  }, [fallbackMinQty]);
+
+  const totals = useMemo(() => cartTotals(items, fallbackMinQty), [items, fallbackMinQty]);
 
   const addProduct: CartActions["addProduct"] = (p, q) => {
-    const min = minQtyFor(p);
+    const min = minQtyFor(p, fallbackMinQty);
     const qty = normalizeQuantityToMultiple(q ?? min, min, min);
     setItems(prev => {
       const idx = prev.findIndex(x => x.codigo === p.codigo);
@@ -48,7 +70,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       } else {
         const copy = [...prev];
         const current = copy[idx];
-        const effectiveMin = resolveMinQty(current.minQty ?? min);
+        const effectiveMin = resolveMinQty(current.minQty, fallbackMinQty);
         const combined = current.quantidade + qty;
         copy[idx] = {
           ...current,
@@ -64,7 +86,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setItems(prev =>
       prev.map(i => {
         if (i.codigo !== codigo) return i;
-        const min = resolveMinQty(i.minQty);
+        const min = resolveMinQty(i.minQty, fallbackMinQty);
         return {
           ...i,
           quantidade: normalizeQuantityToMultiple(quantidade, min, i.quantidade),

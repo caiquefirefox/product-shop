@@ -24,20 +24,20 @@ public sealed class UsuarioService : IUsuarioService
         _entraRoles = entraRoles;
     }
 
-    public async Task<UsuarioDto> ObterOuCriarAsync(string email, CancellationToken ct)
+    public async Task<UsuarioDto> ObterOuCriarAsync(string email, string? microsoftId, CancellationToken ct)
     {
         var normalizedEmail = NormalizeEmailValue(email);
-        var (usuario, microsoftId) = await FindExistingUsuarioAsync(normalizedEmail, ct);
+        var (usuario, resolvedMicrosoftId) = await FindExistingUsuarioAsync(normalizedEmail, microsoftId, ct);
 
         if (usuario is null)
         {
             var agora = DateTimeOffset.UtcNow;
-            var remoteRoles = await _entraRoles.GetUserRolesAsync(microsoftId, ct);
+            var remoteRoles = await _entraRoles.GetUserRolesAsync(resolvedMicrosoftId, ct);
             var normalizedRoles = NormalizeRoles(remoteRoles, strict: false);
 
             usuario = new Usuario
             {
-                MicrosoftId = microsoftId,
+                MicrosoftId = resolvedMicrosoftId,
                 Email = normalizedEmail,
                 CriadoEm = agora,
                 AtualizadoEm = agora,
@@ -48,13 +48,13 @@ public sealed class UsuarioService : IUsuarioService
         }
         else
         {
-            usuario = await EnsureRolesAsync(usuario, ct, microsoftId);
+            usuario = await EnsureRolesAsync(usuario, ct, resolvedMicrosoftId);
         }
 
         return ToDto(usuario);
     }
 
-    public async Task<UsuarioDto> RegistrarCpfAsync(string email, string cpf, CancellationToken ct)
+    public async Task<UsuarioDto> RegistrarCpfAsync(string email, string? microsoftId, string cpf, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(cpf))
             throw new InvalidOperationException("CPF obrigatório.");
@@ -64,17 +64,17 @@ public sealed class UsuarioService : IUsuarioService
         if (!CpfRules.IsValid(sanitized))
             throw new InvalidOperationException("CPF inválido.");
 
-        var (usuario, microsoftId) = await FindExistingUsuarioAsync(normalizedEmail, ct);
+        var (usuario, resolvedMicrosoftId) = await FindExistingUsuarioAsync(normalizedEmail, microsoftId, ct);
         var agora = DateTimeOffset.UtcNow;
 
         if (usuario is null)
         {
-            var remoteRoles = await _entraRoles.GetUserRolesAsync(microsoftId, ct);
+            var remoteRoles = await _entraRoles.GetUserRolesAsync(resolvedMicrosoftId, ct);
             var normalizedRoles = NormalizeRoles(remoteRoles, strict: false);
 
             usuario = new Usuario
             {
-                MicrosoftId = microsoftId,
+                MicrosoftId = resolvedMicrosoftId,
                 Email = normalizedEmail,
                 Cpf = sanitized,
                 CriadoEm = agora,
@@ -86,7 +86,7 @@ public sealed class UsuarioService : IUsuarioService
             return ToDto(usuario);
         }
 
-        usuario = await EnsureRolesAsync(usuario, ct, microsoftId);
+        usuario = await EnsureRolesAsync(usuario, ct, resolvedMicrosoftId);
 
         if (string.IsNullOrWhiteSpace(usuario.Cpf))
         {
@@ -102,10 +102,10 @@ public sealed class UsuarioService : IUsuarioService
         return ToDto(usuario);
     }
 
-    public async Task<UsuarioDto> GarantirCpfAsync(string email, string? cpf, CancellationToken ct)
+    public async Task<UsuarioDto> GarantirCpfAsync(string email, string? microsoftId, string? cpf, CancellationToken ct)
     {
         var normalizedEmail = NormalizeEmailValue(email);
-        var (usuario, microsoftId) = await FindExistingUsuarioAsync(normalizedEmail, ct);
+        var (usuario, resolvedMicrosoftId) = await FindExistingUsuarioAsync(normalizedEmail, microsoftId, ct);
 
         if (usuario is null)
         {
@@ -117,12 +117,12 @@ public sealed class UsuarioService : IUsuarioService
                 throw new InvalidOperationException("CPF inválido.");
 
             var agora = DateTimeOffset.UtcNow;
-            var remoteRoles = await _entraRoles.GetUserRolesAsync(microsoftId, ct);
+            var remoteRoles = await _entraRoles.GetUserRolesAsync(resolvedMicrosoftId, ct);
             var normalizedRoles = NormalizeRoles(remoteRoles, strict: false);
 
             usuario = new Usuario
             {
-                MicrosoftId = microsoftId,
+                MicrosoftId = resolvedMicrosoftId,
                 Email = normalizedEmail,
                 Cpf = sanitized,
                 CriadoEm = agora,
@@ -134,7 +134,7 @@ public sealed class UsuarioService : IUsuarioService
             return ToDto(usuario);
         }
 
-        usuario = await EnsureRolesAsync(usuario, ct, microsoftId);
+        usuario = await EnsureRolesAsync(usuario, ct, resolvedMicrosoftId);
 
         if (!string.IsNullOrWhiteSpace(usuario.Cpf))
         {
@@ -185,7 +185,7 @@ public sealed class UsuarioService : IUsuarioService
         var normalizedRoles = NormalizeRoles(roles);
         var sanitizedCpf = SanitizeCpfOrNull(cpf);
 
-        var (usuario, microsoftId) = await FindExistingUsuarioAsync(normalizedEmail, ct);
+        var (usuario, microsoftId) = await FindExistingUsuarioAsync(normalizedEmail, null, ct);
         var agora = DateTimeOffset.UtcNow;
 
         if (usuario is null)
@@ -377,41 +377,75 @@ public sealed class UsuarioService : IUsuarioService
         return new UsuarioSyncResult(novos.Count, atualizados.Count);
     }
 
-    private async Task<(Usuario? usuario, string microsoftId)> FindExistingUsuarioAsync(string normalizedEmail, CancellationToken ct)
+    private async Task<(Usuario? usuario, string microsoftId)> FindExistingUsuarioAsync(string normalizedEmail, string? providedMicrosoftId, CancellationToken ct)
     {
         var existente = await _usuarios.GetByEmailAsync(normalizedEmail, ct);
         if (existente is not null)
         {
-            var ensuredId = await EnsureMicrosoftIdAsync(existente, normalizedEmail, ct);
+            var ensuredId = await EnsureMicrosoftIdAsync(existente, normalizedEmail, NormalizeMicrosoftId(providedMicrosoftId), ct);
             return (existente, ensuredId);
         }
 
-        var resolvedId = await _entraRoles.ResolveUserIdAsync(normalizedEmail, ct);
+        var normalizedMicrosoftId = NormalizeMicrosoftId(providedMicrosoftId);
+        if (normalizedMicrosoftId is not null)
+        {
+            var porIdPorToken = await _usuarios.GetByMicrosoftIdAsync(normalizedMicrosoftId, ct);
+            if (porIdPorToken is not null)
+            {
+                var ensured = await EnsureMicrosoftIdAsync(porIdPorToken, normalizedEmail, normalizedMicrosoftId, ct);
+                return (porIdPorToken, ensured);
+            }
+        }
+
+        Guid resolvedId;
+        try
+        {
+            resolvedId = await _entraRoles.ResolveUserIdAsync(normalizedEmail, ct);
+        }
+        catch (InvalidOperationException) when (normalizedMicrosoftId is not null)
+        {
+            var porIdPorToken = await _usuarios.GetByMicrosoftIdAsync(normalizedMicrosoftId, ct);
+            if (porIdPorToken is not null)
+            {
+                var ensured = await EnsureMicrosoftIdAsync(porIdPorToken, normalizedEmail, normalizedMicrosoftId, ct);
+                return (porIdPorToken, ensured);
+            }
+
+            return (null, normalizedMicrosoftId);
+        }
+
         var microsoftId = resolvedId.ToString("D");
 
         var porId = await _usuarios.GetByMicrosoftIdAsync(microsoftId, ct);
         if (porId is not null)
         {
-            var ensuredId = await EnsureMicrosoftIdAsync(porId, normalizedEmail, ct);
+            var ensuredId = await EnsureMicrosoftIdAsync(porId, normalizedEmail, microsoftId, ct);
             return (porId, ensuredId);
         }
 
         return (null, microsoftId);
     }
 
-    private async Task<string> EnsureMicrosoftIdAsync(Usuario usuario, string? normalizedEmail, CancellationToken ct)
+    private async Task<string> EnsureMicrosoftIdAsync(Usuario usuario, string? normalizedEmail, string? fallbackMicrosoftId, CancellationToken ct)
     {
         var emailParaUso = normalizedEmail ?? TryNormalizeEmail(usuario.Email);
         var needsUpdate = false;
+        string? microsoftIdParaUso = null;
 
         if (!string.IsNullOrWhiteSpace(usuario.MicrosoftId) && Guid.TryParse(usuario.MicrosoftId, out var parsed))
         {
-            var normalizedId = parsed.ToString("D");
-            if (!string.Equals(usuario.MicrosoftId, normalizedId, StringComparison.Ordinal))
+            microsoftIdParaUso = parsed.ToString("D");
+            if (!string.Equals(usuario.MicrosoftId, microsoftIdParaUso, StringComparison.Ordinal))
             {
-                usuario.MicrosoftId = normalizedId;
+                usuario.MicrosoftId = microsoftIdParaUso;
                 needsUpdate = true;
             }
+        }
+        else if (!string.IsNullOrWhiteSpace(fallbackMicrosoftId) && Guid.TryParse(fallbackMicrosoftId, out var parsedFallback))
+        {
+            microsoftIdParaUso = parsedFallback.ToString("D");
+            usuario.MicrosoftId = microsoftIdParaUso;
+            needsUpdate = true;
         }
         else
         {
@@ -419,7 +453,8 @@ public sealed class UsuarioService : IUsuarioService
                 throw new InvalidOperationException("Não foi possível determinar o usuário no Microsoft Entra ID.");
 
             var resolved = await _entraRoles.ResolveUserIdAsync(emailParaUso, ct);
-            usuario.MicrosoftId = resolved.ToString("D");
+            microsoftIdParaUso = resolved.ToString("D");
+            usuario.MicrosoftId = microsoftIdParaUso;
             needsUpdate = true;
         }
 
@@ -435,7 +470,7 @@ public sealed class UsuarioService : IUsuarioService
             await _usuarios.UpdateAsync(usuario, ct);
         }
 
-        return usuario.MicrosoftId;
+        return usuario.MicrosoftId ?? throw new InvalidOperationException("Não foi possível determinar o usuário no Microsoft Entra ID.");
     }
 
     private async Task<Usuario> EnsureRolesAsync(Usuario usuario, CancellationToken ct, string? knownMicrosoftId = null)
@@ -447,7 +482,7 @@ public sealed class UsuarioService : IUsuarioService
             string.IsNullOrWhiteSpace(usuario.MicrosoftId) ||
             !string.Equals(usuario.MicrosoftId, microsoftId, StringComparison.OrdinalIgnoreCase))
         {
-            microsoftId = await EnsureMicrosoftIdAsync(usuario, normalizedEmail, ct);
+            microsoftId = await EnsureMicrosoftIdAsync(usuario, normalizedEmail, microsoftId, ct);
         }
 
         if (usuario.Roles.Any())
@@ -509,6 +544,20 @@ public sealed class UsuarioService : IUsuarioService
             return null;
 
         return trimmed.ToLowerInvariant();
+    }
+
+    private static string? NormalizeMicrosoftId(string? microsoftId)
+    {
+        if (string.IsNullOrWhiteSpace(microsoftId))
+            return null;
+
+        var trimmed = microsoftId.Trim();
+        if (trimmed.Length == 0)
+            return null;
+
+        return Guid.TryParse(trimmed, out var parsed)
+            ? parsed.ToString("D")
+            : trimmed;
     }
 
     private static string NormalizeEmailValue(string email)

@@ -59,6 +59,7 @@ public class ProdutosController : ControllerBase
         var usuarioEmail = User.GetUserEmail();
         if (string.IsNullOrWhiteSpace(usuarioEmail))
             return Problem(title: "Token sem e-mail do usuário (preferred_username/email).", statusCode: StatusCodes.Status401Unauthorized);
+        var usuarioId = User.GetUserObjectId();
 
         string? imagemUrl = request.ImagemUrl;
         string? imagemUploadUrl = null;
@@ -76,7 +77,7 @@ public class ProdutosController : ControllerBase
 
         try
         {
-            await _svc.CreateAsync(codigo, request.ToDto(imagemUrl), usuarioEmail, ct);
+            await _svc.CreateAsync(codigo, request.ToDto(imagemUrl), usuarioEmail, usuarioId, ct);
         }
         catch
         {
@@ -94,6 +95,7 @@ public class ProdutosController : ControllerBase
         var usuarioEmail = User.GetUserEmail();
         if (string.IsNullOrWhiteSpace(usuarioEmail))
             return Problem(title: "Token sem e-mail do usuário (preferred_username/email).", statusCode: StatusCodes.Status401Unauthorized);
+        var usuarioId = User.GetUserObjectId();
 
         ProdutoDto? produtoAtual = null;
         if (request.Imagem is { Length: > 0 } || request.RemoverImagem)
@@ -122,7 +124,7 @@ public class ProdutosController : ControllerBase
 
         try
         {
-            await _svc.UpdateAsync(codigo, request.ToDto(imagemUrl), usuarioEmail, ct);
+            await _svc.UpdateAsync(codigo, request.ToDto(imagemUrl), usuarioEmail, usuarioId, ct);
         }
         catch
         {

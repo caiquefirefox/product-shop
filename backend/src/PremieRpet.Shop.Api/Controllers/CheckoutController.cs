@@ -23,9 +23,11 @@ public class CheckoutController(IPedidoService pedidos, IHttpContextAccessor ctx
         if (string.IsNullOrWhiteSpace(usuarioNome))
             return Problem(title: "Token sem identificador de nome de usuário.", statusCode: StatusCodes.Status401Unauthorized);
 
+        var usuarioId = User.GetUserObjectId();
+
         try
         {
-            var pedido = await pedidos.CriarPedidoAsync(usuarioEmail, usuarioNome, dto, ct);
+            var pedido = await pedidos.CriarPedidoAsync(usuarioEmail, usuarioId, usuarioNome, dto, ct);
             return Ok(new { id = pedido.Id });
         }
         catch (InvalidOperationException ex)

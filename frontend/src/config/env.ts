@@ -6,11 +6,6 @@ function clampPositiveInt(value: number, min: number, max: number) {
   return Math.trunc(bounded);
 }
 
-function num(val: unknown, fallback: number) {
-  const n = Number(val);
-  return Number.isFinite(n) && n > 0 ? n : fallback;
-}
-
 function dayOfMonth(val: unknown, fallback: number) {
   const base = clampPositiveInt(fallback, 1, 31);
   const parsed = Number(val);
@@ -30,8 +25,6 @@ const editWindowClosingDay = Math.max(
 );
 
 export const ENV = {
-  LIMIT_KG_MES: num(import.meta.env.VITE_LIMIT_KG_MES, 30),
-  QTD_MINIMA_PADRAO: num(import.meta.env.VITE_QTD_MINIMA_PADRAO, 1),
   PEDIDOS_EDIT_WINDOW_OPENING_DAY: editWindowOpeningDay,
   PEDIDOS_EDIT_WINDOW_CLOSING_DAY: editWindowClosingDay,
 };
