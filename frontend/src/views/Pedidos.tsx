@@ -192,10 +192,20 @@ export default function Pedidos() {
     return uniqueUsers === 1;
   }, [isAdmin, pedidos]);
 
-  const pesoProgressPerc = useMemo(() => {
-    if (!resumo || resumo.limiteKg <= 0) return 0;
-    return Math.min(100, Math.round((resumo.totalConsumidoKg / resumo.limiteKg) * 100));
+  const limiteMensalKg = useMemo(() => {
+    const envLimit = ENV.LIMIT_KG_MES;
+    if (Number.isFinite(envLimit) && envLimit > 0) {
+      return envLimit;
+    }
+
+    const resumoLimit = resumo?.limiteKg ?? 0;
+    return resumoLimit > 0 ? resumoLimit : 0;
   }, [resumo]);
+
+  const pesoProgressPerc = useMemo(() => {
+    if (!resumo || limiteMensalKg <= 0) return 0;
+    return Math.min(100, Math.round((resumo.totalConsumidoKg / limiteMensalKg) * 100));
+  }, [resumo, limiteMensalKg]);
 
   const pedidosProgressPerc = useMemo(() => {
     if (!resumo || resumo.limitePedidos <= 0) return 0;
@@ -747,10 +757,13 @@ export default function Pedidos() {
 
     if (!resumo) return null;
 
-    const limitePesoFormatado = formatPeso(resumo.limiteKg, "kg", { unit: "kg" });
+    const limitePesoFormatado = formatPeso(limiteMensalKg, "kg", { unit: "kg" });
     const consumoPesoFormatado = formatPeso(resumo.totalConsumidoKg, "kg", { unit: "kg" });
     const pedidosUtilizados = Math.max(0, Math.min(resumo.pedidosUtilizados, resumo.limitePedidos));
     const pedidosDisponiveis = Math.max(0, resumo.limitePedidos - pedidosUtilizados);
+    const limiteInfoText = limiteMensalKg > 0
+      ? `${pesoProgressPerc}% do limite mensal de ${limitePesoFormatado}`
+      : "Limite mensal não configurado.";
 
     return (
       <div className="grid gap-4 md:grid-cols-2">
@@ -763,9 +776,7 @@ export default function Pedidos() {
               style={{ width: `${pesoProgressPerc}%` }}
             />
           </div>
-          <div className="mt-2 text-xs text-gray-500">
-            {pesoProgressPerc}% do limite mensal de {limitePesoFormatado}
-          </div>
+          <div className="mt-2 text-xs text-gray-500">{limiteInfoText}</div>
         </div>
 
         <div className="bg-white p-4 rounded-xl shadow border border-gray-100">
