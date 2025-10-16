@@ -58,7 +58,7 @@ public sealed class ProdutoService : IProdutoService
         return ids.Where(id => id != Guid.Empty).Distinct().ToList();
     }
 
-    public async Task CreateAsync(string codigo, ProdutoCreateUpdateDto dto, string usuarioEmail, CancellationToken ct)
+    public async Task CreateAsync(string codigo, ProdutoCreateUpdateDto dto, string usuarioEmail, string? usuarioMicrosoftId, CancellationToken ct)
     {
         if (await _repo.ExistsAsync(codigo, ct))
             throw new InvalidOperationException($"Produto {codigo} já existe.");
@@ -76,7 +76,7 @@ public sealed class ProdutoService : IProdutoService
             throw new InvalidOperationException("Um ou mais portes são inválidos.");
 
         var agora = DateTimeOffset.UtcNow;
-        var usuario = await _usuarios.ObterOuCriarAsync(usuarioEmail, ct);
+        var usuario = await _usuarios.ObterOuCriarAsync(usuarioEmail, usuarioMicrosoftId, ct);
 
         var prod = new Produto
         {
@@ -204,7 +204,7 @@ public sealed class ProdutoService : IProdutoService
             .Select(o => new ProdutoOpcaoDto(o.Id, o.Nome))
             .ToList();
 
-    public async Task UpdateAsync(string codigo, ProdutoCreateUpdateDto dto, string usuarioEmail, CancellationToken ct)
+    public async Task UpdateAsync(string codigo, ProdutoCreateUpdateDto dto, string usuarioEmail, string? usuarioMicrosoftId, CancellationToken ct)
     {
         var prod = await _repo.GetAsync(codigo, ct) ?? throw new InvalidOperationException("Produto não encontrado.");
         var especie = await _repo.ObterEspecieAsync(dto.EspecieOpcaoId, ct)
@@ -235,7 +235,7 @@ public sealed class ProdutoService : IProdutoService
         foreach (var porte in portes)
             prod.Portes.Add(new ProdutoPorte { ProdutoId = prod.Id, PorteOpcaoId = porte.Id });
 
-        var usuario = await _usuarios.ObterOuCriarAsync(usuarioEmail, ct);
+        var usuario = await _usuarios.ObterOuCriarAsync(usuarioEmail, usuarioMicrosoftId, ct);
 
         prod.AtualizadoEm = DateTimeOffset.UtcNow;
         prod.AtualizadoPorUsuarioId = usuario.Id;

@@ -20,7 +20,8 @@ public sealed class UsuariosController(IUsuarioService usuarios) : ControllerBas
         if (string.IsNullOrWhiteSpace(usuarioEmail))
             return Problem(title: "Token sem e-mail do usuário (preferred_username/email).", statusCode: StatusCodes.Status401Unauthorized);
 
-        var perfil = await usuarios.ObterOuCriarAsync(usuarioEmail, ct);
+        var usuarioId = User.GetUserObjectId();
+        var perfil = await usuarios.ObterOuCriarAsync(usuarioEmail, usuarioId, ct);
         return Ok(perfil);
     }
 
@@ -87,7 +88,8 @@ public sealed class UsuariosController(IUsuarioService usuarios) : ControllerBas
 
         try
         {
-            var perfil = await usuarios.RegistrarCpfAsync(usuarioEmail, request.Cpf, ct);
+            var usuarioId = User.GetUserObjectId();
+            var perfil = await usuarios.RegistrarCpfAsync(usuarioEmail, usuarioId, request.Cpf, ct);
             return Ok(perfil);
         }
         catch (InvalidOperationException ex)

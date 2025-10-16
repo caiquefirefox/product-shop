@@ -222,13 +222,13 @@ public sealed class PedidoService : IPedidoService
         return new DateTimeOffset(new DateTime(ano, mes, 1, 0, 0, 0, DateTimeKind.Utc));
     }
 
-    public async Task<PedidoResumoDto> CriarPedidoAsync(string usuarioEmail, string usuarioNome, PedidoCreateDto dto, CancellationToken ct)
+    public async Task<PedidoResumoDto> CriarPedidoAsync(string usuarioEmail, string? usuarioMicrosoftId, string usuarioNome, PedidoCreateDto dto, CancellationToken ct)
     {
         if (!UnidadesEntrega.Todas.Contains(dto.UnidadeEntrega))
             throw new InvalidOperationException("Unidade de entrega inválida.");
 
         var agora = DateTimeOffset.UtcNow;
-        var perfil = await _usuarios.GarantirCpfAsync(usuarioEmail, dto.Cpf, ct);
+        var perfil = await _usuarios.GarantirCpfAsync(usuarioEmail, usuarioMicrosoftId, dto.Cpf, ct);
         var pesoAcumulado = await PesoAcumuladoMesEmKgAsync(perfil.Id, agora, ct);
 
         var inicioMes = InicioMesUtc(agora.Year, agora.Month);
