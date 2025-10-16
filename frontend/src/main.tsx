@@ -6,6 +6,7 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import App from "./shell/App";
 import "./index.css";
 import { CartProvider } from "./cart/CartContext";
+import { PedidosConfigProvider } from "./hooks/usePedidosConfig";
 import { ToastProvider } from "./ui/toast";
 
 const router = createBrowserRouter([
@@ -28,11 +29,13 @@ const router = createBrowserRouter([
   ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
       <MsalProvider instance={pca}>
-        <CartProvider>
-          <ToastProvider>
-            <RouterProvider router={router} />
-          </ToastProvider>
-        </CartProvider>
+        <PedidosConfigProvider>
+          <CartProvider>
+            <ToastProvider>
+              <RouterProvider router={router} />
+            </ToastProvider>
+          </CartProvider>
+        </PedidosConfigProvider>
       </MsalProvider>
     </React.StrictMode>
   );

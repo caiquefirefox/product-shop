@@ -6,37 +6,6 @@ function clampPositiveInt(value: number, min: number, max: number) {
   return Math.trunc(bounded);
 }
 
-function toNumber(val: unknown): number | null {
-  if (typeof val === "number" && Number.isFinite(val)) {
-    return val;
-  }
-
-  if (typeof val === "string") {
-    const trimmed = val.trim();
-    if (!trimmed) {
-      return null;
-    }
-
-    let normalized = trimmed;
-    if (trimmed.includes(",") && !trimmed.includes(".")) {
-      normalized = trimmed.replace(",", ".");
-    }
-
-    const parsed = Number(normalized);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-
-  return null;
-}
-
-function num(val: unknown, fallback: number) {
-  const parsed = toNumber(val);
-  if (parsed === null || parsed <= 0) {
-    return fallback;
-  }
-  return parsed;
-}
-
 function dayOfMonth(val: unknown, fallback: number) {
   const base = clampPositiveInt(fallback, 1, 31);
   const parsed = Number(val);
@@ -56,7 +25,6 @@ const editWindowClosingDay = Math.max(
 );
 
 export const ENV = {
-  QTD_MINIMA_PADRAO: num(import.meta.env.VITE_QTD_MINIMA_PADRAO, 1),
   PEDIDOS_EDIT_WINDOW_OPENING_DAY: editWindowOpeningDay,
   PEDIDOS_EDIT_WINDOW_CLOSING_DAY: editWindowClosingDay,
 };

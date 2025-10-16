@@ -1,14 +1,13 @@
 import { useCart } from "../cart/CartContext";
 import { useNavigate } from "react-router-dom";
-import { isBelowMin, itemSubtotal } from "../cart/calc";
+import { isBelowMin, itemSubtotal, resolveMinQty } from "../cart/calc";
 import { formatPeso } from "../lib/format";
-import { ENV } from "../config/env";
-import { useMonthlyLimit } from "../hooks/useMonthlyLimit";
+import { usePedidosConfig } from "../hooks/usePedidosConfig";
 
 export default function Carrinho() {
   const { items, totalUnidades, totalValor, totalPesoKg, setQuantity, remove, clear, anyBelowMinimum } = useCart();
   const navigate = useNavigate();
-  const { limitKg: limiteMensalKg, loading: limiteLoading, error: limiteErro } = useMonthlyLimit();
+  const { limitKg: limiteMensalKg, loading: limiteLoading, error: limiteErro, minQtyPadrao } = usePedidosConfig();
   const passouLimite = limiteMensalKg > 0 && totalPesoKg > limiteMensalKg;
   const totalPesoFormatado = formatPeso(totalPesoKg, "kg", { unit: "kg" });
   const limiteMensalFormatado = limiteMensalKg > 0
@@ -42,8 +41,8 @@ export default function Carrinho() {
           </thead>
           <tbody>
             {items.map(i => {
-              const below = isBelowMin(i);
-              const min = Math.max(1, i.minQty ?? ENV.QTD_MINIMA_PADRAO);
+              const min = resolveMinQty(i.minQty, minQtyPadrao);
+              const below = isBelowMin(i, minQtyPadrao);
               return (
                 <tr key={i.codigo} className="border-t align-middle">
                   <td className="py-2 pr-4">

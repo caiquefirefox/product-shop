@@ -6,6 +6,7 @@ public sealed class PedidoSettings
 {
     public const string SectionName = "Pedidos";
     public const decimal DefaultLimitKgPerUserPerMonth = 33.1m;
+    public const int DefaultMinQuantityValue = 1;
 
     public int EditWindowOpeningDay { get; set; } = 15;
 
@@ -16,4 +17,6 @@ public sealed class PedidoSettings
     public int InitialStatusId { get; set; } = PedidoStatusIds.Solicitado;
 
     public decimal LimitKgPerUserPerMonth { get; set; } = DefaultLimitKgPerUserPerMonth;
+
+    public int DefaultMinQuantity { get; set; } = DefaultMinQuantityValue;
 }

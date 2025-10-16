@@ -6,14 +6,14 @@ import { useToast } from "../ui/toast";
 import { formatPeso } from "../lib/format";
 import { sanitizeCpf, isValidCpf, formatCpf } from "../lib/cpf";
 import type { UsuarioPerfil } from "../types/user";
-import { useMonthlyLimit } from "../hooks/useMonthlyLimit";
+import { usePedidosConfig } from "../hooks/usePedidosConfig";
 
 type UnidadeEntrega = string;
 
 export default function Checkout() {
   const { items, totalValor, totalPesoKg, clear, anyBelowMinimum } = useCart();
   const pesoTotalFormatado = formatPeso(totalPesoKg, "kg", { unit: "kg" });
-  const { limitKg: limiteMensalKg, loading: limiteLoading, error: limiteErro } = useMonthlyLimit();
+  const { limitKg: limiteMensalKg, loading: limiteLoading, error: limiteErro } = usePedidosConfig();
   const limiteMensalFormatado = limiteMensalKg > 0
     ? formatPeso(limiteMensalKg, "kg", { unit: "kg" })
     : "Não configurado";
@@ -197,7 +197,7 @@ export default function Checkout() {
 
         {limiteMensalKg > 0 && totalPesoKg > limiteMensalKg && (
           <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-            Atenção: seu carrinho tem {pesoTotalFormatado}. O limite mensal é {limiteMensalFormatado} (validado no backend).
+            Atenção: seu carrinho tem {pesoTotalFormatado}. O limite mensal é {limiteMensalFormatado}.
           </div>
         )}
 

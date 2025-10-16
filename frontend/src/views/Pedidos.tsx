@@ -4,8 +4,9 @@ import { formatCurrencyBRL, formatPeso, startOfDayISO_BR, endOfDayISO_BR, format
 import { DateUserFilters, type SimpleOption } from "../components/DateUserFilters";
 import { ProductFilters, type ProductFilterChangeHandler, type ProductFilterOptions, type ProductFilterSelectOption, type ProductFilterValues } from "../components/ProductFilters";
 import type { Produto } from "../cart/types";
-import { minQtyFor, normalizeQuantityToMultiple, toKg } from "../cart/calc";
+import { minQtyFor, normalizeQuantityToMultiple, resolveMinQty, toKg } from "../cart/calc";
 import { ENV } from "../config/env";
+import { usePedidosConfig } from "../hooks/usePedidosConfig";
 const STATUS_SOLICITADO = 1;
 const STATUS_APROVADO = 2;
 const STATUS_CANCELADO = 3;
@@ -55,6 +56,7 @@ function formatDateTimePtBr(iso: string) {
 export default function Pedidos() {
   const { isAdmin } = useUser();
   const { success, error: toastError } = useToast();
+  const { minQtyPadrao } = usePedidosConfig();
 
   const defaultRange = useMemo(() => {
     const now = new Date();
@@ -504,7 +506,7 @@ export default function Pedidos() {
           preco: item.preco,
           quantidade: item.quantidade,
           pesoKg: item.pesoKg,
-          minQty: Math.max(1, item.quantidadeMinima ?? 1),
+          minQty: resolveMinQty(item.quantidadeMinima, minQtyPadrao),
         }))
       );
       setUnidadeEntrega(data.pedido.unidadeEntrega);
@@ -518,7 +520,7 @@ export default function Pedidos() {
       setDetailLoading(false);
       setLoadingPedidoId((current) => (current === id ? null : current));
     }
-  }, []);
+  }, [minQtyPadrao]);
 
   const aposAlterarStatus = useCallback(
     async (pedidoId: string) => {
@@ -660,7 +662,7 @@ export default function Pedidos() {
       return prev
         .map((item) => {
           if (item.codigo !== codigo) return item;
-          const minimo = Math.max(1, item.minQty ?? 1);
+          const minimo = resolveMinQty(item.minQty, minQtyPadrao);
           const desejada = Number.isFinite(quantidade) ? quantidade : item.quantidade;
           const normalizado = normalizeQuantityToMultiple(desejada, minimo, item.quantidade);
           return { ...item, quantidade: normalizado };
@@ -677,7 +679,7 @@ export default function Pedidos() {
   const addProduto = (produto: Produto) => {
     if (!canEditPedido) return;
     setEditorItens((prev) => {
-      const min = minQtyFor(produto);
+      const min = minQtyFor(produto, minQtyPadrao);
       const pesoKg = toKg(produto.peso, produto.tipoPeso);
       const existente = prev.find((item) => item.codigo === produto.codigo);
       if (existente) {
@@ -1107,25 +1109,29 @@ export default function Pedidos() {
                             <td colSpan={4} className="px-3 py-4 text-center text-sm text-gray-500">Nenhum item no pedido.</td>
                           </tr>
                         ) : (
-                          editorItens.map((item) => (
-                            <tr key={item.codigo}>
-                              <td className="px-3 py-2 text-sm text-gray-700">
-                                <div className="font-medium text-gray-800">{item.descricao}</div>
-                                <div className="text-xs text-gray-500">{item.codigo}</div>
-                                <div className="text-xs text-gray-400">Preço: {formatCurrencyBRL(item.preco)} · Peso unitário: {formatPeso(item.pesoKg, "kg", { unit: "kg" })}</div>
-                                {item.minQty && <div className="text-xs text-amber-600">Mínimo por adição: {item.minQty}</div>}
-                              </td>
-                              <td className="px-3 py-2 text-right text-sm">
-                                <input
-                                  type="number"
-                                  min={Math.max(1, item.minQty ?? 1)}
-                                  step={Math.max(1, item.minQty ?? 1)}
-                                  value={item.quantidade}
-                                  onChange={(event) => updateItemQuantity(item.codigo, Number(event.target.value))}
-                                  disabled={!canEditPedido || saving}
-                                  className="w-24 rounded-lg border border-gray-200 px-2 py-1 text-sm text-right shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                                />
-                              </td>
+                          editorItens.map((item) => {
+                            const minStep = resolveMinQty(item.minQty, minQtyPadrao);
+                            return (
+                              <tr key={item.codigo}>
+                                <td className="px-3 py-2 text-sm text-gray-700">
+                                  <div className="font-medium text-gray-800">{item.descricao}</div>
+                                  <div className="text-xs text-gray-500">{item.codigo}</div>
+                                  <div className="text-xs text-gray-400">Preço: {formatCurrencyBRL(item.preco)} · Peso unitário: {formatPeso(item.pesoKg, "kg", { unit: "kg" })}</div>
+                                  {minStep > 0 && (
+                                    <div className="text-xs text-amber-600">Mínimo por adição: {minStep}</div>
+                                  )}
+                                </td>
+                                <td className="px-3 py-2 text-right text-sm">
+                                  <input
+                                    type="number"
+                                    min={minStep}
+                                    step={minStep}
+                                    value={item.quantidade}
+                                    onChange={(event) => updateItemQuantity(item.codigo, Number(event.target.value))}
+                                    disabled={!canEditPedido || saving}
+                                    className="w-24 rounded-lg border border-gray-200 px-2 py-1 text-sm text-right shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                  />
+                                </td>
                               <td className="px-3 py-2 text-right text-sm text-gray-700">
                                 {formatCurrencyBRL(item.preco * item.quantidade)}
                               </td>
@@ -1138,8 +1144,9 @@ export default function Pedidos() {
                                   Remover
                                 </button>
                               </td>
-                            </tr>
-                          ))
+                              </tr>
+                            );
+                          })
                         )}
                       </tbody>
                     </table>
@@ -1212,13 +1219,14 @@ export default function Pedidos() {
                       <div className="divide-y divide-gray-100">
                         {catalogProducts.map((produto) => {
                           const pesoUnit = toKg(produto.peso, produto.tipoPeso);
+                          const minimoProduto = minQtyFor(produto, minQtyPadrao);
                           return (
                             <div key={produto.codigo} className="px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                               <div>
                                 <div className="font-medium text-gray-800">{produto.descricao}</div>
                                 <div className="text-xs text-gray-500">Código: {produto.codigo}</div>
                                 <div className="text-xs text-gray-400">
-                                  Peso unitário: {formatPeso(pesoUnit, "kg", { unit: "kg" })} · Mínimo: {minQtyFor(produto)} unidade(s)
+                                  Peso unitário: {formatPeso(pesoUnit, "kg", { unit: "kg" })} · Mínimo: {minimoProduto} unidade(s)
                                 </div>
                               </div>
                               <div className="flex items-center gap-3">

@@ -27,6 +27,7 @@ public sealed class PedidoService : IPedidoService
     private readonly IUsuarioService _usuarios;
     private readonly PedidoSettings _settings;
     private readonly decimal _limiteKgMes;
+    private readonly int _quantidadeMinimaPadrao;
     private static readonly CultureInfo CulturePtBr = CultureInfo.GetCultureInfo("pt-BR");
 
     public PedidoService(
@@ -40,6 +41,7 @@ public sealed class PedidoService : IPedidoService
         _usuarios = usuarios;
         _settings = Normalizar(settings?.Value ?? new PedidoSettings());
         _limiteKgMes = _settings.LimitKgPerUserPerMonth;
+        _quantidadeMinimaPadrao = _settings.DefaultMinQuantity;
     }
 
     private static PedidoSettings Normalizar(PedidoSettings settings)
@@ -60,7 +62,10 @@ public sealed class PedidoService : IPedidoService
             EditWindowClosingDay = Math.Clamp(settings.EditWindowClosingDay, 1, 31),
             MaxOrdersPerUserPerMonth = Math.Max(0, settings.MaxOrdersPerUserPerMonth),
             InitialStatusId = settings.InitialStatusId > 0 ? settings.InitialStatusId : PedidoStatusIds.Solicitado,
-            LimitKgPerUserPerMonth = limiteKg
+            LimitKgPerUserPerMonth = limiteKg,
+            DefaultMinQuantity = settings.DefaultMinQuantity > 0
+                ? settings.DefaultMinQuantity
+                : PedidoSettings.DefaultMinQuantityValue
         };
 
         if (normalized.EditWindowClosingDay < normalized.EditWindowOpeningDay)
@@ -78,6 +83,13 @@ public sealed class PedidoService : IPedidoService
         return arredondado.ToString("N3", CulturePtBr);
     }
 
+    private int ObterQuantidadeMinima(Produto? produto)
+    {
+        var quantidadeConfigurada = produto?.QuantidadeMinimaDeCompra ?? 0;
+        var efetivo = Math.Max(_quantidadeMinimaPadrao, quantidadeConfigurada);
+        return Math.Max(1, efetivo);
+    }
+
     private static PedidoDetalheDto MapToDetalhe(Pedido pedido)
     {
         var itens = pedido.Itens
@@ -85,7 +97,7 @@ public sealed class PedidoService : IPedidoService
             .Select(i =>
             {
                 var pesoUnitKg = PesoRules.ToKg(i.Peso, i.TipoPeso);
-                var quantidadeMinima = Math.Max(1, i.Produto?.QuantidadeMinimaDeCompra ?? 1);
+                var quantidadeMinima = ObterQuantidadeMinima(i.Produto);
                 return new PedidoDetalheItemDto(
                     i.ProdutoCodigo,
                     i.Descricao,
@@ -248,7 +260,7 @@ public sealed class PedidoService : IPedidoService
                 .FirstOrDefaultAsync(p => p.Codigo == item.ProdutoCodigo, ct)
                 ?? throw new InvalidOperationException($"Produto {item.ProdutoCodigo} não encontrado");
 
-            var quantidadeMinima = Math.Max(1, prod.QuantidadeMinimaDeCompra);
+            var quantidadeMinima = ObterQuantidadeMinima(prod);
             if (item.Quantidade < quantidadeMinima)
                 throw new InvalidOperationException($"Quantidade mínima para {prod.Descricao} é {quantidadeMinima} unidade(s).");
 
@@ -487,11 +499,11 @@ public sealed class PedidoService : IPedidoService
         foreach (var item in itensNormalizados)
         {
             var prod = produtos[item.ProdutoCodigo];
-            var quantidadeMinima = Math.Max(1, prod.QuantidadeMinimaDeCompra);
-            if (item.Quantidade < quantidadeMinima)
-                throw new InvalidOperationException($"Quantidade mínima para {prod.Descricao} é {quantidadeMinima} unidade(s).");
+        var quantidadeMinima = ObterQuantidadeMinima(prod);
+        if (item.Quantidade < quantidadeMinima)
+            throw new InvalidOperationException($"Quantidade mínima para {prod.Descricao} é {quantidadeMinima} unidade(s).");
 
-            if (item.Quantidade % quantidadeMinima != 0)
+        if (item.Quantidade % quantidadeMinima != 0)
                 throw new InvalidOperationException($"A quantidade para {prod.Descricao} deve ser múltipla de {quantidadeMinima} unidade(s).");
 
             var pesoUnitKg = PesoRules.ToKg(prod.Peso, (int)prod.TipoPeso);
@@ -656,7 +668,8 @@ public sealed class PedidoService : IPedidoService
             totalItens,
             totalPedidos,
             _settings.MaxOrdersPerUserPerMonth,
-            pedidosUtilizados
+            pedidosUtilizados,
+            _quantidadeMinimaPadrao
         );
     }
 

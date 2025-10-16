@@ -10,6 +10,7 @@ import { useCart } from "../cart/CartContext";
 import type { Produto } from "../cart/types";
 import { minQtyFor } from "../cart/calc";
 import { formatCurrencyBRL, formatPeso } from "../lib/format";
+import { usePedidosConfig } from "../hooks/usePedidosConfig";
 import ProductFilters, {
   type ProductFilterChangeHandler,
   type ProductFilterOptions,
@@ -50,6 +51,7 @@ type CatalogoResponse = {
 export default function Catalogo() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const { addProduct } = useCart();
+  const { minQtyPadrao } = usePedidosConfig();
   const [feedback, setFeedback] = useState<AddToCartFeedback | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const [expandedImage, setExpandedImage] = useState<
@@ -298,7 +300,7 @@ export default function Catalogo() {
   };
 
   const handleAdd = (produto: Produto) => {
-    const quantidade = minQtyFor(produto);
+    const quantidade = minQtyFor(produto, minQtyPadrao);
     addProduct(produto, quantidade);
 
     setFeedback({
@@ -426,7 +428,7 @@ export default function Catalogo() {
         <div className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-2">
             {produtos.map((p, index) => {
-              const minimo = minQtyFor(p);
+              const minimo = minQtyFor(p, minQtyPadrao);
               const gradient = gradientClasses[index % gradientClasses.length];
               const precoFormatado = formatCurrencyBRL(p.preco);
               const portes = p.porteNomes.length ? p.porteNomes.join(", ") : "Todos os portes";

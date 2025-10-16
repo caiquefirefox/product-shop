@@ -7,5 +7,6 @@ public sealed record PedidoResumoMensalDto(
     int TotalItens,
     int TotalPedidos,
     int LimitePedidos,
-    int PedidosUtilizados
+    int PedidosUtilizados,
+    int QuantidadeMinimaPadrao
 );
