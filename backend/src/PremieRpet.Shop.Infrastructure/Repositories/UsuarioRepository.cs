@@ -49,6 +49,12 @@ public sealed class UsuarioRepository : IUsuarioRepository
         await _db.SaveChangesAsync(ct);
     }
 
+    public async Task AddRangeAsync(IEnumerable<Usuario> usuarios, CancellationToken ct)
+    {
+        _db.Usuarios.AddRange(usuarios);
+        await _db.SaveChangesAsync(ct);
+    }
+
     public async Task UpdateAsync(Usuario usuario, CancellationToken ct)
     {
         _db.Usuarios.Update(usuario);

@@ -271,6 +271,65 @@ public sealed class UsuarioService : IUsuarioService
         return resultados;
     }
 
+    public async Task<int> SincronizarAsync(CancellationToken ct)
+    {
+        var remoteUsuarios = await _entraRoles.ListApplicationUsersAsync(ct);
+        if (remoteUsuarios.Count == 0)
+            return 0;
+
+        var existentes = await _usuarios.ListAsync(ct);
+        var existentesPorId = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var existentesPorEmail = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var usuario in existentes)
+        {
+            if (!string.IsNullOrWhiteSpace(usuario.MicrosoftId))
+                existentesPorId.Add(usuario.MicrosoftId);
+
+            var normalizado = TryNormalizeEmail(usuario.Email);
+            if (!string.IsNullOrWhiteSpace(normalizado))
+                existentesPorEmail.Add(normalizado);
+        }
+
+        var novos = new List<Usuario>();
+        var agora = DateTimeOffset.UtcNow;
+
+        foreach (var remoto in remoteUsuarios)
+        {
+            if (existentesPorId.Contains(remoto.MicrosoftId))
+                continue;
+
+            var emailNormalizado = TryNormalizeEmail(remoto.Email);
+            if (string.IsNullOrWhiteSpace(emailNormalizado))
+                continue;
+
+            if (existentesPorEmail.Contains(emailNormalizado))
+                continue;
+
+            var roles = remoto.Roles.Count > 0
+                ? NormalizeRoles(remoto.Roles, strict: false)
+                : NormalizeRoles(null, strict: false);
+
+            var novoUsuario = new Usuario
+            {
+                MicrosoftId = remoto.MicrosoftId,
+                Email = emailNormalizado,
+                CriadoEm = agora,
+                AtualizadoEm = agora,
+            };
+
+            ApplyRoles(novoUsuario, roles);
+            novos.Add(novoUsuario);
+            existentesPorId.Add(remoto.MicrosoftId);
+            existentesPorEmail.Add(emailNormalizado);
+        }
+
+        if (novos.Count > 0)
+            await _usuarios.AddRangeAsync(novos, ct);
+
+        return novos.Count;
+    }
+
     private async Task<(Usuario? usuario, string microsoftId)> FindExistingUsuarioAsync(string normalizedEmail, CancellationToken ct)
     {
         var existente = await _usuarios.GetByEmailAsync(normalizedEmail, ct);

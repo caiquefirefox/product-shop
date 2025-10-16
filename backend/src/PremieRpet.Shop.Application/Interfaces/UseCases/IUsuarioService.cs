@@ -11,4 +11,5 @@ public interface IUsuarioService
     Task<IReadOnlyCollection<UsuarioDto>> ListAsync(CancellationToken ct);
     Task<UsuarioDto> UpsertAsync(string email, string? cpf, IEnumerable<string>? roles, CancellationToken ct);
     Task<IReadOnlyCollection<UsuarioLookupDto>> BuscarEntraAsync(string termo, CancellationToken ct);
+    Task<int> SincronizarAsync(CancellationToken ct);
 }
