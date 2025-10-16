@@ -90,7 +90,7 @@ public sealed class PedidoService : IPedidoService
         return Math.Max(1, efetivo);
     }
 
-    private static PedidoDetalheDto MapToDetalhe(Pedido pedido)
+    private PedidoDetalheDto MapToDetalhe(Pedido pedido)
     {
         var itens = pedido.Itens
             .OrderBy(i => i.Descricao)
