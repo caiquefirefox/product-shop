@@ -56,9 +56,9 @@ public class ProdutosController : ControllerBase
     [Authorize("Admin")]
     public async Task<IActionResult> Create(string codigo, [FromForm] ProdutoCreateUpdateRequest request, CancellationToken ct)
     {
-        var usuarioId = User.GetUserId();
-        if (string.IsNullOrWhiteSpace(usuarioId))
-            return Problem(title: "Token sem identificador de usuário (oid/sub).", statusCode: StatusCodes.Status401Unauthorized);
+        var usuarioEmail = User.GetUserEmail();
+        if (string.IsNullOrWhiteSpace(usuarioEmail))
+            return Problem(title: "Token sem e-mail do usuário (preferred_username/email).", statusCode: StatusCodes.Status401Unauthorized);
 
         string? imagemUrl = request.ImagemUrl;
         string? imagemUploadUrl = null;
@@ -76,7 +76,7 @@ public class ProdutosController : ControllerBase
 
         try
         {
-            await _svc.CreateAsync(codigo, request.ToDto(imagemUrl), usuarioId, ct);
+            await _svc.CreateAsync(codigo, request.ToDto(imagemUrl), usuarioEmail, ct);
         }
         catch
         {
@@ -91,9 +91,9 @@ public class ProdutosController : ControllerBase
     [Authorize("Admin")]
     public async Task<IActionResult> Update(string codigo, [FromForm] ProdutoCreateUpdateRequest request, CancellationToken ct)
     {
-        var usuarioId = User.GetUserId();
-        if (string.IsNullOrWhiteSpace(usuarioId))
-            return Problem(title: "Token sem identificador de usuário (oid/sub).", statusCode: StatusCodes.Status401Unauthorized);
+        var usuarioEmail = User.GetUserEmail();
+        if (string.IsNullOrWhiteSpace(usuarioEmail))
+            return Problem(title: "Token sem e-mail do usuário (preferred_username/email).", statusCode: StatusCodes.Status401Unauthorized);
 
         ProdutoDto? produtoAtual = null;
         if (request.Imagem is { Length: > 0 } || request.RemoverImagem)
@@ -122,7 +122,7 @@ public class ProdutosController : ControllerBase
 
         try
         {
-            await _svc.UpdateAsync(codigo, request.ToDto(imagemUrl), usuarioId, ct);
+            await _svc.UpdateAsync(codigo, request.ToDto(imagemUrl), usuarioEmail, ct);
         }
         catch
         {

@@ -2,6 +2,8 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PremieRpet.Shop.Infrastructure;
@@ -11,9 +13,10 @@ using PremieRpet.Shop.Infrastructure;
 namespace PremieRpet.Shop.Infrastructure.Migrations
 {
     [DbContext(typeof(ShopDbContext))]
-    partial class ShopDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251001010000_AddUsuarioRoles")]
+    partial class AddUsuarioRoles
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -107,16 +110,9 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
-                    b.Property<string>("Email")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
                     b.HasKey("Id");
 
                     b.HasIndex("Cpf")
-                        .IsUnique();
-
-                    b.HasIndex("Email")
                         .IsUnique();
 
                     b.HasIndex("MicrosoftId")

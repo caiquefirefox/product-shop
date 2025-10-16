@@ -18,6 +18,7 @@ public sealed class ShopDbContext : DbContext
     public DbSet<ProdutoFaixaEtariaOpcao> ProdutoFaixaEtariaOpcoes => Set<ProdutoFaixaEtariaOpcao>();
     public DbSet<ProdutoPorte> ProdutoPortes => Set<ProdutoPorte>();
     public DbSet<Usuario> Usuarios => Set<Usuario>();
+    public DbSet<UsuarioRole> UsuarioRoles => Set<UsuarioRole>();
 
     public ShopDbContext(DbContextOptions<ShopDbContext> options) : base(options) { }
 
@@ -130,10 +131,24 @@ public sealed class ShopDbContext : DbContext
             e.HasKey(u => u.Id);
             e.Property(u => u.MicrosoftId).HasMaxLength(200).IsRequired();
             e.HasIndex(u => u.MicrosoftId).IsUnique();
+            e.Property(u => u.Email).HasMaxLength(200);
+            e.HasIndex(u => u.Email).IsUnique();
             e.Property(u => u.Cpf).HasMaxLength(11);
             e.HasIndex(u => u.Cpf).IsUnique();
             e.Property(u => u.CriadoEm);
             e.Property(u => u.AtualizadoEm);
+
+            e.HasMany(u => u.Roles)
+                .WithOne(r => r.Usuario)
+                .HasForeignKey(r => r.UsuarioId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<UsuarioRole>(e =>
+        {
+            e.HasKey(r => r.Id);
+            e.Property(r => r.Role).HasMaxLength(64).IsRequired();
+            e.HasIndex(r => new { r.UsuarioId, r.Role }).IsUnique();
         });
 
         b.Entity<PedidoItem>(e =>

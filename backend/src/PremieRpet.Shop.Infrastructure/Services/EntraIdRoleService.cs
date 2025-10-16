@@ -1,0 +1,677 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using PremieRpet.Shop.Application.Interfaces.Services;
+using PremieRpet.Shop.Infrastructure.Options;
+
+namespace PremieRpet.Shop.Infrastructure.Services;
+
+public sealed class EntraIdRoleService : IEntraIdRoleService
+{
+    private static readonly Uri GraphBaseUri = new("https://graph.microsoft.com/v1.0/");
+
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IOptions<EntraIdAppRoleOptions> _options;
+    private readonly ILogger<EntraIdRoleService> _logger;
+
+    private readonly SemaphoreSlim _tokenLock = new(1, 1);
+    private string? _cachedToken;
+    private DateTimeOffset _tokenExpiresAt = DateTimeOffset.MinValue;
+
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
+    public EntraIdRoleService(IHttpClientFactory httpClientFactory, IOptions<EntraIdAppRoleOptions> options, ILogger<EntraIdRoleService> logger)
+    {
+        _httpClientFactory = httpClientFactory;
+        _options = options;
+        _logger = logger;
+    }
+
+    private static string NormalizeEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            throw new InvalidOperationException("E-mail do usuário inválido.");
+
+        var trimmed = email.Trim();
+        if (trimmed.Length == 0)
+            throw new InvalidOperationException("E-mail do usuário inválido.");
+
+        return trimmed.ToLowerInvariant();
+    }
+
+    public Task<Guid> ResolveUserIdAsync(string userEmail, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(userEmail))
+            throw new ArgumentException("E-mail do usuário inválido.", nameof(userEmail));
+
+        var normalizedEmail = NormalizeEmail(userEmail);
+        return ResolveUserIdInternalAsync(normalizedEmail, ct);
+    }
+
+    public async Task<IReadOnlyList<string>> GetUserRolesAsync(string userEmail, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(userEmail))
+            throw new ArgumentException("E-mail do usuário inválido.", nameof(userEmail));
+
+        var normalizedEmail = NormalizeEmail(userEmail);
+        var userGuid = await ResolveUserIdInternalAsync(normalizedEmail, ct);
+        var assignments = await GetAssignmentsAsync(userGuid, ct);
+        if (assignments.Count == 0)
+            return Array.Empty<string>();
+
+        var roleIds = GetRoleIdLookup();
+        var result = new List<string>();
+
+        foreach (var assignment in assignments)
+        {
+            if (assignment.AppRoleId is null)
+                continue;
+
+            if (roleIds.TryGetValue(assignment.AppRoleId.Value, out var roleName))
+            {
+                result.Add(roleName);
+            }
+            else
+            {
+                _logger.LogWarning("Role {RoleId} não está configurada no mapeamento e será ignorada.", assignment.AppRoleId.Value);
+            }
+        }
+
+        return result
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(r => r, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    public async Task<IReadOnlyList<EntraUserResult>> SearchUsersAsync(string query, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+            return Array.Empty<EntraUserResult>();
+
+        var trimmed = query.Trim();
+        if (trimmed.Length == 0)
+            return Array.Empty<EntraUserResult>();
+
+        var token = await GetAccessTokenAsync(ct);
+        var client = _httpClientFactory.CreateClient();
+        client.BaseAddress = GraphBaseUri;
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var resultados = new List<EntraUserResult>();
+        var dedupe = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        var directUrl = $"users/{Uri.EscapeDataString(trimmed)}?$select=id,displayName,mail,userPrincipalName";
+        using (var directRequest = new HttpRequestMessage(HttpMethod.Get, directUrl))
+        using (var directResponse = await client.SendAsync(directRequest, ct))
+        {
+            if (directResponse.IsSuccessStatusCode)
+            {
+                var usuario = await DeserializeUserAsync(directResponse, ct);
+                var mapped = MapGraphUser(usuario);
+                if (mapped is not null && dedupe.Add(mapped.MicrosoftId))
+                    resultados.Add(mapped);
+            }
+            else if (directResponse.StatusCode != HttpStatusCode.NotFound)
+            {
+                var detail = await directResponse.Content.ReadAsStringAsync(ct);
+                _logger.LogError("Falha ao localizar usuário {Query} ({Status}): {Detail}", trimmed, directResponse.StatusCode, detail);
+                throw CreateGraphException(directResponse, detail, "Não foi possível localizar usuários no Microsoft Graph.", GraphPermissionScope.UsersRead);
+            }
+        }
+
+        if (trimmed.Length >= 3 || resultados.Count == 0)
+        {
+            var filter = BuildSearchFilter(trimmed);
+            if (!string.IsNullOrWhiteSpace(filter))
+            {
+                var searchUrl = $"users?$select=id,displayName,mail,userPrincipalName&$top=10&$filter={Uri.EscapeDataString(filter)}";
+                using var searchRequest = new HttpRequestMessage(HttpMethod.Get, searchUrl);
+                using var searchResponse = await client.SendAsync(searchRequest, ct);
+
+                if (!searchResponse.IsSuccessStatusCode)
+                {
+                    var detail = await searchResponse.Content.ReadAsStringAsync(ct);
+                    _logger.LogError("Falha ao pesquisar usuários {Query} ({Status}): {Detail}", trimmed, searchResponse.StatusCode, detail);
+                    throw CreateGraphException(searchResponse, detail, "Não foi possível localizar usuários no Microsoft Graph.", GraphPermissionScope.UsersRead);
+                }
+
+                await using var stream = await searchResponse.Content.ReadAsStreamAsync(ct);
+                var payload = await JsonSerializer.DeserializeAsync<GraphUsersResponse>(stream, JsonOptions, ct)
+                    ?? new GraphUsersResponse();
+
+                if (payload.Value is not null)
+                {
+                    foreach (var user in payload.Value)
+                    {
+                        var mapped = MapGraphUser(user);
+                        if (mapped is not null && dedupe.Add(mapped.MicrosoftId))
+                            resultados.Add(mapped);
+                    }
+                }
+            }
+        }
+
+        return resultados;
+    }
+
+    public async Task ReplaceUserRolesAsync(string userEmail, IEnumerable<string> roles, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(userEmail))
+            throw new ArgumentException("E-mail do usuário inválido.", nameof(userEmail));
+
+        var normalizedEmail = NormalizeEmail(userEmail);
+        var userGuid = await ResolveUserIdInternalAsync(normalizedEmail, ct);
+        var desiredRoles = roles?.Where(r => !string.IsNullOrWhiteSpace(r)).Select(r => r.Trim()).ToArray() ?? Array.Empty<string>();
+        var options = ValidateOptions();
+
+        var assignments = await GetAssignmentsAsync(userGuid, ct);
+        var desiredRoleIds = new HashSet<Guid>(desiredRoles.Select(role =>
+        {
+            if (!options.RoleIds.TryGetValue(role, out var idValue) || !Guid.TryParse(idValue, out var parsed))
+                throw new InvalidOperationException($"Perfil '{role}' não está configurado na aplicação Entra ID.");
+            return parsed;
+        }));
+
+        var toRemove = assignments
+            .Where(a => a.AppRoleId is not null && !desiredRoleIds.Contains(a.AppRoleId.Value))
+            .ToList();
+
+        foreach (var assignment in toRemove)
+        {
+            if (!string.IsNullOrWhiteSpace(assignment.Id))
+            {
+                await RemoveAssignmentAsync(userGuid, assignment.Id, ct);
+            }
+        }
+
+        var currentRoleIds = assignments
+            .Where(a => a.AppRoleId is not null)
+            .Select(a => a.AppRoleId!.Value)
+            .ToHashSet();
+
+        foreach (var roleId in desiredRoleIds)
+        {
+            if (!currentRoleIds.Contains(roleId))
+            {
+                await AddAssignmentAsync(userGuid, roleId, ct);
+            }
+        }
+    }
+
+    private async Task<Guid> ResolveUserIdInternalAsync(string email, CancellationToken ct)
+    {
+        var normalizedEmail = NormalizeEmail(email);
+        _ = ValidateOptions();
+        if (Guid.TryParse(normalizedEmail, out var legacyObjectId))
+            return legacyObjectId;
+
+        var token = await GetAccessTokenAsync(ct);
+        var client = _httpClientFactory.CreateClient();
+        client.BaseAddress = GraphBaseUri;
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var directUrl = $"users/{Uri.EscapeDataString(normalizedEmail)}?$select=id,mail,userPrincipalName";
+        using (var request = new HttpRequestMessage(HttpMethod.Get, directUrl))
+        using (var response = await client.SendAsync(request, ct))
+        {
+            if (response.IsSuccessStatusCode)
+            {
+                var user = await DeserializeUserAsync(response, ct);
+                if (user?.Id is not null && Guid.TryParse(user.Id, out var parsedId))
+                    return parsedId;
+
+                throw new InvalidOperationException($"Usuário '{normalizedEmail}' não retornou um identificador válido no Microsoft Graph.");
+            }
+
+            if (response.StatusCode != HttpStatusCode.NotFound)
+            {
+                var detail = await response.Content.ReadAsStringAsync(ct);
+                _logger.LogError("Falha ao localizar usuário {Email} ({Status}): {Detail}", normalizedEmail, response.StatusCode, detail);
+                throw CreateGraphException(
+                    response,
+                    detail,
+                    "Não foi possível localizar o usuário no Microsoft Graph.",
+                    GraphPermissionScope.UsersRead);
+            }
+        }
+
+        var escaped = normalizedEmail.Replace("'", "''");
+        var filter = $"mail eq '{escaped}' or userPrincipalName eq '{escaped}'";
+        var searchUrl = $"users?$select=id,mail,userPrincipalName&$filter={Uri.EscapeDataString(filter)}";
+        using var searchRequest = new HttpRequestMessage(HttpMethod.Get, searchUrl);
+        using var searchResponse = await client.SendAsync(searchRequest, ct);
+
+        if (!searchResponse.IsSuccessStatusCode)
+        {
+            var detail = await searchResponse.Content.ReadAsStringAsync(ct);
+            _logger.LogError("Falha ao pesquisar usuário {Email} ({Status}): {Detail}", normalizedEmail, searchResponse.StatusCode, detail);
+            throw CreateGraphException(
+                searchResponse,
+                detail,
+                "Não foi possível localizar o usuário no Microsoft Graph.",
+                GraphPermissionScope.UsersRead);
+        }
+
+        await using var stream = await searchResponse.Content.ReadAsStreamAsync(ct);
+        var users = await JsonSerializer.DeserializeAsync<GraphUsersResponse>(stream, JsonOptions, ct) ?? new GraphUsersResponse();
+        var match = users.Value?.FirstOrDefault();
+
+        if (match?.Id is null || !Guid.TryParse(match.Id, out var userId))
+            throw new InvalidOperationException($"Usuário '{normalizedEmail}' não encontrado no Microsoft Graph.");
+
+        return userId;
+    }
+
+    private static async Task<GraphUser?> DeserializeUserAsync(HttpResponseMessage response, CancellationToken ct)
+    {
+        await using var stream = await response.Content.ReadAsStreamAsync(ct);
+        return await JsonSerializer.DeserializeAsync<GraphUser>(stream, JsonOptions, ct);
+    }
+
+    private static string? BuildSearchFilter(string query)
+    {
+        if (Guid.TryParse(query, out var parsedGuid))
+            return $"id eq {FormatGuid(parsedGuid)}";
+
+        var trimmed = query.Trim();
+        if (trimmed.Length == 0)
+            return string.Empty;
+
+        var escapedExact = trimmed.Replace("'", "''");
+
+        if (trimmed.Contains('@', StringComparison.Ordinal))
+        {
+            return $"mail eq '{escapedExact}' or userPrincipalName eq '{escapedExact}'";
+        }
+
+        if (trimmed.Length < 3)
+            return string.Empty;
+
+        var lowered = trimmed.ToLowerInvariant();
+        var escapedPartial = lowered.Replace("'", "''");
+
+        return $"startswith(mail,'{escapedPartial}') or startswith(userPrincipalName,'{escapedPartial}') or startswith(displayName,'{escapedPartial}')";
+    }
+
+    private static EntraUserResult? MapGraphUser(GraphUser? user)
+    {
+        if (user is null)
+            return null;
+
+        if (string.IsNullOrWhiteSpace(user.Id) || !Guid.TryParse(user.Id, out var parsed))
+            return null;
+
+        var normalizedMail = TryNormalizeGraphEmail(user.Mail);
+        var normalizedUpn = TryNormalizeGraphEmail(user.UserPrincipalName);
+        var email = normalizedMail ?? normalizedUpn;
+        if (string.IsNullOrWhiteSpace(email))
+            return null;
+
+        return new EntraUserResult(
+            parsed.ToString("D"),
+            email,
+            normalizedMail,
+            normalizedUpn,
+            user.DisplayName);
+    }
+
+    private static string? TryNormalizeGraphEmail(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+
+        try
+        {
+            return NormalizeEmail(value);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private async Task<IReadOnlyList<AppRoleAssignment>> GetAssignmentsAsync(Guid userObjectId, CancellationToken ct)
+    {
+        var options = ValidateOptions();
+        var token = await GetAccessTokenAsync(ct);
+        var client = _httpClientFactory.CreateClient();
+        client.BaseAddress = GraphBaseUri;
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var enterpriseAppId = Guid.Parse(options.EnterpriseAppObjectId);
+        var url = $"users/{FormatGuid(userObjectId)}/appRoleAssignments?$filter=resourceId eq {FormatGuid(enterpriseAppId)}";
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        using var response = await client.SendAsync(request, ct);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var detail = await response.Content.ReadAsStringAsync(ct);
+            _logger.LogError("Falha ao consultar roles no Graph ({Status}): {Detail}", response.StatusCode, detail);
+            throw CreateGraphException(
+                response,
+                detail,
+                "Não foi possível consultar as roles do usuário no Microsoft Graph.",
+                GraphPermissionScope.AssignmentsRead);
+        }
+
+        await using var stream = await response.Content.ReadAsStreamAsync(ct);
+        var payload = await JsonSerializer.DeserializeAsync<GraphAppRoleAssignmentsResponse>(stream, JsonOptions, ct)
+            ?? new GraphAppRoleAssignmentsResponse();
+
+        return payload.Value ?? Array.Empty<AppRoleAssignment>();
+    }
+
+    private async Task RemoveAssignmentAsync(Guid userObjectId, string assignmentId, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(assignmentId))
+        {
+            _logger.LogWarning("Identificador da atribuição vazio ao tentar remover role do usuário {UserId}.", userObjectId);
+            return;
+        }
+
+        var options = ValidateOptions();
+        var enterpriseAppId = Guid.Parse(options.EnterpriseAppObjectId);
+        var token = await GetAccessTokenAsync(ct);
+        var client = _httpClientFactory.CreateClient();
+        client.BaseAddress = GraphBaseUri;
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        using var request = new HttpRequestMessage(HttpMethod.Delete, $"servicePrincipals/{enterpriseAppId}/appRoleAssignedTo/{Uri.EscapeDataString(assignmentId)}");
+        using var response = await client.SendAsync(request, ct);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var detail = await response.Content.ReadAsStringAsync(ct);
+            _logger.LogError("Falha ao remover role ({Status}): {Detail}", response.StatusCode, detail);
+            throw CreateGraphException(
+                response,
+                detail,
+                "Não foi possível remover a role do usuário no Microsoft Graph.",
+                GraphPermissionScope.AssignmentsWrite);
+        }
+    }
+
+    private async Task AddAssignmentAsync(Guid userObjectId, Guid roleId, CancellationToken ct)
+    {
+        var options = ValidateOptions();
+        var enterpriseAppId = Guid.Parse(options.EnterpriseAppObjectId);
+        var token = await GetAccessTokenAsync(ct);
+        var client = _httpClientFactory.CreateClient();
+        client.BaseAddress = GraphBaseUri;
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var payload = new
+        {
+            principalId = userObjectId,
+            resourceId = enterpriseAppId,
+            appRoleId = roleId
+        };
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"servicePrincipals/{enterpriseAppId}/appRoleAssignedTo")
+        {
+            Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
+        };
+
+        using var response = await client.SendAsync(request, ct);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var detail = await response.Content.ReadAsStringAsync(ct);
+            _logger.LogError("Falha ao adicionar role ({Status}): {Detail}", response.StatusCode, detail);
+            throw CreateGraphException(
+                response,
+                detail,
+                "Não foi possível atribuir a role ao usuário no Microsoft Graph.",
+                GraphPermissionScope.AssignmentsWrite);
+        }
+    }
+
+    private async Task<string> GetAccessTokenAsync(CancellationToken ct)
+    {
+        if (!string.IsNullOrEmpty(_cachedToken) && _tokenExpiresAt > DateTimeOffset.UtcNow.AddMinutes(1))
+            return _cachedToken!;
+
+        await _tokenLock.WaitAsync(ct);
+        try
+        {
+            if (!string.IsNullOrEmpty(_cachedToken) && _tokenExpiresAt > DateTimeOffset.UtcNow.AddMinutes(1))
+                return _cachedToken!;
+
+            var options = ValidateOptions();
+            var client = _httpClientFactory.CreateClient();
+            var tokenEndpoint = new Uri($"https://login.microsoftonline.com/{options.TenantId}/oauth2/v2.0/token");
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, tokenEndpoint)
+            {
+                Content = new FormUrlEncodedContent(new Dictionary<string, string>
+                {
+                    ["client_id"] = options.ClientId,
+                    ["client_secret"] = options.ClientSecret,
+                    ["scope"] = "https://graph.microsoft.com/.default",
+                    ["grant_type"] = "client_credentials"
+                })
+            };
+
+            using var response = await client.SendAsync(request, ct);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var detail = await response.Content.ReadAsStringAsync(ct);
+                _logger.LogError("Falha ao obter token do Microsoft Identity ({Status}): {Detail}", response.StatusCode, detail);
+                throw CreateGraphException(
+                    response,
+                    detail,
+                    "Não foi possível autenticar na API do Microsoft Graph.",
+                    GraphPermissionScope.Token);
+            }
+
+            await using var stream = await response.Content.ReadAsStreamAsync(ct);
+            var token = await JsonSerializer.DeserializeAsync<TokenResponse>(stream, JsonOptions, ct)
+                ?? throw new InvalidOperationException("Resposta inválida ao solicitar token do Microsoft Graph.");
+
+            if (string.IsNullOrWhiteSpace(token.AccessToken))
+                throw new InvalidOperationException("Resposta inválida ao solicitar token do Microsoft Graph.");
+
+            _cachedToken = token.AccessToken;
+            var expiresIn = token.ExpiresIn > 0 ? token.ExpiresIn : 3600;
+            _tokenExpiresAt = DateTimeOffset.UtcNow.AddSeconds(expiresIn - 60);
+
+            return _cachedToken;
+        }
+        finally
+        {
+            _tokenLock.Release();
+        }
+    }
+
+    private EntraIdAppRoleOptions ValidateOptions()
+    {
+        var options = _options.Value;
+        if (string.IsNullOrWhiteSpace(options.TenantId)
+            || string.IsNullOrWhiteSpace(options.ClientId)
+            || string.IsNullOrWhiteSpace(options.ClientSecret)
+            || string.IsNullOrWhiteSpace(options.EnterpriseAppObjectId))
+        {
+            throw new InvalidOperationException("Configuração do Azure Entra ID incompleta.");
+        }
+
+        if (!Guid.TryParse(options.EnterpriseAppObjectId, out _))
+            throw new InvalidOperationException("Enterprise Application (service principal) inválida na configuração do Azure Entra ID.");
+
+        return options;
+    }
+
+    private Dictionary<Guid, string> GetRoleIdLookup()
+    {
+        var options = ValidateOptions();
+        var lookup = new Dictionary<Guid, string>();
+
+        foreach (var pair in options.RoleIds)
+        {
+            if (Guid.TryParse(pair.Value, out var id))
+                lookup[id] = pair.Key;
+        }
+
+        return lookup;
+    }
+
+    private static string FormatGuid(Guid value)
+        => value.ToString("D");
+
+    private Exception CreateGraphException(
+        HttpResponseMessage response,
+        string? detail,
+        string defaultMessage,
+        GraphPermissionScope scope)
+    {
+        var permissionHelp = BuildPermissionHelpMessage(scope);
+
+        if (string.IsNullOrWhiteSpace(detail))
+            return new InvalidOperationException($"{defaultMessage} {permissionHelp}");
+
+        try
+        {
+            var error = JsonSerializer.Deserialize<GraphErrorResponse>(detail, JsonOptions);
+            if (error?.Error is GraphError graphError)
+            {
+                if (IsAuthorizationDenied(response, graphError))
+                {
+                    return new InvalidOperationException(permissionHelp);
+                }
+
+                if (!string.IsNullOrWhiteSpace(graphError.Message))
+                {
+                    return new InvalidOperationException($"{defaultMessage} Detalhes: {graphError.Message}. {permissionHelp}");
+                }
+            }
+        }
+        catch (JsonException)
+        {
+            // Ignora erros de parsing e cai no retorno padrão com o detalhe bruto.
+        }
+
+        if (response.StatusCode == HttpStatusCode.Forbidden)
+        {
+            return new InvalidOperationException(permissionHelp);
+        }
+
+        return new InvalidOperationException($"{defaultMessage} Detalhes: {detail}. {permissionHelp}");
+    }
+
+    private static bool IsAuthorizationDenied(HttpResponseMessage response, GraphError graphError)
+    {
+        if (response.StatusCode == HttpStatusCode.Forbidden)
+            return true;
+
+        return string.Equals(graphError.Code, "Authorization_RequestDenied", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(graphError.Code, "AuthorizationFailed", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private string BuildPermissionHelpMessage(GraphPermissionScope scope)
+    {
+        var clientId = _options.Value.ClientId;
+        var appIdentifier = string.IsNullOrWhiteSpace(clientId)
+            ? "configurada em AzureEntra"
+            : $"({clientId}) configurada em AzureEntra";
+
+        return scope switch
+        {
+            GraphPermissionScope.AssignmentsRead =>
+                "A aplicação " + appIdentifier + " precisa da permissão de aplicativo 'AppRoleAssignment.ReadWrite.All' " +
+                "concedida no Microsoft Graph para listar os vínculos em `users/{id}/appRoleAssignments`. Abra o " +
+                "registro da API utilizado pelo backend (App registrations), inclua a permissão em Microsoft Graph > Application " +
+                "permissions e confirme o 'Grant admin consent'. Depois, em Aplicativos empresariais > (sua API) > Permissions," +
+                "verifique se o status aparece como concedido; se necessário, clique em 'Grant admin consent' novamente ou execute `az ad app permission admin-consent --id <client-id>` com uma conta administradora.",
+            GraphPermissionScope.AssignmentsWrite =>
+                "A aplicação " + appIdentifier + " precisa da permissão de aplicativo 'AppRoleAssignment.ReadWrite.All' " +
+                "concedida no Microsoft Graph para criar e remover vínculos em `servicePrincipals/{appId}/appRoleAssignedTo`. " +
+                "Confirme a adição da permissão no registro da API, o 'Grant admin consent' e o status concedido também em Aplicativos empresariais > (sua API) > Permissions; se necessário, utilize 'Grant admin consent' novamente ou o comando `az ad app permission admin-consent --id <client-id>`.",
+            GraphPermissionScope.UsersRead =>
+                "A aplicação " + appIdentifier + " precisa da permissão de aplicativo 'User.Read.All' " +
+                "concedida no Microsoft Graph para localizar usuários por e-mail. No registro da API (App registrations), " +
+                "adicione a permissão em Microsoft Graph > Application permissions e confirme o 'Grant admin consent'. " +
+                "Depois, valide em Aplicativos empresariais > (sua API) > Permissions se o status está concedido; se necessário, " +
+                "utilize 'Grant admin consent' novamente ou o comando `az ad app permission admin-consent --id <client-id>`.",
+            GraphPermissionScope.Token =>
+                "A aplicação " + appIdentifier + " não conseguiu autenticar no Microsoft Graph com client credentials. Revise " +
+                "TenantId, ClientId e ClientSecret na configuração 'AzureEntra', confirme que o segredo não expirou em " +
+                "Certificados e segredos e que a aplicação recebeu 'Grant admin consent' para as permissões requeridas.",
+            _ =>
+                "A aplicação " + appIdentifier + " não possui permissões suficientes no Microsoft Graph. Conceda 'AppRoleAssignment.ReadWrite.All' como permissão de aplicativo e aplique 'Grant admin consent'."
+        };
+    }
+
+    private enum GraphPermissionScope
+    {
+        AssignmentsRead,
+        AssignmentsWrite,
+        UsersRead,
+        Token
+    }
+    private sealed record GraphUsersResponse
+    {
+        public IReadOnlyList<GraphUser>? Value { get; init; }
+    }
+
+    private sealed record GraphUser
+    {
+        public string? Id { get; init; }
+
+        public string? DisplayName { get; init; }
+
+        public string? Mail { get; init; }
+
+        [JsonPropertyName("userPrincipalName")]
+        public string? UserPrincipalName { get; init; }
+    }
+
+    private sealed record GraphAppRoleAssignmentsResponse
+    {
+        public IReadOnlyList<AppRoleAssignment>? Value { get; init; }
+    }
+
+    private sealed record GraphErrorResponse
+    {
+        public GraphError? Error { get; init; }
+    }
+
+    private sealed record GraphError
+    {
+        public string? Code { get; init; }
+        public string? Message { get; init; }
+    }
+
+    private sealed record AppRoleAssignment
+    {
+        public string? Id { get; init; }
+        public Guid? AppRoleId { get; init; }
+    }
+
+    private sealed record TokenResponse
+    {
+        [JsonPropertyName("access_token")]
+        public string? AccessToken { get; init; }
+
+        [JsonPropertyName("expires_in")]
+        public int ExpiresIn { get; init; }
+
+        [JsonPropertyName("ext_expires_in")]
+        public int ExtendedExpiresIn { get; init; }
+
+        [JsonPropertyName("token_type")]
+        public string? TokenType { get; init; }
+    }
+}
