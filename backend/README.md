@@ -71,5 +71,6 @@ A janela de edição de pedidos e as regras de criação podem ser configuradas 
 | --- | --- | --- |
 | `Pedidos__EditWindowOpeningDay` | Dia do mês que inicia a janela de edição de pedidos. | `15` |
 | `Pedidos__EditWindowClosingDay` | Dia do mês que encerra a janela de edição de pedidos. | `20` |
+| `Pedidos__LimitKgPerUserPerMonth` | Limite de peso (em kg) consumido por colaborador a cada mês. | `33.1` |
 | `Pedidos__MaxOrdersPerUserPerMonth` | Quantidade máxima de pedidos por usuário no mês (0 desativa o limite). | `1` |
 | `Pedidos__InitialStatusId` | Status inicial do pedido (`1` = Solicitado, `2` = Aprovado). | `1` |

@@ -5,6 +5,7 @@ namespace PremieRpet.Shop.Application.Configuration;
 public sealed class PedidoSettings
 {
     public const string SectionName = "Pedidos";
+    public const decimal DefaultLimitKgPerUserPerMonth = 33.1m;
 
     public int EditWindowOpeningDay { get; set; } = 15;
 
@@ -13,4 +14,6 @@ public sealed class PedidoSettings
     public int MaxOrdersPerUserPerMonth { get; set; } = 1;
 
     public int InitialStatusId { get; set; } = PedidoStatusIds.Solicitado;
+
+    public decimal LimitKgPerUserPerMonth { get; set; } = DefaultLimitKgPerUserPerMonth;
 }

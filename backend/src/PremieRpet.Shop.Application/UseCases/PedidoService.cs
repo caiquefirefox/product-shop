@@ -25,7 +25,7 @@ public sealed class PedidoService : IPedidoService
     private readonly IProdutoRepository _produtos;
     private readonly IUsuarioService _usuarios;
     private readonly PedidoSettings _settings;
-    public const decimal LIMITE_KG_MES = 30m;
+    private readonly decimal _limiteKgMes;
 
     public PedidoService(
         IPedidoRepository ped,
@@ -37,16 +37,28 @@ public sealed class PedidoService : IPedidoService
         _produtos = prod;
         _usuarios = usuarios;
         _settings = Normalizar(settings?.Value ?? new PedidoSettings());
+        _limiteKgMes = _settings.LimitKgPerUserPerMonth;
     }
 
     private static PedidoSettings Normalizar(PedidoSettings settings)
     {
+        var limiteKg = settings.LimitKgPerUserPerMonth;
+        if (limiteKg <= 0)
+        {
+            limiteKg = PedidoSettings.DefaultLimitKgPerUserPerMonth;
+        }
+        else
+        {
+            limiteKg = decimal.Round(limiteKg, 3, MidpointRounding.AwayFromZero);
+        }
+
         var normalized = new PedidoSettings
         {
             EditWindowOpeningDay = Math.Clamp(settings.EditWindowOpeningDay, 1, 31),
             EditWindowClosingDay = Math.Clamp(settings.EditWindowClosingDay, 1, 31),
             MaxOrdersPerUserPerMonth = Math.Max(0, settings.MaxOrdersPerUserPerMonth),
-            InitialStatusId = settings.InitialStatusId > 0 ? settings.InitialStatusId : PedidoStatusIds.Solicitado
+            InitialStatusId = settings.InitialStatusId > 0 ? settings.InitialStatusId : PedidoStatusIds.Solicitado,
+            LimitKgPerUserPerMonth = limiteKg
         };
 
         if (normalized.EditWindowClosingDay < normalized.EditWindowOpeningDay)
@@ -241,8 +253,8 @@ public sealed class PedidoService : IPedidoService
             var pesoUnitKg = PesoRules.ToKg(pesoOriginal, tipoPesoOriginal);
             var pesoNovo = pesoAcumulado + (pesoUnitKg * item.Quantidade);
 
-            if (pesoNovo > LIMITE_KG_MES)
-                throw new InvalidOperationException($"Limite mensal de {LIMITE_KG_MES} kg excedido.");
+            if (pesoNovo > _limiteKgMes)
+                throw new InvalidOperationException($"Limite mensal de {_limiteKgMes} kg excedido.");
 
             pesoAcumulado = pesoNovo;
 
@@ -535,8 +547,8 @@ public sealed class PedidoService : IPedidoService
             }
         }
 
-        if (pesoBase + pesoNovoPedido > LIMITE_KG_MES)
-            throw new InvalidOperationException($"Limite mensal de {LIMITE_KG_MES} kg excedido.");
+        if (pesoBase + pesoNovoPedido > _limiteKgMes)
+            throw new InvalidOperationException($"Limite mensal de {_limiteKgMes} kg excedido.");
 
         var unidadeAnterior = pedido.UnidadeEntrega;
         pedido.UnidadeEntrega = dto.UnidadeEntrega;
@@ -630,7 +642,7 @@ public sealed class PedidoService : IPedidoService
         var totalKg = pedidos.Sum(p => PesoRules.SumTotalKg(p.Itens));
 
         return new PedidoResumoMensalDto(
-            LIMITE_KG_MES,
+            _limiteKgMes,
             totalKg,
             totalValor,
             totalItens,
