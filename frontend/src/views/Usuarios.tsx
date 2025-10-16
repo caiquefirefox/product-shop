@@ -1,4 +1,4 @@
-import { ChangeEvent, FormEvent, useCallback, useEffect, useState } from "react";
+import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import api from "../lib/api";
 import { useToast } from "../ui/toast";
 import { formatCpf, isValidCpf, sanitizeCpf } from "../lib/cpf";
@@ -16,12 +16,19 @@ function buildRoles(isAdmin: boolean) {
 
 const MIN_SEARCH_LENGTH = 3;
 
+const filterLabelClasses = "text-xs font-semibold uppercase tracking-wide text-slate-500";
+const filterInputClasses =
+  "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200";
+const clearFiltersButtonClasses =
+  "inline-flex items-center gap-2 rounded-full border border-indigo-200 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-indigo-600 transition hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2";
+
 export default function Usuarios() {
   const toast = useToast();
   const { refreshRoles } = useUser();
   const [usuarios, setUsuarios] = useState<UsuarioPerfil[]>([]);
   const [loading, setLoading] = useState(true);
   const [reloading, setReloading] = useState(false);
+  const [createPanelOpen, setCreatePanelOpen] = useState(false);
 
   const [newEmail, setNewEmail] = useState("");
   const [newCpf, setNewCpf] = useState("");
@@ -38,11 +45,35 @@ export default function Usuarios() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
 
+  const [filterEmail, setFilterEmail] = useState("");
+  const [filterCpf, setFilterCpf] = useState("");
+  const [filterPerfil, setFilterPerfil] = useState("");
+
   const newCpfComplete = newCpf.length === 11;
   const newCpfIncomplete = newCpf.length > 0 && !newCpfComplete;
   const newCpfInvalid = newCpfComplete && !isValidCpf(newCpf);
   const newCpfHasError = newCpfIncomplete || newCpfInvalid;
   const trimmedEmail = newEmail.trim();
+
+  const resetNewUserForm = () => {
+    setNewEmail("");
+    setNewCpf("");
+    setNewIsAdmin(false);
+    setSelectedSuggestion(null);
+    setSearchResults([]);
+    setSearchError(null);
+    setSearching(false);
+  };
+
+  const handleOpenCreatePanel = () => {
+    resetNewUserForm();
+    setCreatePanelOpen(true);
+  };
+
+  const handleCloseCreatePanel = () => {
+    resetNewUserForm();
+    setCreatePanelOpen(false);
+  };
 
   const fetchUsuarios = useCallback(async () => {
     setReloading(true);
@@ -131,6 +162,10 @@ export default function Usuarios() {
 
   const handleNewCpfChange = (event: ChangeEvent<HTMLInputElement>) => {
     setNewCpf(sanitizeCpf(event.target.value));
+  };
+
+  const handleFilterCpfChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setFilterCpf(sanitizeCpf(event.target.value));
   };
 
   const handleSelectSuggestion = (suggestion: UsuarioLookup) => {
@@ -245,7 +280,28 @@ export default function Usuarios() {
     }
   };
 
+  const filteredUsuarios = useMemo(() => {
+    const normalizedEmail = filterEmail.trim().toLowerCase();
+    const normalizedCpf = filterCpf;
+    const perfil = filterPerfil;
+
+    return usuarios.filter((usuario) => {
+      const email = usuario.email ?? "";
+      const matchesEmail =
+        !normalizedEmail ||
+        email.toLowerCase().includes(normalizedEmail) ||
+        usuario.microsoftId.toLowerCase().includes(normalizedEmail);
+      const usuarioCpf = sanitizeCpf(usuario.cpf ?? "");
+      const matchesCpf = !normalizedCpf || usuarioCpf.includes(normalizedCpf);
+      const matchesPerfil = !perfil || usuario.roles.includes(perfil);
+
+      return matchesEmail && matchesCpf && matchesPerfil;
+    });
+  }, [usuarios, filterEmail, filterCpf, filterPerfil]);
+
   const hasUsuarios = usuarios.length > 0;
+  const hasFilteredUsuarios = filteredUsuarios.length > 0;
+  const hasUserFilters = Boolean(filterEmail.trim() || filterCpf || filterPerfil);
 
   const handleSyncUsuarios = async () => {
     setSyncing(true);
@@ -291,14 +347,46 @@ export default function Usuarios() {
     }
   };
 
+  const handleClearUserFilters = () => {
+    setFilterEmail("");
+    setFilterCpf("");
+    setFilterPerfil("");
+  };
+
   return (
     <div className="space-y-8">
-      <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h1 className="text-xl font-semibold text-gray-900 mb-4">Adicionar usuário</h1>
-        <p className="text-sm text-gray-600 mb-6">
-          Informe o <strong>e-mail</strong> do usuário no Microsoft Entra ID. O perfil de Colaborador é atribuído automaticamente.
-        </p>
-        <form className="grid gap-4 md:grid-cols-2" onSubmit={handleCreate}>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">Usuários</h1>
+          <p className="text-sm text-gray-600">Gerencie o acesso dos colaboradores e administradores da plataforma.</p>
+        </div>
+        <button
+          type="button"
+          onClick={handleOpenCreatePanel}
+          className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2"
+        >
+          Adicionar usuário
+        </button>
+      </div>
+
+      {createPanelOpen && (
+        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Adicionar usuário</h2>
+              <p className="text-sm text-gray-600">
+                Informe o <strong>e-mail</strong> do usuário no Microsoft Entra ID. O perfil de Colaborador é atribuído automaticamente.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleCloseCreatePanel}
+              className="text-sm font-semibold text-gray-500 transition hover:text-gray-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2"
+            >
+              Fechar
+            </button>
+          </div>
+          <form className="grid gap-4 md:grid-cols-2" onSubmit={handleCreate}>
           <label className="flex flex-col gap-1">
             <span className="text-sm font-medium text-gray-700">E-mail *</span>
             <input
@@ -419,6 +507,68 @@ export default function Usuarios() {
             </button>
           </div>
         </form>
+        </section>
+      )}
+
+      <section className="space-y-5 rounded-2xl border border-indigo-100 bg-white p-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="text-left">
+            <h2 className="text-base font-semibold text-gray-900">Filtrar usuários cadastrados</h2>
+            <p className="text-sm text-gray-500">Refine a listagem utilizando os filtros abaixo.</p>
+          </div>
+          {hasUserFilters && (
+            <button type="button" onClick={handleClearUserFilters} className={clearFiltersButtonClasses}>
+              Limpar filtros
+            </button>
+          )}
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="flex flex-col gap-2 text-left">
+            <label htmlFor="usuarios-filtro-email" className={filterLabelClasses}>
+              E-mail
+            </label>
+            <input
+              id="usuarios-filtro-email"
+              type="text"
+              value={filterEmail}
+              onChange={(event) => setFilterEmail(event.target.value)}
+              placeholder="Buscar por e-mail"
+              className={filterInputClasses}
+            />
+          </div>
+
+          <div className="flex flex-col gap-2 text-left">
+            <label htmlFor="usuarios-filtro-cpf" className={filterLabelClasses}>
+              CPF
+            </label>
+            <input
+              id="usuarios-filtro-cpf"
+              type="text"
+              value={formatCpf(filterCpf)}
+              onChange={handleFilterCpfChange}
+              maxLength={14}
+              placeholder="000.000.000-00"
+              className={filterInputClasses}
+            />
+          </div>
+
+          <div className="flex flex-col gap-2 text-left">
+            <label htmlFor="usuarios-filtro-perfil" className={filterLabelClasses}>
+              Perfil
+            </label>
+            <select
+              id="usuarios-filtro-perfil"
+              value={filterPerfil}
+              onChange={(event) => setFilterPerfil(event.target.value)}
+              className={filterInputClasses}
+            >
+              <option value="">Todos os perfis</option>
+              <option value="Admin">Administrador</option>
+              <option value="Colaborador">Colaborador</option>
+            </select>
+          </div>
+        </div>
       </section>
 
       <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
@@ -451,6 +601,8 @@ export default function Usuarios() {
           <div className="py-12 text-center text-sm text-gray-500">Carregando usuários...</div>
         ) : !hasUsuarios ? (
           <div className="py-12 text-center text-sm text-gray-500">Nenhum usuário cadastrado ainda.</div>
+        ) : !hasFilteredUsuarios ? (
+          <div className="py-12 text-center text-sm text-gray-500">Nenhum usuário encontrado com os filtros aplicados.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 text-sm">
@@ -464,7 +616,7 @@ export default function Usuarios() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {usuarios.map((usuario) => {
+                {filteredUsuarios.map((usuario) => {
                   const isAdminOriginal = usuario.roles.includes("Admin");
                   const isAdminDraft = draftAdmins[usuario.id] ?? isAdminOriginal;
                   const draftCpf = draftCpfs[usuario.id] ?? "";
