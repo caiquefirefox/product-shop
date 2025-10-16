@@ -11,6 +11,7 @@ public interface IEntraIdRoleService
     Task<IReadOnlyList<string>> GetUserRolesAsync(string userEmail, CancellationToken ct);
     Task ReplaceUserRolesAsync(string userEmail, IEnumerable<string> roles, CancellationToken ct);
     Task<IReadOnlyList<EntraUserResult>> SearchUsersAsync(string query, CancellationToken ct);
+    Task<IReadOnlyList<EntraUserWithRolesResult>> ListApplicationUsersAsync(CancellationToken ct);
 }
 
 public sealed record EntraUserResult(
@@ -19,4 +20,11 @@ public sealed record EntraUserResult(
     string? Mail,
     string? UserPrincipalName,
     string? DisplayName
+);
+
+public sealed record EntraUserWithRolesResult(
+    string MicrosoftId,
+    string Email,
+    string? DisplayName,
+    IReadOnlyCollection<string> Roles
 );

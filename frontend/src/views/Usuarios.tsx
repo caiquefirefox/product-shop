@@ -36,6 +36,7 @@ export default function Usuarios() {
   const [draftAdmins, setDraftAdmins] = useState<Record<string, boolean>>({});
   const [draftCpfs, setDraftCpfs] = useState<Record<string, string>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
 
   const newCpfComplete = newCpf.length === 11;
   const newCpfIncomplete = newCpf.length > 0 && !newCpfComplete;
@@ -246,6 +247,50 @@ export default function Usuarios() {
 
   const hasUsuarios = usuarios.length > 0;
 
+  const handleSyncUsuarios = async () => {
+    setSyncing(true);
+    try {
+      const { data } = await api.post<{ inseridos?: number; atualizados?: number }>("/usuarios/sincronizar");
+      const inseridos = typeof data?.inseridos === "number" ? data.inseridos : 0;
+      const atualizados = typeof data?.atualizados === "number" ? data.atualizados : 0;
+
+      if (inseridos > 0 || atualizados > 0) {
+        const importMessage = inseridos > 0
+          ? inseridos === 1
+            ? "1 novo usuário foi importado"
+            : `${inseridos} novos usuários foram importados`
+          : null;
+
+        const updateMessage = atualizados > 0
+          ? atualizados === 1
+            ? "O e-mail de 1 usuário foi atualizado"
+            : `Os e-mails de ${atualizados} usuários foram atualizados`
+          : null;
+
+        const parts: string[] = [];
+        if (importMessage) {
+          parts.push(importMessage);
+        }
+        if (updateMessage) {
+          parts.push(updateMessage);
+        }
+
+        const detail = parts.length > 0 ? `${parts.join(" e ")}.` : undefined;
+
+        toast.success("Sincronização concluída", detail);
+      } else {
+        toast.info("Sincronização concluída", "Nenhuma alteração encontrada.");
+      }
+      await fetchUsuarios();
+    } catch (error: any) {
+      console.error("Erro ao sincronizar usuários", error);
+      const detail = error?.response?.data?.detail as string | undefined;
+      toast.error("Não foi possível sincronizar os usuários.", detail);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
       <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
@@ -382,13 +427,24 @@ export default function Usuarios() {
             <h2 className="text-lg font-semibold text-gray-900">Usuários cadastrados</h2>
             <p className="text-sm text-gray-600">Gerencie os perfis atribuídos dentro da aplicação.</p>
           </div>
-          <button
-            type="button"
-            onClick={fetchUsuarios}
-            className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            {reloading ? "Recarregando..." : "Recarregar"}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={fetchUsuarios}
+              disabled={reloading || syncing}
+              className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {reloading ? "Recarregando..." : "Recarregar"}
+            </button>
+            <button
+              type="button"
+              onClick={handleSyncUsuarios}
+              disabled={syncing}
+              className="inline-flex items-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-gray-300"
+            >
+              {syncing ? "Sincronizando..." : "Sincronizar usuários"}
+            </button>
+          </div>
         </div>
 
         {loading ? (

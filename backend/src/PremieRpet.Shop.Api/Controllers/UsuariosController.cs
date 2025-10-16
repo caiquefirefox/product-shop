@@ -62,6 +62,21 @@ public sealed class UsuariosController(IUsuarioService usuarios) : ControllerBas
         }
     }
 
+    [HttpPost("sincronizar")]
+    [Authorize("Admin")]
+    public async Task<IActionResult> Sincronizar(CancellationToken ct)
+    {
+        try
+        {
+            var resultado = await usuarios.SincronizarAsync(ct);
+            return Ok(new UsuarioSyncResponse(resultado.Inseridos, resultado.Atualizados));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Problem(detail: ex.Message, statusCode: StatusCodes.Status400BadRequest);
+        }
+    }
+
     [HttpPut("me/cpf")]
     [Authorize]
     public async Task<IActionResult> DefinirCpf([FromBody] UsuarioCpfRequest request, CancellationToken ct)

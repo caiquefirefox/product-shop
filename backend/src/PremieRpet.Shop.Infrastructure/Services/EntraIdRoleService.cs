@@ -167,6 +167,68 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
         return resultados;
     }
 
+    public async Task<IReadOnlyList<EntraUserWithRolesResult>> ListApplicationUsersAsync(CancellationToken ct)
+    {
+        var options = ValidateOptions();
+        var enterpriseAppId = Guid.Parse(options.EnterpriseAppObjectId);
+        var token = await GetAccessTokenAsync(ct);
+        var client = _httpClientFactory.CreateClient();
+        client.BaseAddress = GraphBaseUri;
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var assignments = await GetAppAssignmentsAsync(client, enterpriseAppId, ct);
+        if (assignments.Count == 0)
+            return Array.Empty<EntraUserWithRolesResult>();
+
+        var roleLookup = GetRoleIdLookup();
+        var rolesPorUsuario = new Dictionary<Guid, HashSet<string>>();
+
+        foreach (var assignment in assignments)
+        {
+            if (!string.Equals(assignment.PrincipalType, "User", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (assignment.PrincipalId is null)
+                continue;
+
+            if (!rolesPorUsuario.TryGetValue(assignment.PrincipalId.Value, out var roles))
+            {
+                roles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                rolesPorUsuario[assignment.PrincipalId.Value] = roles;
+            }
+
+            if (assignment.AppRoleId is Guid roleId && roleLookup.TryGetValue(roleId, out var roleName))
+            {
+                roles.Add(roleName);
+            }
+        }
+
+        if (rolesPorUsuario.Count == 0)
+            return Array.Empty<EntraUserWithRolesResult>();
+
+        var resultados = new List<EntraUserWithRolesResult>(rolesPorUsuario.Count);
+
+        foreach (var pair in rolesPorUsuario)
+        {
+            var user = await GetUserByIdAsync(pair.Key, client, ct);
+            var mapped = MapGraphUser(user);
+            if (mapped is null)
+                continue;
+
+            var orderedRoles = pair.Value.Count > 0
+                ? pair.Value.OrderBy(r => r, StringComparer.OrdinalIgnoreCase).ToArray()
+                : Array.Empty<string>();
+
+            resultados.Add(new EntraUserWithRolesResult(
+                mapped.MicrosoftId,
+                mapped.Email,
+                mapped.DisplayName,
+                orderedRoles));
+        }
+
+        return resultados;
+    }
+
     public async Task ReplaceUserRolesAsync(string userEmail, IEnumerable<string> roles, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(userEmail))
@@ -281,6 +343,29 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
         return await JsonSerializer.DeserializeAsync<GraphUser>(stream, JsonOptions, ct);
     }
 
+    private async Task<GraphUser?> GetUserByIdAsync(Guid userId, HttpClient client, CancellationToken ct)
+    {
+        var url = $"users/{FormatGuid(userId)}?$select=id,displayName,mail,userPrincipalName";
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        using var response = await client.SendAsync(request, ct);
+
+        if (response.StatusCode == HttpStatusCode.NotFound)
+            return null;
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var detail = await response.Content.ReadAsStringAsync(ct);
+            _logger.LogError("Falha ao consultar usuário {UserId} ({Status}): {Detail}", userId, response.StatusCode, detail);
+            throw CreateGraphException(
+                response,
+                detail,
+                "Não foi possível consultar os usuários atribuídos no Microsoft Graph.",
+                GraphPermissionScope.UsersRead);
+        }
+
+        return await DeserializeUserAsync(response, ct);
+    }
+
     private static string? BuildSearchFilter(string query)
     {
         if (Guid.TryParse(query, out var parsedGuid))
@@ -372,6 +457,40 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
             ?? new GraphAppRoleAssignmentsResponse();
 
         return payload.Value ?? Array.Empty<AppRoleAssignment>();
+    }
+
+    private async Task<IReadOnlyList<AppRoleAssignment>> GetAppAssignmentsAsync(HttpClient client, Guid enterpriseAppId, CancellationToken ct)
+    {
+        var resultados = new List<AppRoleAssignment>();
+        string? url = $"servicePrincipals/{FormatGuid(enterpriseAppId)}/appRoleAssignedTo?$select=id,principalId,principalType,appRoleId&$top=999";
+
+        while (!string.IsNullOrWhiteSpace(url))
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            using var response = await client.SendAsync(request, ct);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var detail = await response.Content.ReadAsStringAsync(ct);
+                _logger.LogError("Falha ao consultar vínculos do aplicativo ({Status}): {Detail}", response.StatusCode, detail);
+                throw CreateGraphException(
+                    response,
+                    detail,
+                    "Não foi possível consultar os vínculos de usuários no Microsoft Graph.",
+                    GraphPermissionScope.AssignmentsRead);
+            }
+
+            await using var stream = await response.Content.ReadAsStreamAsync(ct);
+            var payload = await JsonSerializer.DeserializeAsync<GraphAppRoleAssignmentsResponse>(stream, JsonOptions, ct)
+                ?? new GraphAppRoleAssignmentsResponse();
+
+            if (payload.Value is { Count: > 0 })
+                resultados.AddRange(payload.Value);
+
+            url = string.IsNullOrWhiteSpace(payload.NextLink) ? null : payload.NextLink;
+        }
+
+        return resultados;
     }
 
     private async Task RemoveAssignmentAsync(Guid userObjectId, string assignmentId, CancellationToken ct)
@@ -641,6 +760,8 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
     private sealed record GraphAppRoleAssignmentsResponse
     {
         public IReadOnlyList<AppRoleAssignment>? Value { get; init; }
+        [JsonPropertyName("@odata.nextLink")]
+        public string? NextLink { get; init; }
     }
 
     private sealed record GraphErrorResponse
@@ -658,6 +779,8 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
     {
         public string? Id { get; init; }
         public Guid? AppRoleId { get; init; }
+        public Guid? PrincipalId { get; init; }
+        public string? PrincipalType { get; init; }
     }
 
     private sealed record TokenResponse
