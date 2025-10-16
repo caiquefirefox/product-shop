@@ -286,18 +286,24 @@ public sealed class EntraIdRoleService : IEntraIdRoleService
         if (Guid.TryParse(query, out var parsedGuid))
             return $"id eq {FormatGuid(parsedGuid)}";
 
-        var lowered = query.ToLowerInvariant();
-        var escaped = lowered.Replace("'", "''");
-
-        if (query.Contains('@', StringComparison.Ordinal))
-        {
-            return $"tolower(mail) eq '{escaped}' or tolower(userPrincipalName) eq '{escaped}'";
-        }
-
-        if (query.Length < 3)
+        var trimmed = query.Trim();
+        if (trimmed.Length == 0)
             return string.Empty;
 
-        return $"startswith(tolower(mail),'{escaped}') or startswith(tolower(userPrincipalName),'{escaped}') or startswith(tolower(displayName),'{escaped}')";
+        var escapedExact = trimmed.Replace("'", "''");
+
+        if (trimmed.Contains('@', StringComparison.Ordinal))
+        {
+            return $"mail eq '{escapedExact}' or userPrincipalName eq '{escapedExact}'";
+        }
+
+        if (trimmed.Length < 3)
+            return string.Empty;
+
+        var lowered = trimmed.ToLowerInvariant();
+        var escapedPartial = lowered.Replace("'", "''");
+
+        return $"startswith(mail,'{escapedPartial}') or startswith(userPrincipalName,'{escapedPartial}') or startswith(displayName,'{escapedPartial}')";
     }
 
     private static EntraUserResult? MapGraphUser(GraphUser? user)
