@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using PremieRpet.Shop.Api.Reports;
 using PremieRpet.Shop.Application.DTOs;
 using PremieRpet.Shop.Application.Interfaces.UseCases;
+using PremieRpet.Shop.Domain.Constants;
 
 namespace PremieRpet.Shop.Api.Controllers;
 
@@ -32,10 +33,9 @@ public class RelatoriosController(IPedidoService svc) : ControllerBase
         [FromQuery] DateTimeOffset? de,
         [FromQuery] DateTimeOffset? ate,
         [FromQuery] Guid? usuarioId,
-        [FromQuery] int? statusId,
         CancellationToken ct)
     {
-        var pedidos = await svc.ListarPedidosDetalhadosAsync(de, ate, usuarioId, statusId, ct);
+        var pedidos = await svc.ListarPedidosDetalhadosAsync(de, ate, usuarioId, PedidoStatusIds.Aprovado, ct);
         var arquivo = PedidosExcelExporter.Gerar(pedidos);
         var nomeArquivo = $"relatorio-pedidos-{DateTimeOffset.UtcNow:yyyyMMddHHmmss}.xlsx";
         return new FileContentResult(arquivo, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")

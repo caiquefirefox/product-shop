@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Linq;
 using ClosedXML.Excel;
 using PremieRpet.Shop.Application.DTOs;
+using PremieRpet.Shop.Domain.Constants;
 
 namespace PremieRpet.Shop.Api.Reports;
 
@@ -27,7 +28,11 @@ internal static class PedidosExcelExporter
         var worksheet = workbook.Worksheets.Add("Pedidos");
 
         EscreverCabecalho(worksheet);
-        EscreverLinhas(worksheet, pedidos);
+        var pedidosAprovados = pedidos
+            .Where(p => p.StatusId == PedidoStatusIds.Aprovado)
+            .ToList();
+
+        EscreverLinhas(worksheet, pedidosAprovados);
 
         worksheet.Columns().AdjustToContents();
 
