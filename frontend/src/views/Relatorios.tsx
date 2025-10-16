@@ -29,6 +29,7 @@ export default function Relatorios() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expand, setExpand] = useState<Record<string, boolean>>({}); // pedidoId -> expandido
+  const [exportando, setExportando] = useState(false);
 
   const carregar = useCallback(async () => {
     setLoading(true);
@@ -139,65 +140,49 @@ export default function Relatorios() {
     setExpand((prev) => ({ ...prev, [id]: !prev[id] }));
   }, []);
 
-  const exportarCSV = useCallback(() => {
-    const header = [
-      "UsuarioId",
-      "UsuarioNome",
-      "UsuarioCpf",
-      "PedidoId",
-      "DataHora",
-      "UnidadeEntrega",
-      "Status",
-      "ItemCodigo",
-      "ItemDescricao",
-      "Quantidade",
-      "PrecoUnit",
-      "Subtotal",
-      "PesoItemKg",
-      "PesoTotalItemKg",
-      "TotalPedido",
-      "PesoTotalPedidoKg",
-    ];
+  const exportarExcel = useCallback(async () => {
+    const params: Record<string, string> = {};
+    const deIso = startOfDayISO_BR(de);
+    const ateIso = endOfDayISO_BR(ate);
 
-    const rows: string[] = [];
-    for (const g of grupos) {
-      for (const p of g.lista) {
-        for (const it of p.itens) {
-          rows.push(
-            [
-              g.usuarioId,
-              g.usuarioNome,
-              formatCpf(g.usuarioCpf),
-              p.id,
-              formatDateBR(new Date(p.dataHora)),
-              p.unidadeEntrega,
-              p.statusNome,
-              it.produtoCodigo,
-              it.descricao,
-              String(it.quantidade),
-              String(it.preco).replace(".", ","),
-              String(it.subtotal).replace(".", ","),
-              formatPeso(it.pesoKg, "kg", { unit: "kg", unitSuffix: false, useGrouping: false }),
-              formatPeso(it.pesoTotalKg, "kg", { unit: "kg", unitSuffix: false, useGrouping: false }),
-              String(p.total).replace(".", ","),
-              formatPeso(p.pesoTotalKg, "kg", { unit: "kg", unitSuffix: false, useGrouping: false }),
-            ]
-              .map((v) => `"${String(v).replaceAll('"', '""')}"`)
-              .join(",")
-          );
-        }
-      }
+    if (!deIso || !ateIso) {
+      setError("Datas inválidas. Use o formato dd/mm/aaaa.");
+      return;
     }
 
-    const csv = [header.join(","), ...rows].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `relatorio-pedidos-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }, [grupos]);
+    params.de = deIso;
+    params.ate = ateIso;
+
+    if (statusId) {
+      params.statusId = statusId;
+    }
+
+    setExportando(true);
+    setError(null);
+
+    try {
+      const response = await api.get<Blob>("/relatorios/pedidos/excel", {
+        params,
+        responseType: "blob",
+      });
+
+      const blob = new Blob([response.data], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `relatorio-pedidos-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      console.error(e);
+      setError(e?.response?.data?.detail || e?.message || "Falha ao exportar relatório");
+    } finally {
+      setExportando(false);
+    }
+  }, [de, ate, statusId]);
 
   return (
     <div className="space-y-4">
@@ -221,11 +206,11 @@ export default function Relatorios() {
       >
         <button
           type="button"
-          onClick={exportarCSV}
+          onClick={exportarExcel}
           className="px-4 py-2 rounded-lg border shadow hover:bg-gray-50 disabled:opacity-50"
-          disabled={!grupos.length}
+          disabled={exportando || !grupos.length}
         >
-          Exportar CSV
+          {exportando ? "Exportando..." : "Exportar Excel"}
         </button>
       </DateUserFilters>
 
