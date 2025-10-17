@@ -24,6 +24,7 @@ public sealed class PedidoService : IPedidoService
 
     private readonly IPedidoRepository _pedidos;
     private readonly IProdutoRepository _produtos;
+    private readonly IUnidadeEntregaRepository _unidadesEntrega;
     private readonly IUsuarioService _usuarios;
     private readonly PedidoSettings _settings;
     private readonly decimal _limiteKgMes;
@@ -33,11 +34,13 @@ public sealed class PedidoService : IPedidoService
     public PedidoService(
         IPedidoRepository ped,
         IProdutoRepository prod,
+        IUnidadeEntregaRepository unidadesEntrega,
         IUsuarioService usuarios,
         IOptions<PedidoSettings> settings)
     {
         _pedidos = ped;
         _produtos = prod;
+        _unidadesEntrega = unidadesEntrega;
         _usuarios = usuarios;
         _settings = Normalizar(settings?.Value ?? new PedidoSettings());
         _limiteKgMes = _settings.LimitKgPerUserPerMonth;
@@ -114,13 +117,15 @@ public sealed class PedidoService : IPedidoService
         var total = itens.Sum(i => i.Subtotal);
         var pesoTotal = itens.Sum(i => i.PesoTotalKg);
         var statusNome = ObterNomeStatus(pedido);
+        var unidadeNome = pedido.UnidadeEntrega?.Nome ?? string.Empty;
 
         return new PedidoDetalheDto(
             pedido.Id,
             pedido.UsuarioId,
             pedido.UsuarioNome,
             pedido.UsuarioCpf,
-            pedido.UnidadeEntrega,
+            pedido.UnidadeEntregaId,
+            unidadeNome,
             pedido.StatusId,
             statusNome,
             pedido.DataHora,
@@ -224,8 +229,11 @@ public sealed class PedidoService : IPedidoService
 
     public async Task<PedidoResumoDto> CriarPedidoAsync(string usuarioEmail, string? usuarioMicrosoftId, string usuarioNome, PedidoCreateDto dto, CancellationToken ct)
     {
-        if (!UnidadesEntrega.Todas.Contains(dto.UnidadeEntrega))
+        if (dto.UnidadeEntregaId == Guid.Empty)
             throw new InvalidOperationException("Unidade de entrega inválida.");
+
+        var unidadeEntrega = await _unidadesEntrega.ObterPorIdAsync(dto.UnidadeEntregaId, ct)
+            ?? throw new InvalidOperationException("Unidade de entrega inválida.");
 
         var agora = DateTimeOffset.UtcNow;
         var perfil = await _usuarios.GarantirCpfAsync(usuarioEmail, usuarioMicrosoftId, dto.Cpf, ct);
@@ -248,7 +256,7 @@ public sealed class PedidoService : IPedidoService
             UsuarioId = perfil.Id,
             UsuarioNome = usuarioNome,
             UsuarioCpf = perfil.Cpf,
-            UnidadeEntrega = dto.UnidadeEntrega,
+            UnidadeEntregaId = unidadeEntrega.Id,
             StatusId = _settings.InitialStatusId,
             AtualizadoEm = agora,
             AtualizadoPorUsuarioId = perfil.Id
@@ -296,7 +304,8 @@ public sealed class PedidoService : IPedidoService
             pedido.Id,
             pedido.UsuarioNome,
             pedido.UsuarioCpf,
-            pedido.UnidadeEntrega,
+            pedido.UnidadeEntregaId,
+            unidadeEntrega.Nome,
             pedido.StatusId,
             "Solicitado",
             pedido.DataHora,
@@ -330,7 +339,8 @@ public sealed class PedidoService : IPedidoService
                 p.Id,
                 p.UsuarioNome,
                 p.UsuarioCpf,
-                p.UnidadeEntrega,
+                p.UnidadeEntregaId,
+                p.UnidadeEntrega != null ? p.UnidadeEntrega.Nome : string.Empty,
                 p.StatusId,
                 p.Status != null && p.Status.Nome != null
                     ? p.Status.Nome
@@ -466,8 +476,11 @@ public sealed class PedidoService : IPedidoService
         if (!isAdmin && !EstaDentroJanelaEdicao(agora))
             throw new InvalidOperationException($"As edições estão disponíveis apenas entre os dias {_settings.EditWindowOpeningDay} e {_settings.EditWindowClosingDay} de cada mês.");
 
-        if (!UnidadesEntrega.Todas.Contains(dto.UnidadeEntrega))
+        if (dto.UnidadeEntregaId == Guid.Empty)
             throw new InvalidOperationException("Unidade de entrega inválida.");
+
+        var novaUnidade = await _unidadesEntrega.ObterPorIdAsync(dto.UnidadeEntregaId, ct)
+            ?? throw new InvalidOperationException("Unidade de entrega inválida.");
 
         var itensNormalizados = NormalizarItensAtualizacao(dto.Itens);
         if (itensNormalizados.Count == 0)
@@ -570,8 +583,10 @@ public sealed class PedidoService : IPedidoService
         if (pesoBase + pesoNovoPedido > _limiteKgMes)
             throw new InvalidOperationException($"Limite mensal de {FormatarLimiteMensal()} kg excedido.");
 
-        var unidadeAnterior = pedido.UnidadeEntrega;
-        pedido.UnidadeEntrega = dto.UnidadeEntrega;
+        var unidadeAnteriorId = pedido.UnidadeEntregaId;
+        var unidadeAnteriorNome = pedido.UnidadeEntrega?.Nome;
+        pedido.UnidadeEntregaId = novaUnidade.Id;
+        pedido.UnidadeEntrega = null;
         pedido.AtualizadoEm = agora;
         pedido.AtualizadoPorUsuarioId = usuarioAtualId;
 
@@ -581,12 +596,12 @@ public sealed class PedidoService : IPedidoService
         }
 
         PedidoHistorico? historicoRegistro = null;
-        var houveAlteracaoUnidade = !string.Equals(unidadeAnterior, dto.UnidadeEntrega, StringComparison.Ordinal);
+        var houveAlteracaoUnidade = unidadeAnteriorId != novaUnidade.Id;
         if (historicoAlteracoes.Count > 0 || houveAlteracaoUnidade)
         {
             var detalhes = new PedidoHistoricoDetalhesDto(
-                unidadeAnterior,
-                dto.UnidadeEntrega,
+                unidadeAnteriorNome,
+                novaUnidade.Nome,
                 historicoAlteracoes,
                 null,
                 null
@@ -607,6 +622,12 @@ public sealed class PedidoService : IPedidoService
         }
 
         await _pedidos.UpdateAsync(pedido, ct);
+
+        pedido.UnidadeEntrega = new UnidadeEntrega
+        {
+            Id = novaUnidade.Id,
+            Nome = novaUnidade.Nome
+        };
 
         return MapToDetalhe(pedido);
     }

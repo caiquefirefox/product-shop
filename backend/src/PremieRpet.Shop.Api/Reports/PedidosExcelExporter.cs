@@ -68,7 +68,7 @@ internal static class PedidosExcelExporter
 
                 row.Cell(2).Value = pedido.UsuarioNome;
                 row.Cell(3).Value = FormatarCpf(pedido.UsuarioCpf);
-                row.Cell(4).Value = pedido.UnidadeEntrega;
+                row.Cell(4).Value = pedido.UnidadeEntregaNome;
                 row.Cell(5).Value = item.ProdutoCodigo;
                 row.Cell(6).Value = item.Descricao;
 

@@ -258,7 +258,7 @@ export default function Relatorios() {
                     <React.Fragment key={p.id}>
                       <tr className="border-t">
                         <td className="px-4 py-2 whitespace-nowrap">{formatDateBR(new Date(p.dataHora))}</td>
-                        <td className="px-4 py-2">{p.unidadeEntrega}</td>
+                        <td className="px-4 py-2">{p.unidadeEntregaNome}</td>
                         <td className="px-4 py-2">{p.statusNome}</td>
                         <td className="px-4 py-2">{p.itens.length}</td>
                         <td className="px-4 py-2">{formatCurrencyBRL(p.total)}</td>

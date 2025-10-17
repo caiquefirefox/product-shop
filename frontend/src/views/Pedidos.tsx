@@ -42,6 +42,11 @@ type CatalogoResponse = {
   totalPages: number;
 };
 
+type UnidadeEntregaOption = {
+  id: string;
+  nome: string;
+};
+
 function formatDateTimePtBr(iso: string) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
@@ -105,11 +110,11 @@ export default function Pedidos() {
   const editorRef = useRef<HTMLDivElement | null>(null);
 
   const [editorItens, setEditorItens] = useState<EditorItem[]>([]);
-  const [unidadeEntrega, setUnidadeEntrega] = useState("");
+  const [unidadeEntregaId, setUnidadeEntregaId] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const [unidadesEntrega, setUnidadesEntrega] = useState<string[]>([]);
+  const [unidadesEntrega, setUnidadesEntrega] = useState<UnidadeEntregaOption[]>([]);
   const [unidadesLoading, setUnidadesLoading] = useState(false);
 
   const [catalogProducts, setCatalogProducts] = useState<Produto[]>([]);
@@ -174,6 +179,19 @@ export default function Pedidos() {
   }, [editorItens]);
 
   const pedidoSelecionado = detalhe?.pedido;
+
+  const unidadeSelecionadaOption = useMemo(
+    () => unidadesEntrega.find((unidade) => unidade.id === unidadeEntregaId) || null,
+    [unidadesEntrega, unidadeEntregaId]
+  );
+
+  const unidadeSelecionadaNome = useMemo(() => {
+    if (unidadeSelecionadaOption) return unidadeSelecionadaOption.nome;
+    if (pedidoSelecionado && pedidoSelecionado.unidadeEntregaId === unidadeEntregaId) {
+      return pedidoSelecionado.unidadeEntregaNome;
+    }
+    return "";
+  }, [unidadeSelecionadaOption, pedidoSelecionado, unidadeEntregaId]);
 
   const canEditPedido = useMemo(() => {
     if (!pedidoSelecionado) return false;
@@ -443,10 +461,15 @@ export default function Pedidos() {
     let alive = true;
     setUnidadesLoading(true);
     api
-      .get<string[]>("/unidades-entrega")
+      .get<UnidadeEntregaOption[]>("/unidades-entrega")
       .then((response) => {
         if (!alive) return;
-        setUnidadesEntrega(response.data || []);
+        const lista = response.data || [];
+        setUnidadesEntrega(lista);
+        setUnidadeEntregaId((current) => {
+          if (current) return current;
+          return lista.length > 0 ? lista[0].id : "";
+        });
       })
       .catch(() => {
         if (!alive) return;
@@ -509,7 +532,7 @@ export default function Pedidos() {
           minQty: resolveMinQty(item.quantidadeMinima, minQtyPadrao),
         }))
       );
-      setUnidadeEntrega(data.pedido.unidadeEntrega);
+      setUnidadeEntregaId(data.pedido.unidadeEntregaId);
     } catch (error: any) {
       const msg = error?.response?.data?.detail || error?.message || "Não foi possível carregar os detalhes do pedido.";
       setDetailError(msg);
@@ -725,7 +748,7 @@ export default function Pedidos() {
     setSaveError(null);
     try {
       const payload = {
-        unidadeEntrega,
+        unidadeEntregaId,
         itens: editorItens.map((item) => ({
           produtoCodigo: item.codigo,
           quantidade: item.quantidade,
@@ -1130,7 +1153,7 @@ export default function Pedidos() {
                       <span className="text-gray-700">{pedidoSelecionado.usuarioNome}</span>
                     </p>
                     <p>
-                      Pedido realizado em {formatDateTimePtBr(pedidoSelecionado.dataHora)} · Unidade atual: {pedidoSelecionado.unidadeEntrega}
+                      Pedido realizado em {formatDateTimePtBr(pedidoSelecionado.dataHora)} · Unidade atual: {pedidoSelecionado.unidadeEntregaNome}
                     </p>
                   </div>
                 )}
@@ -1157,16 +1180,16 @@ export default function Pedidos() {
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Unidade de entrega</label>
                     <select
-                      value={unidadeEntrega}
-                      onChange={(event) => setUnidadeEntrega(event.target.value)}
+                      value={unidadeEntregaId}
+                      onChange={(event) => setUnidadeEntregaId(event.target.value)}
                       disabled={unidadesLoading || !canEditPedido || saving}
                       className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
                     >
                       {unidadesEntrega.map((unidade) => (
-                        <option key={unidade} value={unidade}>{unidade}</option>
+                        <option key={unidade.id} value={unidade.id}>{unidade.nome}</option>
                       ))}
-                      {!unidadesEntrega.includes(unidadeEntrega) && unidadeEntrega && (
-                        <option value={unidadeEntrega}>{unidadeEntrega}</option>
+                      {!unidadeSelecionadaOption && unidadeEntregaId && (
+                        <option value={unidadeEntregaId}>{unidadeSelecionadaNome || unidadeEntregaId}</option>
                       )}
                     </select>
                   </div>
@@ -1317,7 +1340,7 @@ export default function Pedidos() {
                     <button
                       className="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                       onClick={salvarAlteracoes}
-                      disabled={!canEditPedido || saving || editorItens.length === 0 || !unidadeEntrega}
+                      disabled={!canEditPedido || saving || editorItens.length === 0 || !unidadeEntregaId}
                     >
                       {saving ? "Salvando..." : "Salvar alterações"}
                     </button>

@@ -1,10 +1,11 @@
 using System;
+using System.Collections.Generic;
 
 namespace PremieRpet.Shop.Application.DTOs;
 
 public sealed record PedidoCreateDto
 {
-    public string UnidadeEntrega { get; init; } = string.Empty;
+    public Guid UnidadeEntregaId { get; init; }
     public IReadOnlyList<PedidoItemDto> Itens { get; init; } = Array.Empty<PedidoItemDto>();
     public string? Cpf { get; init; }
 }
