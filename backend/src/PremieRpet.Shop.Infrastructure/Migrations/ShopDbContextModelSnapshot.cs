@@ -305,6 +305,16 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                         },
                         new
                         {
+                            Id = new Guid("a1e08cc1-1962-4e30-a9a1-f899176d71a3"),
+                            Nome = "CD HORTOLÂNDIA"
+                        },
+                        new
+                        {
+                            Id = new Guid("c3f7f6a1-b95b-4ec4-a8ce-bb3aa3cbd48c"),
+                            Nome = "CD BARUERI"
+                        },
+                        new
+                        {
                             Id = new Guid("1acb4bc4-8c07-5aea-895d-5a8657ae8dbb"),
                             Nome = "CEARÁ"
                         },

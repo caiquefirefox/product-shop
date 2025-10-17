@@ -1,5 +1,6 @@
 using System;
 using Microsoft.EntityFrameworkCore;
+using PremieRpet.Shop.Domain.Constants;
 using PremieRpet.Shop.Domain.Entities;
 
 namespace PremieRpet.Shop.Infrastructure;
@@ -96,6 +97,8 @@ public sealed class ShopDbContext : DbContext
                 new UnidadeEntrega { Id = Guid.Parse("737aed3e-dc2e-5534-9456-986f1b7db715"), Nome = "CD BETIM - MG" },
                 new UnidadeEntrega { Id = Guid.Parse("0c63cefe-5b6b-57f9-b073-a035d292d864"), Nome = "RIO GRANDE DO NORTE" },
                 new UnidadeEntrega { Id = Guid.Parse("bcb84da6-c993-54e7-8c14-665f89d70433"), Nome = "CD EXTREMA - MG" },
+                new UnidadeEntrega { Id = Guid.Parse("a1e08cc1-1962-4e30-a9a1-f899176d71a3"), Nome = "CD HORTOLÂNDIA" },
+                new UnidadeEntrega { Id = Guid.Parse("c3f7f6a1-b95b-4ec4-a8ce-bb3aa3cbd48c"), Nome = "CD BARUERI" },
                 new UnidadeEntrega { Id = Guid.Parse("1acb4bc4-8c07-5aea-895d-5a8657ae8dbb"), Nome = "CEARÁ" },
                 new UnidadeEntrega { Id = Guid.Parse("dce4840f-14c4-59d0-8a23-a03df0705d3c"), Nome = "FÁBRICA PARANÁ" },
                 new UnidadeEntrega { Id = Guid.Parse("1d7f3994-a00a-56a6-aa07-09b593ede157"), Nome = "FÁBRICA DOURADO" }
