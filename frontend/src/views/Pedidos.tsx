@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AlertTriangle } from "lucide-react";
 import api from "../lib/api";
 import { formatCurrencyBRL, formatPeso, startOfDayISO_BR, endOfDayISO_BR, formatDateBR } from "../lib/format";
 import { DateUserFilters, type SimpleOption } from "../components/DateUserFilters";
@@ -80,6 +81,8 @@ export default function Pedidos() {
   const [statusLoading, setStatusLoading] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [cancelConfirmPedido, setCancelConfirmPedido] = useState<PedidoDetalhe | null>(null);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const [pedidos, setPedidos] = useState<PedidoDetalhe[]>([]);
@@ -551,10 +554,6 @@ export default function Pedidos() {
 
   const cancelarPedido = useCallback(
     async (pedidoId: string) => {
-      const confirmed = typeof window === "undefined" || window.confirm(
-        "Tem certeza de que deseja cancelar este pedido? Essa ação não pode ser desfeita."
-      );
-      if (!confirmed) return;
       setCancellingId(pedidoId);
       try {
         await api.post<PedidoDetalhe>(`/pedidos/${pedidoId}/cancelar`);
@@ -569,6 +568,24 @@ export default function Pedidos() {
     },
     [aposAlterarStatus, success, toastError]
   );
+
+  const closeCancelModal = useCallback(() => {
+    if (confirmingCancel) return;
+    setCancelConfirmPedido(null);
+  }, [confirmingCancel]);
+
+  const confirmarCancelamento = useCallback(async () => {
+    if (!cancelConfirmPedido) return;
+    setConfirmingCancel(true);
+    await cancelarPedido(cancelConfirmPedido.id);
+    setConfirmingCancel(false);
+    setCancelConfirmPedido(null);
+  }, [cancelConfirmPedido, cancelarPedido]);
+
+  const solicitarCancelamento = useCallback((pedido: PedidoDetalhe) => {
+    setConfirmingCancel(false);
+    setCancelConfirmPedido(pedido);
+  }, []);
 
   const loadCatalogo = useCallback(async () => {
     if (!selectedPedidoId) return;
@@ -857,6 +874,72 @@ export default function Pedidos() {
 
   return (
     <div className="space-y-6">
+      {cancelConfirmPedido && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/70 px-4 py-6 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cancelar-pedido-title"
+          aria-describedby="cancelar-pedido-description"
+          onClick={closeCancelModal}
+        >
+          <div
+            className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start gap-4 border-b border-gray-100 px-6 py-5">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-100 text-red-600">
+                <AlertTriangle className="h-6 w-6" aria-hidden="true" />
+              </span>
+              <div className="space-y-1">
+                <h2 id="cancelar-pedido-title" className="text-lg font-semibold text-gray-900">
+                  Cancelar pedido
+                </h2>
+                <p id="cancelar-pedido-description" className="text-sm text-gray-600">
+                  Tem certeza de que deseja cancelar o pedido {" "}
+                  <span className="font-semibold text-gray-900">#{cancelConfirmPedido.id.slice(0, 8)}</span>? Essa ação não pode ser desfeita e o pedido não poderá mais ser editado.
+                </p>
+              </div>
+            </div>
+            <div className="space-y-3 px-6 py-5 text-sm text-gray-600">
+              <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+                <span className="text-gray-500">Data</span>
+                <span className="font-semibold text-gray-900">{formatDateTimePtBr(cancelConfirmPedido.dataHora)}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+                <span className="text-gray-500">Solicitante</span>
+                <span className="font-semibold text-gray-900">{cancelConfirmPedido.usuarioNome}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+                <span className="text-gray-500">Peso total</span>
+                <span className="font-semibold text-gray-900">{formatPeso(cancelConfirmPedido.pesoTotalKg, "kg", { unit: "kg" })}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+                <span className="text-gray-500">Valor total</span>
+                <span className="font-semibold text-gray-900">{formatCurrencyBRL(cancelConfirmPedido.total)}</span>
+              </div>
+            </div>
+            <div className="flex flex-col gap-3 border-t border-gray-100 bg-gray-50 px-6 py-5 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={closeCancelModal}
+                disabled={confirmingCancel}
+                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+              >
+                Manter pedido
+              </button>
+              <button
+                type="button"
+                onClick={confirmarCancelamento}
+                disabled={confirmingCancel || cancellingId === cancelConfirmPedido.id}
+                className="w-full rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
+              >
+                {confirmingCancel || cancellingId === cancelConfirmPedido.id ? "Cancelando..." : "Cancelar pedido"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Pedidos</h1>
@@ -982,7 +1065,7 @@ export default function Pedidos() {
                               {mostraCancelar && (
                                 <button
                                   className="px-3 py-1.5 text-sm rounded-lg border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                                  onClick={() => cancelarPedido(pedido.id)}
+                                  onClick={() => solicitarCancelamento(pedido)}
                                   disabled={cancellingId === pedido.id || approvingId === pedido.id || (!isAdmin && !editWindowActive)}
                                 >
                                   {cancellingId === pedido.id ? "Cancelando..." : "Cancelar"}
