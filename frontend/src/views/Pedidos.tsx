@@ -551,6 +551,10 @@ export default function Pedidos() {
 
   const cancelarPedido = useCallback(
     async (pedidoId: string) => {
+      const confirmed = typeof window === "undefined" || window.confirm(
+        "Tem certeza de que deseja cancelar este pedido? Essa ação não pode ser desfeita."
+      );
+      if (!confirmed) return;
       setCancellingId(pedidoId);
       try {
         await api.post<PedidoDetalhe>(`/pedidos/${pedidoId}/cancelar`);
@@ -1040,7 +1044,7 @@ export default function Pedidos() {
       {selectedPedidoId && (
         <div className="space-y-6" ref={editorRef}>
           <div className="bg-white rounded-xl shadow border border-gray-100 p-5">
-            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 pb-4 mb-4">
+            <div className="flex flex-col gap-4 border-b border-gray-100 pb-4 mb-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
               <div className="space-y-2">
                 <h2 className="text-xl font-semibold">Editar pedido</h2>
                 {pedidoSelecionado && (
@@ -1093,8 +1097,8 @@ export default function Pedidos() {
                     </select>
                   </div>
 
-                  <div className="border border-gray-200 rounded-xl overflow-hidden">
-                    <table className="min-w-full divide-y divide-gray-200">
+                  <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+                    <table className="min-w-[520px] w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
                         <tr>
                           <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Produto</th>
@@ -1152,7 +1156,7 @@ export default function Pedidos() {
                     </table>
                   </div>
 
-                  <div className="flex flex-wrap items-center justify-between gap-3 bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 text-sm">
+                  <div className="flex flex-col gap-3 bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                     <div>
                       <div className="text-gray-600">Total de itens</div>
                       <div className="text-lg font-semibold text-indigo-700">{editorTotals.totalItens}</div>
@@ -1169,9 +1173,9 @@ export default function Pedidos() {
 
                   {saveError && <div className="text-sm text-red-600">{saveError}</div>}
 
-                  <div className="flex flex-wrap items-center justify-end gap-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
                     <button
-                      className="px-4 py-2 rounded-lg border border-gray-200 text-sm hover:bg-gray-50"
+                      className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50 sm:w-auto"
                       onClick={() => {
                         setSelectedPedidoId(null);
                         setDetalhe(null);
@@ -1182,7 +1186,7 @@ export default function Pedidos() {
                       Cancelar
                     </button>
                     <button
-                      className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold shadow hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                       onClick={salvarAlteracoes}
                       disabled={!canEditPedido || saving || editorItens.length === 0 || !unidadeEntrega}
                     >
@@ -1207,7 +1211,7 @@ export default function Pedidos() {
                   </div>
 
                   <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
-                    <div className="border-b border-gray-100 px-4 py-3 text-sm font-semibold text-gray-700 flex items-center justify-between">
+                    <div className="flex flex-col gap-2 border-b border-gray-100 px-4 py-3 text-sm font-semibold text-gray-700 sm:flex-row sm:items-center sm:justify-between">
                       <span>Produtos disponíveis</span>
                       <span className="text-xs text-gray-500">{catalogTotalItems} encontrado(s)</span>
                     </div>
@@ -1246,7 +1250,7 @@ export default function Pedidos() {
                     )}
 
                     {catalogTotalPages > 1 && (
-                      <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 text-sm text-gray-600">
+                      <div className="flex flex-col gap-3 border-t border-gray-100 px-4 py-3 text-sm text-gray-600 sm:flex-row sm:items-center sm:justify-between">
                         <button
                           className="px-3 py-1 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50"
                           onClick={() => setCatalogPage((prev) => Math.max(1, prev - 1))}

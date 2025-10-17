@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMsal } from "@azure/msal-react";
-import { Routes, Route, NavLink, Navigate, useNavigate, useLocation } from "react-router-dom";
+import { Routes, Route, NavLink, Navigate, useNavigate, useLocation, Link } from "react-router-dom";
 import { Menu, ShoppingCart, X } from "lucide-react";
 import Catalogo from "../views/Catalogo";
 import Carrinho from "../views/Carrinho";
@@ -79,9 +79,9 @@ export default function App() {
                 >
                   {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
                 </button>
-                <NavLink to="/" className="text-base font-semibold text-gray-900 md:hidden">
-                  Catálogo
-                </NavLink>
+                <Link to="/" className="text-base font-semibold text-gray-900 whitespace-nowrap">
+                  Portal de Pedidos
+                </Link>
                 <nav className="hidden md:flex items-center gap-1 text-sm">
                   <NavLink to="/" end className={navLinkClassName}>
                     Catálogo
