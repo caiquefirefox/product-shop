@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AlertTriangle } from "lucide-react";
 import api from "../lib/api";
 import { formatCurrencyBRL, formatPeso, startOfDayISO_BR, endOfDayISO_BR, formatDateBR } from "../lib/format";
 import { DateUserFilters, type SimpleOption } from "../components/DateUserFilters";
@@ -80,6 +81,8 @@ export default function Pedidos() {
   const [statusLoading, setStatusLoading] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [cancelConfirmPedido, setCancelConfirmPedido] = useState<PedidoDetalhe | null>(null);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const [pedidos, setPedidos] = useState<PedidoDetalhe[]>([]);
@@ -566,6 +569,24 @@ export default function Pedidos() {
     [aposAlterarStatus, success, toastError]
   );
 
+  const closeCancelModal = useCallback(() => {
+    if (confirmingCancel) return;
+    setCancelConfirmPedido(null);
+  }, [confirmingCancel]);
+
+  const confirmarCancelamento = useCallback(async () => {
+    if (!cancelConfirmPedido) return;
+    setConfirmingCancel(true);
+    await cancelarPedido(cancelConfirmPedido.id);
+    setConfirmingCancel(false);
+    setCancelConfirmPedido(null);
+  }, [cancelConfirmPedido, cancelarPedido]);
+
+  const solicitarCancelamento = useCallback((pedido: PedidoDetalhe) => {
+    setConfirmingCancel(false);
+    setCancelConfirmPedido(pedido);
+  }, []);
+
   const loadCatalogo = useCallback(async () => {
     if (!selectedPedidoId) return;
     setCatalogLoading(true);
@@ -853,6 +874,72 @@ export default function Pedidos() {
 
   return (
     <div className="space-y-6">
+      {cancelConfirmPedido && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/70 px-4 py-6 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cancelar-pedido-title"
+          aria-describedby="cancelar-pedido-description"
+          onClick={closeCancelModal}
+        >
+          <div
+            className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start gap-4 border-b border-gray-100 px-6 py-5">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-100 text-red-600">
+                <AlertTriangle className="h-6 w-6" aria-hidden="true" />
+              </span>
+              <div className="space-y-1">
+                <h2 id="cancelar-pedido-title" className="text-lg font-semibold text-gray-900">
+                  Cancelar pedido
+                </h2>
+                <p id="cancelar-pedido-description" className="text-sm text-gray-600">
+                  Tem certeza de que deseja cancelar o pedido {" "}
+                  <span className="font-semibold text-gray-900">#{cancelConfirmPedido.id.slice(0, 8)}</span>? Essa ação não pode ser desfeita e o pedido não poderá mais ser editado.
+                </p>
+              </div>
+            </div>
+            <div className="space-y-3 px-6 py-5 text-sm text-gray-600">
+              <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+                <span className="text-gray-500">Data</span>
+                <span className="font-semibold text-gray-900">{formatDateTimePtBr(cancelConfirmPedido.dataHora)}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+                <span className="text-gray-500">Solicitante</span>
+                <span className="font-semibold text-gray-900">{cancelConfirmPedido.usuarioNome}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+                <span className="text-gray-500">Peso total</span>
+                <span className="font-semibold text-gray-900">{formatPeso(cancelConfirmPedido.pesoTotalKg, "kg", { unit: "kg" })}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+                <span className="text-gray-500">Valor total</span>
+                <span className="font-semibold text-gray-900">{formatCurrencyBRL(cancelConfirmPedido.total)}</span>
+              </div>
+            </div>
+            <div className="flex flex-col gap-3 border-t border-gray-100 bg-gray-50 px-6 py-5 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={closeCancelModal}
+                disabled={confirmingCancel}
+                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+              >
+                Manter pedido
+              </button>
+              <button
+                type="button"
+                onClick={confirmarCancelamento}
+                disabled={confirmingCancel || cancellingId === cancelConfirmPedido.id}
+                className="w-full rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
+              >
+                {confirmingCancel || cancellingId === cancelConfirmPedido.id ? "Cancelando..." : "Cancelar pedido"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Pedidos</h1>
@@ -978,7 +1065,7 @@ export default function Pedidos() {
                               {mostraCancelar && (
                                 <button
                                   className="px-3 py-1.5 text-sm rounded-lg border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                                  onClick={() => cancelarPedido(pedido.id)}
+                                  onClick={() => solicitarCancelamento(pedido)}
                                   disabled={cancellingId === pedido.id || approvingId === pedido.id || (!isAdmin && !editWindowActive)}
                                 >
                                   {cancellingId === pedido.id ? "Cancelando..." : "Cancelar"}
@@ -1040,7 +1127,7 @@ export default function Pedidos() {
       {selectedPedidoId && (
         <div className="space-y-6" ref={editorRef}>
           <div className="bg-white rounded-xl shadow border border-gray-100 p-5">
-            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 pb-4 mb-4">
+            <div className="flex flex-col gap-4 border-b border-gray-100 pb-4 mb-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
               <div className="space-y-2">
                 <h2 className="text-xl font-semibold">Editar pedido</h2>
                 {pedidoSelecionado && (
@@ -1093,8 +1180,63 @@ export default function Pedidos() {
                     </select>
                   </div>
 
-                  <div className="border border-gray-200 rounded-xl overflow-hidden">
-                    <table className="min-w-full divide-y divide-gray-200">
+                  <div className="space-y-3 md:hidden">
+                    {editorItens.length === 0 ? (
+                      <div className="rounded-xl border border-gray-200 bg-white px-4 py-4 text-sm text-gray-500 text-center">
+                        Nenhum item no pedido.
+                      </div>
+                    ) : (
+                      editorItens.map((item) => {
+                        const minStep = resolveMinQty(item.minQty, minQtyPadrao);
+                        const inputId = `pedido-item-quantidade-${item.codigo}`.replace(/[^a-zA-Z0-9_-]/g, "-");
+                        return (
+                          <div key={item.codigo} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                            <div className="space-y-2 text-sm">
+                              <div>
+                                <div className="font-medium text-gray-900">{item.descricao}</div>
+                                <div className="text-xs text-gray-500">{item.codigo}</div>
+                                <div className="text-xs text-gray-400">Preço: {formatCurrencyBRL(item.preco)} · Peso unitário: {formatPeso(item.pesoKg, "kg", { unit: "kg" })}</div>
+                                {minStep > 0 && (
+                                  <div className="text-xs text-amber-600">Mínimo por adição: {minStep}</div>
+                                )}
+                              </div>
+                              <div className="flex flex-col gap-2">
+                                <label className="text-xs font-semibold uppercase tracking-wide text-gray-500" htmlFor={inputId}>
+                                  Quantidade
+                                </label>
+                                <input
+                                  id={inputId}
+                                  type="number"
+                                  min={minStep}
+                                  step={minStep}
+                                  value={item.quantidade}
+                                  onChange={(event) => updateItemQuantity(item.codigo, Number(event.target.value))}
+                                  disabled={!canEditPedido || saving}
+                                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-right text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                />
+                              </div>
+                              <div className="flex items-center justify-between text-sm text-gray-600">
+                                <span>Subtotal</span>
+                                <span className="font-semibold text-gray-800">{formatCurrencyBRL(item.preco * item.quantidade)}</span>
+                              </div>
+                            </div>
+                            <div className="mt-3 flex justify-end">
+                              <button
+                                className="text-xs px-3 py-1 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                onClick={() => removeItem(item.codigo)}
+                                disabled={!canEditPedido || saving}
+                              >
+                                Remover
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-200 bg-white">
+                    <table className="min-w-[520px] w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
                         <tr>
                           <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Produto</th>
@@ -1132,18 +1274,18 @@ export default function Pedidos() {
                                     className="w-24 rounded-lg border border-gray-200 px-2 py-1 text-sm text-right shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
                                   />
                                 </td>
-                              <td className="px-3 py-2 text-right text-sm text-gray-700">
-                                {formatCurrencyBRL(item.preco * item.quantidade)}
-                              </td>
-                              <td className="px-3 py-2 text-right">
-                                <button
-                                  className="text-xs px-2 py-1 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                                  onClick={() => removeItem(item.codigo)}
-                                  disabled={!canEditPedido || saving}
-                                >
-                                  Remover
-                                </button>
-                              </td>
+                                <td className="px-3 py-2 text-right text-sm text-gray-700">
+                                  {formatCurrencyBRL(item.preco * item.quantidade)}
+                                </td>
+                                <td className="px-3 py-2 text-right">
+                                  <button
+                                    className="text-xs px-2 py-1 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    onClick={() => removeItem(item.codigo)}
+                                    disabled={!canEditPedido || saving}
+                                  >
+                                    Remover
+                                  </button>
+                                </td>
                               </tr>
                             );
                           })
@@ -1152,7 +1294,7 @@ export default function Pedidos() {
                     </table>
                   </div>
 
-                  <div className="flex flex-wrap items-center justify-between gap-3 bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 text-sm">
+                  <div className="flex flex-col gap-3 bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                     <div>
                       <div className="text-gray-600">Total de itens</div>
                       <div className="text-lg font-semibold text-indigo-700">{editorTotals.totalItens}</div>
@@ -1169,9 +1311,9 @@ export default function Pedidos() {
 
                   {saveError && <div className="text-sm text-red-600">{saveError}</div>}
 
-                  <div className="flex flex-wrap items-center justify-end gap-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
                     <button
-                      className="px-4 py-2 rounded-lg border border-gray-200 text-sm hover:bg-gray-50"
+                      className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50 sm:w-auto"
                       onClick={() => {
                         setSelectedPedidoId(null);
                         setDetalhe(null);
@@ -1182,7 +1324,7 @@ export default function Pedidos() {
                       Cancelar
                     </button>
                     <button
-                      className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold shadow hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                       onClick={salvarAlteracoes}
                       disabled={!canEditPedido || saving || editorItens.length === 0 || !unidadeEntrega}
                     >
@@ -1207,7 +1349,7 @@ export default function Pedidos() {
                   </div>
 
                   <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
-                    <div className="border-b border-gray-100 px-4 py-3 text-sm font-semibold text-gray-700 flex items-center justify-between">
+                    <div className="flex flex-col gap-2 border-b border-gray-100 px-4 py-3 text-sm font-semibold text-gray-700 sm:flex-row sm:items-center sm:justify-between">
                       <span>Produtos disponíveis</span>
                       <span className="text-xs text-gray-500">{catalogTotalItems} encontrado(s)</span>
                     </div>
@@ -1246,7 +1388,7 @@ export default function Pedidos() {
                     )}
 
                     {catalogTotalPages > 1 && (
-                      <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 text-sm text-gray-600">
+                      <div className="flex flex-col gap-3 border-t border-gray-100 px-4 py-3 text-sm text-gray-600 sm:flex-row sm:items-center sm:justify-between">
                         <button
                           className="px-3 py-1 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50"
                           onClick={() => setCatalogPage((prev) => Math.max(1, prev - 1))}

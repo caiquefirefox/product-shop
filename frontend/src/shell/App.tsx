@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMsal } from "@azure/msal-react";
 import { Routes, Route, NavLink, Navigate, useNavigate, useLocation } from "react-router-dom";
-import { ShoppingCart } from "lucide-react";
+import { Menu, ShoppingCart, X } from "lucide-react";
 import Catalogo from "../views/Catalogo";
 import Carrinho from "../views/Carrinho";
 import Checkout from "../views/Checkout";
@@ -23,6 +23,7 @@ export default function App() {
   const { totalUnidades, totalPesoKg, totalValor } = useCart();
   const isLoginRoute = location.pathname.startsWith("/login");
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   useEffect(() => {
     if (isLoginRoute) {
@@ -38,6 +39,9 @@ export default function App() {
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, [isLoginRoute]);
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [location.pathname]);
   const pesoResumo = formatPeso(totalPesoKg, "kg", { unit: "kg", minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const navLinkClassName = ({ isActive }: { isActive: boolean }) =>
     `px-3 py-2 rounded-lg transition-colors duration-150 ${
@@ -60,60 +64,116 @@ export default function App() {
           } z-50`}
         >
           <div
-            className={`max-w-6xl mx-auto px-4 flex items-center justify-between transition-all duration-300 ${
+            className={`max-w-6xl mx-auto px-4 transition-all duration-300 ${
               isScrolled ? "py-2" : "py-4"
             }`}
           >
-            <nav className="flex items-center gap-1 text-sm">
-              <NavLink to="/" end className={navLinkClassName}>
-                Catálogo
-              </NavLink>
-              <NavLink to="/pedidos" className={navLinkClassName}>
-                Pedidos
-              </NavLink>
-              {isAdmin && (
-                <NavLink to="/produtos" className={navLinkClassName}>
-                  Produtos
-                </NavLink>
-              )}
-              {isAdmin && (
-                <NavLink to="/relatorios" className={navLinkClassName}>
-                  Relatórios
-                </NavLink>
-              )}
-              {isAdmin && (
-                <NavLink to="/usuarios" className={navLinkClassName}>
-                  Usuários
-                </NavLink>
-              )}
-            </nav>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2 md:gap-3">
+                <button
+                  type="button"
+                  className="md:hidden inline-flex items-center justify-center rounded-lg p-2 text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                  onClick={() => setIsMenuOpen(prev => !prev)}
+                  aria-label={isMenuOpen ? "Fechar menu" : "Abrir menu"}
+                  aria-expanded={isMenuOpen}
+                >
+                  {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
+                </button>
+                <nav className="hidden md:flex items-center gap-1 text-sm">
+                  <NavLink to="/" end className={navLinkClassName}>
+                    Catálogo
+                  </NavLink>
+                  <NavLink to="/pedidos" className={navLinkClassName}>
+                    Pedidos
+                  </NavLink>
+                  {isAdmin && (
+                    <NavLink to="/produtos" className={navLinkClassName}>
+                      Produtos
+                    </NavLink>
+                  )}
+                  {isAdmin && (
+                    <NavLink to="/relatorios" className={navLinkClassName}>
+                      Relatórios
+                    </NavLink>
+                  )}
+                  {isAdmin && (
+                    <NavLink to="/usuarios" className={navLinkClassName}>
+                      Usuários
+                    </NavLink>
+                  )}
+                </nav>
+              </div>
 
-            <div className="flex items-center gap-4">
-              {/* Ícone do carrinho alinhado à direita */}
-              <button
-                onClick={() => navigate("/carrinho")}
-                className="relative flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-50"
-                title={`Itens: ${totalUnidades} • ${pesoResumo} • R$ ${totalValor.toFixed(2)}`}
-              >
-                <ShoppingCart size={20} />
-                {/* contador */}
-                <span className="text-sm tabular-nums">{totalUnidades}</span>
-                {/* totals compactos */}
-                <span className="hidden md:inline text-xs text-gray-600">
-                  {pesoResumo} • R$ {totalValor.toFixed(2)}
-                </span>
-              </button>
+              <div className="flex items-center gap-3 sm:gap-4">
+                <button
+                  onClick={() => navigate("/carrinho")}
+                  className="relative flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-gray-50"
+                  title={`Itens: ${totalUnidades} • ${pesoResumo} • R$ ${totalValor.toFixed(2)}`}
+                >
+                  <ShoppingCart size={20} />
+                  <span className="text-sm tabular-nums">{totalUnidades}</span>
+                  <span className="hidden md:inline text-xs text-gray-600">
+                    {pesoResumo} • R$ {totalValor.toFixed(2)}
+                  </span>
+                </button>
 
-              {account ? (
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-gray-600">{account.name}</span>
-                  <button onClick={logout} className="px-3 py-1 border rounded-lg">Sair</button>
-                </div>
-              ) : (
-                <button onClick={gotoLogin} className="px-3 py-1 border rounded-lg">Entrar</button>
-              )}
+                {account ? (
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <span className="hidden text-sm text-gray-600 sm:inline">{account.name}</span>
+                    <button onClick={logout} className="rounded-lg border px-3 py-1 text-sm">
+                      Sair
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={gotoLogin} className="rounded-lg border px-3 py-1 text-sm">
+                    Entrar
+                  </button>
+                )}
+              </div>
             </div>
           </div>
+
+          {isMenuOpen && (
+            <div className="md:hidden border-t border-gray-100 bg-white">
+              <nav className="max-w-6xl mx-auto flex flex-col gap-1 px-4 py-3 text-sm">
+                <NavLink to="/" end className={({ isActive }) => `${navLinkClassName({ isActive })} w-full text-left`}>
+                  Catálogo
+                </NavLink>
+                <NavLink to="/pedidos" className={({ isActive }) => `${navLinkClassName({ isActive })} w-full text-left`}>
+                  Pedidos
+                </NavLink>
+                {isAdmin && (
+                  <NavLink to="/produtos" className={({ isActive }) => `${navLinkClassName({ isActive })} w-full text-left`}>
+                    Produtos
+                  </NavLink>
+                )}
+                {isAdmin && (
+                  <NavLink to="/relatorios" className={({ isActive }) => `${navLinkClassName({ isActive })} w-full text-left`}>
+                    Relatórios
+                  </NavLink>
+                )}
+                {isAdmin && (
+                  <NavLink to="/usuarios" className={({ isActive }) => `${navLinkClassName({ isActive })} w-full text-left`}>
+                    Usuários
+                  </NavLink>
+                )}
+              </nav>
+              <div className="max-w-6xl mx-auto flex flex-col gap-3 px-4 pb-3">
+                {account ? (
+                  <>
+                    <span className="text-sm text-gray-600">{account.name}</span>
+                    <button onClick={logout} className="rounded-lg border px-3 py-2 text-sm">
+                      Sair
+                    </button>
+                  </>
+                ) : (
+                  <button onClick={gotoLogin} className="rounded-lg border px-3 py-2 text-sm">
+                    Entrar
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </header>
       )}
 
