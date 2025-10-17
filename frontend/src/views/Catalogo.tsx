@@ -64,8 +64,7 @@ export default function Catalogo() {
   });
   const hideTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const removeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [codigoFiltro, setCodigoFiltro] = useState("");
-  const [descricaoFiltro, setDescricaoFiltro] = useState("");
+  const [buscaFiltro, setBuscaFiltro] = useState("");
   const [tipoProdutoFiltro, setTipoProdutoFiltro] = useState("");
   const [especieFiltro, setEspecieFiltro] = useState("");
   const [faixaEtariaFiltro, setFaixaEtariaFiltro] = useState("");
@@ -89,8 +88,7 @@ export default function Catalogo() {
   const catalogoRequestIdRef = useRef(0);
 
   const hasFilters = Boolean(
-    codigoFiltro.trim() ||
-      descricaoFiltro.trim() ||
+    buscaFiltro.trim() ||
       tipoProdutoFiltro ||
       especieFiltro ||
       faixaEtariaFiltro ||
@@ -98,8 +96,7 @@ export default function Catalogo() {
   );
 
   const clearFilters = () => {
-    setCodigoFiltro("");
-    setDescricaoFiltro("");
+    setBuscaFiltro("");
     setTipoProdutoFiltro("");
     setEspecieFiltro("");
     setFaixaEtariaFiltro("");
@@ -108,8 +105,7 @@ export default function Catalogo() {
   };
 
   const filterValues: ProductFilterValues = {
-    codigo: codigoFiltro,
-    descricao: descricaoFiltro,
+    query: buscaFiltro,
     tipoProduto: tipoProdutoFiltro,
     especie: especieFiltro,
     faixaEtaria: faixaEtariaFiltro,
@@ -125,11 +121,8 @@ export default function Catalogo() {
 
   const handleFilterChange: ProductFilterChangeHandler = (field, value) => {
     switch (field) {
-      case "codigo":
-        setCodigoFiltro(value);
-        break;
-      case "descricao":
-        setDescricaoFiltro(value);
+      case "query":
+        setBuscaFiltro(value);
         break;
       case "tipoProduto":
         setTipoProdutoFiltro(value);
@@ -190,11 +183,9 @@ export default function Catalogo() {
 
   useEffect(() => {
     const params: Record<string, string> = {};
-    const codigo = codigoFiltro.trim();
-    const descricao = descricaoFiltro.trim();
+    const busca = buscaFiltro.trim();
 
-    if (codigo) params.codigo = codigo;
-    if (descricao) params.descricao = descricao;
+    if (busca) params.q = busca;
     if (tipoProdutoFiltro) params.tipoProdutoOpcaoId = tipoProdutoFiltro;
     if (especieFiltro) params.especieOpcaoId = especieFiltro;
     if (faixaEtariaFiltro) params.faixaEtariaOpcaoId = faixaEtariaFiltro;
@@ -237,8 +228,7 @@ export default function Catalogo() {
       isSubscribed = false;
     };
   }, [
-    codigoFiltro,
-    descricaoFiltro,
+    buscaFiltro,
     tipoProdutoFiltro,
     especieFiltro,
     faixaEtariaFiltro,

@@ -25,7 +25,8 @@ public sealed class ProdutoFiltroQuery
 
     public ProdutoFiltroDto ToDto() => new(
         Normalize(Codigo),
-        Normalize(Descricao) ?? Normalize(Q),
+        Normalize(Descricao),
+        Normalize(Q),
         Normalize(TipoProdutoOpcaoId),
         Normalize(EspecieOpcaoId),
         Normalize(FaixaEtariaOpcaoId),

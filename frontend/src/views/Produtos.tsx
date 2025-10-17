@@ -226,8 +226,7 @@ export default function Produtos() {
   const [tiposProduto, setTiposProduto] = useState<ProdutoOpcao[]>([]);
   const [faixasEtarias, setFaixasEtarias] = useState<ProdutoOpcao[]>([]);
   const [produtos, setProdutos] = useState<Produto[]>([]);
-  const [codigoFiltro, setCodigoFiltro] = useState("");
-  const [descricaoFiltro, setDescricaoFiltro] = useState("");
+  const [buscaFiltro, setBuscaFiltro] = useState("");
   const [tipoProdutoFiltro, setTipoProdutoFiltro] = useState("");
   const [especieFiltro, setEspecieFiltro] = useState("");
   const [faixaEtariaFiltro, setFaixaEtariaFiltro] = useState("");
@@ -357,14 +356,13 @@ export default function Produtos() {
   const hasFiltros = useMemo(
     () =>
       Boolean(
-        codigoFiltro.trim() ||
-          descricaoFiltro.trim() ||
+        buscaFiltro.trim() ||
           tipoProdutoFiltro ||
           especieFiltro ||
           faixaEtariaFiltro ||
           porteFiltro,
       ),
-    [codigoFiltro, descricaoFiltro, tipoProdutoFiltro, especieFiltro, faixaEtariaFiltro, porteFiltro],
+    [buscaFiltro, tipoProdutoFiltro, especieFiltro, faixaEtariaFiltro, porteFiltro],
   );
 
   const tipoProdutoFiltroOptions = useMemo<ProductFilterSelectOption[]>(
@@ -404,8 +402,7 @@ export default function Produtos() {
   );
 
   const filtroValores: ProductFilterValues = {
-    codigo: codigoFiltro,
-    descricao: descricaoFiltro,
+    query: buscaFiltro,
     tipoProduto: tipoProdutoFiltro,
     especie: especieFiltro,
     faixaEtaria: faixaEtariaFiltro,
@@ -421,11 +418,8 @@ export default function Produtos() {
 
   const handleFiltroChange: ProductFilterChangeHandler = (field, value) => {
     switch (field) {
-      case "codigo":
-        setCodigoFiltro(value);
-        break;
-      case "descricao":
-        setDescricaoFiltro(value);
+      case "query":
+        setBuscaFiltro(value);
         break;
       case "tipoProduto":
         setTipoProdutoFiltro(value);
@@ -447,8 +441,7 @@ export default function Produtos() {
   };
 
   const clearFiltros = () => {
-    setCodigoFiltro("");
-    setDescricaoFiltro("");
+    setBuscaFiltro("");
     setTipoProdutoFiltro("");
     setEspecieFiltro("");
     setFaixaEtariaFiltro("");
@@ -560,11 +553,9 @@ export default function Produtos() {
   useEffect(() => {
     let isSubscribed = true;
     const params: Record<string, string> = {};
-    const codigo = codigoFiltro.trim();
-    const descricao = descricaoFiltro.trim();
+    const busca = buscaFiltro.trim();
 
-    if (codigo) params.codigo = codigo;
-    if (descricao) params.descricao = descricao;
+    if (busca) params.q = busca;
     if (tipoProdutoFiltro) params.tipoProdutoOpcaoId = tipoProdutoFiltro;
     if (especieFiltro) params.especieOpcaoId = especieFiltro;
     if (faixaEtariaFiltro) params.faixaEtariaOpcaoId = faixaEtariaFiltro;
@@ -636,8 +627,7 @@ export default function Produtos() {
       isSubscribed = false;
     };
   }, [
-    codigoFiltro,
-    descricaoFiltro,
+    buscaFiltro,
     tipoProdutoFiltro,
     especieFiltro,
     faixaEtariaFiltro,

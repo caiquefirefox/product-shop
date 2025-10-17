@@ -2,6 +2,8 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PremieRpet.Shop.Infrastructure;
@@ -11,9 +13,10 @@ using PremieRpet.Shop.Infrastructure;
 namespace PremieRpet.Shop.Infrastructure.Migrations
 {
     [DbContext(typeof(ShopDbContext))]
-    partial class ShopDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251020090000_AddUnidadesEntrega")]
+    partial class AddUnidadesEntrega
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -302,16 +305,6 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                         {
                             Id = new Guid("bcb84da6-c993-54e7-8c14-665f89d70433"),
                             Nome = "CD EXTREMA - MG"
-                        },
-                        new
-                        {
-                            Id = new Guid("a1e08cc1-1962-4e30-a9a1-f899176d71a3"),
-                            Nome = "CD HORTOLÂNDIA"
-                        },
-                        new
-                        {
-                            Id = new Guid("c3f7f6a1-b95b-4ec4-a8ce-bb3aa3cbd48c"),
-                            Nome = "CD BARUERI"
                         },
                         new
                         {

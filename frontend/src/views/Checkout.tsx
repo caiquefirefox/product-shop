@@ -8,7 +8,10 @@ import { sanitizeCpf, isValidCpf, formatCpf } from "../lib/cpf";
 import type { UsuarioPerfil } from "../types/user";
 import { usePedidosConfig } from "../hooks/usePedidosConfig";
 
-type UnidadeEntrega = string;
+type UnidadeEntrega = {
+  id: string;
+  nome: string;
+};
 
 export default function Checkout() {
   const { items, totalValor, totalPesoKg, clear, anyBelowMinimum } = useCart();
@@ -18,7 +21,7 @@ export default function Checkout() {
     ? formatPeso(limiteMensalKg, "kg", { unit: "kg" })
     : "Não configurado";
   const [unidades, setUnidades] = useState<UnidadeEntrega[]>([]);
-  const [unidade, setUnidade] = useState<string>("");
+  const [unidadeId, setUnidadeId] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [loadingUnidades, setLoadingUnidades] = useState(true);
   const [loadingPerfil, setLoadingPerfil] = useState(true);
@@ -34,8 +37,16 @@ export default function Checkout() {
   useEffect(() => {
     let alive = true;
     setLoadingUnidades(true);
-    api.get<string[]>("/unidades-entrega")
-      .then(r => { if (!alive) return; setUnidades(r.data || []); setUnidade((r.data || [])[0] || ""); })
+    api.get<UnidadeEntrega[]>("/unidades-entrega")
+      .then(r => {
+        if (!alive) return;
+        const lista = r.data || [];
+        setUnidades(lista);
+        setUnidadeId((current) => {
+          if (current) return current;
+          return lista.length > 0 ? lista[0].id : "";
+        });
+      })
       .catch(e => { if (!alive) return; setErr(e?.response?.data?.title ?? "Falha ao carregar unidades de entrega."); })
       .finally(() => { if (!alive) return; setLoadingUnidades(false); });
     return () => { alive = false; };
@@ -83,7 +94,7 @@ export default function Checkout() {
     try {
       const cpfDigits = sanitizeCpf(cpf);
       const dto = {
-        unidadeEntrega: unidade,
+        unidadeEntregaId: unidadeId,
         itens: items.map(i => ({ produtoCodigo: i.codigo, quantidade: i.quantidade })),
         cpf: cpfDigits || undefined,
       };
@@ -160,10 +171,15 @@ export default function Checkout() {
         ) : unidades.length ? (
           <select
             className="border rounded p-2"
-            value={unidade}
-            onChange={e => setUnidade(e.target.value)}
+            value={unidadeId}
+            onChange={e => setUnidadeId(e.target.value)}
           >
-            {unidades.map(u => <option key={u} value={u}>{u}</option>)}
+            {unidades.map(u => (
+              <option key={u.id} value={u.id}>{u.nome}</option>
+            ))}
+            {!unidades.some(u => u.id === unidadeId) && unidadeId && (
+              <option value={unidadeId}>{unidades.find(u => u.id === unidadeId)?.nome || unidadeId}</option>
+            )}
           </select>
         ) : (
           <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -209,7 +225,7 @@ export default function Checkout() {
 
         <button
           onClick={enviar}
-          disabled={loading || loadingUnidades || loadingPerfil || !unidade || anyBelowMinimum || (!cpfBloqueado && !isValidCpf(cpf))}
+          disabled={loading || loadingUnidades || loadingPerfil || !unidadeId || anyBelowMinimum || (!cpfBloqueado && !isValidCpf(cpf))}
           className="mt-4 px-3 py-2 border rounded-lg disabled:opacity-60"
           title={anyBelowMinimum ? "Há itens abaixo da quantidade mínima." : ""}
         >

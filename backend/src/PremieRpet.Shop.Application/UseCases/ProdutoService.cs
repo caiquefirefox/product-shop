@@ -121,16 +121,26 @@ public sealed class ProdutoService : IProdutoService
 
         if (filtro is not null)
         {
-            if (!string.IsNullOrWhiteSpace(filtro.Codigo))
+            if (!string.IsNullOrWhiteSpace(filtro.Query))
             {
-                var codigo = filtro.Codigo.Trim().ToLower();
-                query = query.Where(p => p.Codigo.ToLower().Contains(codigo));
+                var termo = filtro.Query.Trim().ToLower();
+                query = query.Where(p =>
+                    p.Codigo.ToLower().Contains(termo) ||
+                    p.Descricao.ToLower().Contains(termo));
             }
-
-            if (!string.IsNullOrWhiteSpace(filtro.Descricao))
+            else
             {
-                var descricao = filtro.Descricao.Trim().ToLower();
-                query = query.Where(p => p.Descricao.ToLower().Contains(descricao));
+                if (!string.IsNullOrWhiteSpace(filtro.Codigo))
+                {
+                    var codigo = filtro.Codigo.Trim().ToLower();
+                    query = query.Where(p => p.Codigo.ToLower().Contains(codigo));
+                }
+
+                if (!string.IsNullOrWhiteSpace(filtro.Descricao))
+                {
+                    var descricao = filtro.Descricao.Trim().ToLower();
+                    query = query.Where(p => p.Descricao.ToLower().Contains(descricao));
+                }
             }
 
             if (filtro.TipoProdutoOpcaoId is Guid tipoProdutoId && tipoProdutoId != Guid.Empty)
