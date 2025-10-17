@@ -1097,7 +1097,62 @@ export default function Pedidos() {
                     </select>
                   </div>
 
-                  <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+                  <div className="space-y-3 md:hidden">
+                    {editorItens.length === 0 ? (
+                      <div className="rounded-xl border border-gray-200 bg-white px-4 py-4 text-sm text-gray-500 text-center">
+                        Nenhum item no pedido.
+                      </div>
+                    ) : (
+                      editorItens.map((item) => {
+                        const minStep = resolveMinQty(item.minQty, minQtyPadrao);
+                        const inputId = `pedido-item-quantidade-${item.codigo}`.replace(/[^a-zA-Z0-9_-]/g, "-");
+                        return (
+                          <div key={item.codigo} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                            <div className="space-y-2 text-sm">
+                              <div>
+                                <div className="font-medium text-gray-900">{item.descricao}</div>
+                                <div className="text-xs text-gray-500">{item.codigo}</div>
+                                <div className="text-xs text-gray-400">Preço: {formatCurrencyBRL(item.preco)} · Peso unitário: {formatPeso(item.pesoKg, "kg", { unit: "kg" })}</div>
+                                {minStep > 0 && (
+                                  <div className="text-xs text-amber-600">Mínimo por adição: {minStep}</div>
+                                )}
+                              </div>
+                              <div className="flex flex-col gap-2">
+                                <label className="text-xs font-semibold uppercase tracking-wide text-gray-500" htmlFor={inputId}>
+                                  Quantidade
+                                </label>
+                                <input
+                                  id={inputId}
+                                  type="number"
+                                  min={minStep}
+                                  step={minStep}
+                                  value={item.quantidade}
+                                  onChange={(event) => updateItemQuantity(item.codigo, Number(event.target.value))}
+                                  disabled={!canEditPedido || saving}
+                                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-right text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                />
+                              </div>
+                              <div className="flex items-center justify-between text-sm text-gray-600">
+                                <span>Subtotal</span>
+                                <span className="font-semibold text-gray-800">{formatCurrencyBRL(item.preco * item.quantidade)}</span>
+                              </div>
+                            </div>
+                            <div className="mt-3 flex justify-end">
+                              <button
+                                className="text-xs px-3 py-1 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                onClick={() => removeItem(item.codigo)}
+                                disabled={!canEditPedido || saving}
+                              >
+                                Remover
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-200 bg-white">
                     <table className="min-w-[520px] w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
                         <tr>
@@ -1136,18 +1191,18 @@ export default function Pedidos() {
                                     className="w-24 rounded-lg border border-gray-200 px-2 py-1 text-sm text-right shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
                                   />
                                 </td>
-                              <td className="px-3 py-2 text-right text-sm text-gray-700">
-                                {formatCurrencyBRL(item.preco * item.quantidade)}
-                              </td>
-                              <td className="px-3 py-2 text-right">
-                                <button
-                                  className="text-xs px-2 py-1 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                                  onClick={() => removeItem(item.codigo)}
-                                  disabled={!canEditPedido || saving}
-                                >
-                                  Remover
-                                </button>
-                              </td>
+                                <td className="px-3 py-2 text-right text-sm text-gray-700">
+                                  {formatCurrencyBRL(item.preco * item.quantidade)}
+                                </td>
+                                <td className="px-3 py-2 text-right">
+                                  <button
+                                    className="text-xs px-2 py-1 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    onClick={() => removeItem(item.codigo)}
+                                    disabled={!canEditPedido || saving}
+                                  >
+                                    Remover
+                                  </button>
+                                </td>
                               </tr>
                             );
                           })
