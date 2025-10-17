@@ -335,7 +335,7 @@ export default function Catalogo() {
   const displayTotalPages = normalizedTotalPages > 0 ? normalizedTotalPages : 1;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-8">
       {expandedImage && (
         <div
           className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/80 p-6 backdrop-blur"
@@ -404,29 +404,33 @@ export default function Catalogo() {
         )}
       </div>
 
-      <section className="overflow-hidden rounded-3xl border border-indigo-100 bg-white px-8 py-12 text-center shadow-sm">
-        <h1 className="mt-4 text-3xl font-bold text-slate-900 sm:text-4xl">Catálogo de produtos</h1>
-        <p className="mt-3 max-w-2xl mx-auto text-sm text-slate-600 sm:text-base">
-          Visualize todos os detalhes de cada item antes de adicionar ao carrinho: indicações, sabores, peso e faixa etária em um só lugar.
-        </p>
-      </section>
+      <header className="rounded-3xl border border-slate-200 bg-white/90 px-6 py-8 shadow-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="h-1 w-12 rounded-full bg-indigo-500" />
+            <h1 className="mt-4 text-3xl font-semibold text-slate-900 sm:text-4xl">Produtos</h1>
+            <p className="mt-2 max-w-2xl text-sm text-slate-600 sm:text-base">
+              Explore o catálogo completo e encontre o produto ideal para o seu cliente.
+            </p>
+          </div>
+        </div>
+      </header>
 
-      <section className="rounded-3xl border border-indigo-100 bg-white/80 px-6 py-6 shadow-sm">
-        <ProductFilters
-          idPrefix="catalogo-filtro"
-          title="Filtrar produtos"
-          description="Refine o catálogo utilizando os campos abaixo."
-          values={filterValues}
-          options={filterOptions}
-          hasFilters={hasFilters}
-          onChange={handleFilterChange}
-          onClear={clearFilters}
-        />
-      </section>
+      <ProductFilters
+        idPrefix="catalogo-filtro"
+        title="Filtrar produtos"
+        description="Refine o catálogo utilizando os campos abaixo."
+        values={filterValues}
+        options={filterOptions}
+        hasFilters={hasFilters}
+        onChange={handleFilterChange}
+        onClear={clearFilters}
+        className="rounded-3xl border border-slate-200 bg-white/95 px-6 py-6 shadow-sm"
+      />
 
       {hasProdutos ? (
         <div className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-2">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
             {produtos.map((p, index) => {
               const minimo = minQtyFor(p, minQtyPadrao);
               const gradient = gradientClasses[index % gradientClasses.length];
@@ -437,100 +441,98 @@ export default function Catalogo() {
               return (
                 <article
                   key={p.codigo}
-                  className="group flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white/90 shadow-sm ring-1 ring-transparent transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:ring-indigo-100"
+                  className="group flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
                 >
-                  <div className="flex flex-1 flex-col gap-5 p-5 sm:flex-row sm:items-stretch">
-                    <div
-                      className={`flex w-full flex-shrink-0 flex-col justify-center rounded-2xl border border-indigo-50 bg-gradient-to-br ${gradient} p-4 sm:w-[220px] lg:w-[240px]`}
-                    >
-                      <div className="group/image relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl border border-white/70 bg-white/80 shadow-inner">
-                        {imageUrl ? (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleExpandImage(
-                                imageUrl,
-                                `Imagem ilustrativa do produto ${p.descricao}`,
-                              )
-                            }
-                            className="relative flex h-full w-full items-center justify-center outline-none transition focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-                            aria-label={`Ampliar imagem do produto ${p.descricao}`}
-                          >
-                            <img
-                              src={imageUrl}
-                              alt={`Imagem ilustrativa do produto ${p.descricao}`}
-                              className="h-full w-full object-contain"
-                              loading="lazy"
-                            />
-                            <span className="pointer-events-none absolute inset-x-3 bottom-3 flex items-center justify-center rounded-full bg-slate-900/80 px-3 py-1 text-[11px] font-medium text-white opacity-0 backdrop-blur transition group-hover/image:opacity-100">
-                              Clique para ampliar
-                            </span>
-                          </button>
-                        ) : (
-                          <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Sem imagem</span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-1 flex-col gap-4">
+                  <div className="flex flex-1 flex-col gap-5">
+                    <div className="flex items-start justify-between gap-2">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center rounded-full bg-indigo-600/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-indigo-700">
+                        <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
                           {p.tipoProdutoNome}
                         </span>
-                        <span className="inline-flex items-center rounded-full bg-cyan-600/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700">
+                        <span className="inline-flex items-center rounded-full bg-indigo-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-indigo-700">
                           {p.especieNome}
                         </span>
                         {p.faixaEtariaNome && (
-                          <span className="inline-flex items-center rounded-full bg-lime-600/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+                          <span className="inline-flex items-center rounded-full bg-amber-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-600">
                             {p.faixaEtariaNome}
                           </span>
                         )}
                         {minimo > 1 && (
-                          <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-600">
+                          <span className="inline-flex items-center rounded-full bg-rose-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-rose-600">
                             Mín. {minimo} un.
                           </span>
                         )}
                       </div>
-
-                      <div className="space-y-1">
-                        <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">SKU #{p.codigo}</span>
-                        <h3 className="text-base font-semibold text-slate-900 sm:text-lg">
-                          {p.descricao}
-                        </h3>
-                        <p className="text-sm text-slate-600">
-                          {p.sabores || "Variedade não informada"}
-                        </p>
-                      </div>
-
-                      <dl className="grid gap-x-4 gap-y-2 text-[13px] text-slate-600 sm:grid-cols-2">
-                        <div className="space-y-0.5">
-                          <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Peso</dt>
-                          <dd className="font-medium text-slate-900">{formatPeso(p.peso, p.tipoPeso)}</dd>
-                        </div>
-                        <div className="space-y-0.5">
-                          <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Categoria</dt>
-                          <dd className="font-medium text-slate-900">{p.tipoProdutoNome}</dd>
-                        </div>
-                        <div className="space-y-0.5">
-                          <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Porte indicado</dt>
-                          <dd className="font-medium text-slate-900">{portes}</dd>
-                        </div>
-                      </dl>
+                      <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">SKU #{p.codigo}</span>
                     </div>
+
+                    <div
+                      className={`relative flex items-center justify-center overflow-hidden rounded-2xl border border-slate-100 bg-gradient-to-br ${gradient} p-6`}
+                    >
+                      {imageUrl ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleExpandImage(
+                              imageUrl,
+                              `Imagem ilustrativa do produto ${p.descricao}`,
+                            )
+                          }
+                          className="group/image relative flex h-40 w-full items-center justify-center outline-none transition focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                          aria-label={`Ampliar imagem do produto ${p.descricao}`}
+                        >
+                          <img
+                            src={imageUrl}
+                            alt={`Imagem ilustrativa do produto ${p.descricao}`}
+                            className="h-full w-full max-w-[140px] object-contain"
+                            loading="lazy"
+                          />
+                          <span className="pointer-events-none absolute inset-x-3 bottom-3 flex items-center justify-center rounded-full bg-slate-900/80 px-3 py-1 text-[11px] font-medium text-white opacity-0 backdrop-blur transition group-hover/image:opacity-100">
+                            Clique para ampliar
+                          </span>
+                        </button>
+                      ) : (
+                        <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Sem imagem</span>
+                      )}
+                    </div>
+
+                    <div className="space-y-1">
+                      <h3 className="text-base font-semibold text-slate-900 sm:text-lg">
+                        {p.descricao}
+                      </h3>
+                      <p className="text-sm text-slate-600">
+                        {p.sabores || "Variedade não informada"}
+                      </p>
+                    </div>
+
+                    <dl className="grid gap-3 text-sm text-slate-600">
+                      <div className="flex items-center justify-between">
+                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Peso</dt>
+                        <dd className="font-medium text-slate-900">{formatPeso(p.peso, p.tipoPeso)}</dd>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Categoria</dt>
+                        <dd className="font-medium text-slate-900">{p.tipoProdutoNome}</dd>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Porte indicado</dt>
+                        <dd className="font-medium text-slate-900">{portes}</dd>
+                      </div>
+                    </dl>
                   </div>
 
-                  <div className="flex flex-col gap-3 border-t border-slate-100 bg-white/85 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Preço unitário</span>
-                      <p className="text-xl font-semibold text-slate-900 sm:text-2xl">{precoFormatado}</p>
+                  <div className="mt-5 flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+                    <div className="flex flex-col">
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Preço unitário</span>
+                      <span className="text-xl font-semibold text-orange-500 sm:text-2xl">{precoFormatado}</span>
                     </div>
 
                     <button
-                      className="inline-flex items-center justify-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white shadow-sm transition-colors duration-200 hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                      className="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white shadow-sm transition-colors duration-200 hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
                       onClick={() => handleAdd(p)}
                     >
                       <ShoppingCart className="h-4 w-4" aria-hidden="true" />
-                      Adicionar ao carrinho
+                      Adicionar
                     </button>
                   </div>
                 </article>
@@ -539,7 +541,7 @@ export default function Catalogo() {
           </div>
 
           <nav
-            className="flex flex-col gap-3 rounded-2xl border border-indigo-100 bg-white/80 px-5 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+            className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between"
             aria-label="Paginação do catálogo"
           >
             <p className="text-sm text-slate-600">
@@ -556,7 +558,7 @@ export default function Catalogo() {
                 type="button"
                 onClick={() => setPage(Math.max(safePage - 1, 1))}
                 disabled={!canGoPrev}
-                className="inline-flex items-center gap-2 rounded-full border border-indigo-200 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-indigo-600 transition hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400 disabled:hover:bg-transparent"
+                className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-600 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400 disabled:hover:bg-transparent"
               >
                 Anterior
               </button>
@@ -567,7 +569,7 @@ export default function Catalogo() {
                 type="button"
                 onClick={() => setPage(Math.min(safePage + 1, displayTotalPages))}
                 disabled={!canGoNext}
-                className="inline-flex items-center gap-2 rounded-full border border-indigo-200 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-indigo-600 transition hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400 disabled:hover:bg-transparent"
+                className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-600 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400 disabled:hover:bg-transparent"
               >
                 Próxima
               </button>

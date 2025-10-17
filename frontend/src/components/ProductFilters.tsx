@@ -40,13 +40,13 @@ export type ProductFiltersProps = {
 };
 
 const filterLabelClasses =
-  "text-xs font-semibold uppercase tracking-wide text-slate-500";
+  "text-[11px] font-semibold uppercase tracking-wide text-slate-500";
 
 const filterInputClasses =
-  "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200";
+  "w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200";
 
 const clearButtonClasses =
-  "inline-flex items-center gap-2 rounded-full border border-indigo-200 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-indigo-600 transition hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2";
+  "inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2";
 
 const combineClassNames = (
   ...classes: Array<string | null | false | undefined>
@@ -80,7 +80,10 @@ export function ProductFilters({
       onChange(field, event.target.value);
     };
 
-  const fullClassName = combineClassNames("flex flex-col gap-6", className);
+  const fullClassName = combineClassNames(
+    "flex flex-col gap-6",
+    className,
+  );
 
   return (
     <div className={fullClassName}>
@@ -96,8 +99,22 @@ export function ProductFilters({
         )}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <div className="flex flex-col gap-2 text-left">
+      <div className="grid gap-4 lg:grid-cols-12">
+        <div className="flex flex-col gap-2 text-left lg:col-span-5">
+          <label htmlFor={`${idPrefix}-${inputIds.descricao}`} className={filterLabelClasses}>
+            Descrição
+          </label>
+          <input
+            id={`${idPrefix}-${inputIds.descricao}`}
+            type="text"
+            value={values.descricao}
+            onChange={handleChange("descricao")}
+            placeholder="Pesquise por código ou nome do produto"
+            className={filterInputClasses}
+          />
+        </div>
+
+        <div className="flex flex-col gap-2 text-left lg:col-span-2">
           <label htmlFor={`${idPrefix}-${inputIds.codigo}`} className={filterLabelClasses}>
             Código
           </label>
@@ -111,21 +128,7 @@ export function ProductFilters({
           />
         </div>
 
-        <div className="flex flex-col gap-2 text-left">
-          <label htmlFor={`${idPrefix}-${inputIds.descricao}`} className={filterLabelClasses}>
-            Descrição
-          </label>
-          <input
-            id={`${idPrefix}-${inputIds.descricao}`}
-            type="text"
-            value={values.descricao}
-            onChange={handleChange("descricao")}
-            placeholder="Buscar por descrição"
-            className={filterInputClasses}
-          />
-        </div>
-
-        <div className="flex flex-col gap-2 text-left">
+        <div className="flex flex-col gap-2 text-left lg:col-span-2">
           <label htmlFor={`${idPrefix}-${inputIds.tipoProduto}`} className={filterLabelClasses}>
             Tipo do produto
           </label>
@@ -144,7 +147,7 @@ export function ProductFilters({
           </select>
         </div>
 
-        <div className="flex flex-col gap-2 text-left">
+        <div className="flex flex-col gap-2 text-left lg:col-span-2">
           <label htmlFor={`${idPrefix}-${inputIds.especie}`} className={filterLabelClasses}>
             Espécie
           </label>
@@ -163,7 +166,7 @@ export function ProductFilters({
           </select>
         </div>
 
-        <div className="flex flex-col gap-2 text-left">
+        <div className="flex flex-col gap-2 text-left lg:col-span-2">
           <label htmlFor={`${idPrefix}-${inputIds.faixaEtaria}`} className={filterLabelClasses}>
             Faixa etária
           </label>
@@ -182,7 +185,7 @@ export function ProductFilters({
           </select>
         </div>
 
-        <div className="flex flex-col gap-2 text-left">
+        <div className="flex flex-col gap-2 text-left lg:col-span-2">
           <label htmlFor={`${idPrefix}-${inputIds.porte}`} className={filterLabelClasses}>
             Porte
           </label>
