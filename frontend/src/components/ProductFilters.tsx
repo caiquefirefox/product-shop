@@ -6,8 +6,7 @@ export type ProductFilterSelectOption = {
 };
 
 export type ProductFilterValues = {
-  codigo: string;
-  descricao: string;
+  query: string;
   tipoProduto: string;
   especie: string;
   faixaEtaria: string;
@@ -53,8 +52,7 @@ const combineClassNames = (
 ) => classes.filter(Boolean).join(" ");
 
 const inputIds = {
-  codigo: "codigo",
-  descricao: "descricao",
+  query: "busca",
   tipoProduto: "tipo-produto",
   especie: "especie",
   faixaEtaria: "faixa-etaria",
@@ -98,29 +96,15 @@ export function ProductFilters({
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <div className="flex flex-col gap-2 text-left">
-          <label htmlFor={`${idPrefix}-${inputIds.codigo}`} className={filterLabelClasses}>
-            Código
+          <label htmlFor={`${idPrefix}-${inputIds.query}`} className={filterLabelClasses}>
+            Código ou descrição
           </label>
           <input
-            id={`${idPrefix}-${inputIds.codigo}`}
+            id={`${idPrefix}-${inputIds.query}`}
             type="text"
-            value={values.codigo}
-            onChange={handleChange("codigo")}
-            placeholder="Buscar por código"
-            className={filterInputClasses}
-          />
-        </div>
-
-        <div className="flex flex-col gap-2 text-left">
-          <label htmlFor={`${idPrefix}-${inputIds.descricao}`} className={filterLabelClasses}>
-            Descrição
-          </label>
-          <input
-            id={`${idPrefix}-${inputIds.descricao}`}
-            type="text"
-            value={values.descricao}
-            onChange={handleChange("descricao")}
-            placeholder="Buscar por descrição"
+            value={values.query}
+            onChange={handleChange("query")}
+            placeholder="Buscar por código ou descrição"
             className={filterInputClasses}
           />
         </div>

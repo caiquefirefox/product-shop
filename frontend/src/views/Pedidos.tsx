@@ -120,8 +120,7 @@ export default function Pedidos() {
   const [catalogTotalItems, setCatalogTotalItems] = useState(0);
   const catalogRequestId = useRef(0);
 
-  const [codigoFiltro, setCodigoFiltro] = useState("");
-  const [descricaoFiltro, setDescricaoFiltro] = useState("");
+  const [buscaFiltro, setBuscaFiltro] = useState("");
   const [tipoProdutoFiltro, setTipoProdutoFiltro] = useState("");
   const [especieFiltro, setEspecieFiltro] = useState("");
   const [faixaEtariaFiltro, setFaixaEtariaFiltro] = useState("");
@@ -132,13 +131,12 @@ export default function Pedidos() {
   const [porteOptions, setPorteOptions] = useState<ProductFilterSelectOption[]>([]);
 
   const catalogFilterValues: ProductFilterValues = useMemo(() => ({
-    codigo: codigoFiltro,
-    descricao: descricaoFiltro,
+    query: buscaFiltro,
     tipoProduto: tipoProdutoFiltro,
     especie: especieFiltro,
     faixaEtaria: faixaEtariaFiltro,
     porte: porteFiltro,
-  }), [codigoFiltro, descricaoFiltro, tipoProdutoFiltro, especieFiltro, faixaEtariaFiltro, porteFiltro]);
+  }), [buscaFiltro, tipoProdutoFiltro, especieFiltro, faixaEtariaFiltro, porteFiltro]);
 
   const catalogFilterOptions: ProductFilterOptions = useMemo(() => ({
     tiposProduto: tipoProdutoOptions,
@@ -148,8 +146,7 @@ export default function Pedidos() {
   }), [tipoProdutoOptions, especieOptions, faixaEtariaOptions, porteOptions]);
 
   const hasCatalogFilters = Boolean(
-    codigoFiltro.trim() ||
-    descricaoFiltro.trim() ||
+    buscaFiltro.trim() ||
     tipoProdutoFiltro ||
     especieFiltro ||
     faixaEtariaFiltro ||
@@ -596,10 +593,8 @@ export default function Pedidos() {
         page: Math.max(catalogPage, 1).toString(),
         pageSize: catalogPageSize.toString(),
       };
-      const codigo = codigoFiltro.trim();
-      const descricao = descricaoFiltro.trim();
-      if (codigo) params.codigo = codigo;
-      if (descricao) params.descricao = descricao;
+      const busca = buscaFiltro.trim();
+      if (busca) params.q = busca;
       if (tipoProdutoFiltro) params.tipoProdutoOpcaoId = tipoProdutoFiltro;
       if (especieFiltro) params.especieOpcaoId = especieFiltro;
       if (faixaEtariaFiltro) params.faixaEtariaOpcaoId = faixaEtariaFiltro;
@@ -622,7 +617,7 @@ export default function Pedidos() {
         setCatalogLoading(false);
       }
     }
-  }, [selectedPedidoId, catalogPage, catalogPageSize, codigoFiltro, descricaoFiltro, tipoProdutoFiltro, especieFiltro, faixaEtariaFiltro, porteFiltro, toastError]);
+  }, [selectedPedidoId, catalogPage, catalogPageSize, buscaFiltro, tipoProdutoFiltro, especieFiltro, faixaEtariaFiltro, porteFiltro, toastError]);
 
   useEffect(() => {
     if (!selectedPedidoId) return;
@@ -635,11 +630,8 @@ export default function Pedidos() {
 
   const handleFilterChange: ProductFilterChangeHandler = (field, value) => {
     switch (field) {
-      case "codigo":
-        setCodigoFiltro(value);
-        break;
-      case "descricao":
-        setDescricaoFiltro(value);
+      case "query":
+        setBuscaFiltro(value);
         break;
       case "tipoProduto":
         setTipoProdutoFiltro(value);
@@ -660,8 +652,7 @@ export default function Pedidos() {
   };
 
   const clearCatalogFilters = () => {
-    setCodigoFiltro("");
-    setDescricaoFiltro("");
+    setBuscaFiltro("");
     setTipoProdutoFiltro("");
     setEspecieFiltro("");
     setFaixaEtariaFiltro("");
