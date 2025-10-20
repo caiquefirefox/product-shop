@@ -484,14 +484,14 @@ export default function Catalogo() {
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-3 bg-white/85 px-5 pb-5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-                    <p className="text-xl font-bold text-[#FF6900] sm:text-2xl">{precoFormatado}</p>
+                  <div className="flex items-center justify-between gap-3 bg-white/85 px-5 pb-5">
+                    <p className="text-lg font-bold text-[#FF6900] sm:text-xl">{precoFormatado}</p>
 
                     <button
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#FF6900] px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white shadow-sm transition-colors duration-200 hover:bg-[#e65f00] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FF6900] sm:w-auto"
+                      className="inline-flex items-center justify-center gap-1.5 rounded-full bg-[#FF6900] px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-white shadow-sm transition-colors duration-200 hover:bg-[#e65f00] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FF6900]"
                       onClick={() => handleAdd(p)}
                     >
-                      <ShoppingCart className="h-4 w-4" aria-hidden="true" />
+                      <ShoppingCart className="h-3.5 w-3.5" aria-hidden="true" />
                       Adicionar
                     </button>
                   </div>
