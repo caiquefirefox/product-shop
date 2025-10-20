@@ -269,9 +269,16 @@ export function ProductFilters({
   const renderSearchField = (
     wrapperClassName: string,
     trailingSlot?: ReactNode,
+    options?: { hideLabel?: boolean },
   ) => (
     <div className={wrapperClassName}>
-      <label htmlFor={`${idPrefix}-${inputIds.query}`} className={filterLabelClasses}>
+      <label
+        htmlFor={`${idPrefix}-${inputIds.query}`}
+        className={combineClassNames(
+          filterLabelClasses,
+          options?.hideLabel ? "sr-only" : "",
+        )}
+      >
         Buscar
       </label>
       {trailingSlot ? (
@@ -377,21 +384,20 @@ export function ProductFilters({
       )}
 
       <div className="lg:hidden">
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex flex-col gap-6 px-5 py-5">
-            {renderSearchField(
-              "flex flex-col gap-2 text-left",
-              <button
-                type="button"
-                onClick={toggleMobileFilters}
-                aria-expanded={isMobileFiltersOpen}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-indigo-200 hover:text-indigo-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2"
-              >
-                <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
-                <span>Filtros</span>
-              </button>,
-            )}
-          </div>
+        <div className="flex flex-col gap-4">
+          {renderSearchField(
+            "flex flex-col gap-2 text-left",
+            <button
+              type="button"
+              onClick={toggleMobileFilters}
+              aria-expanded={isMobileFiltersOpen}
+              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-indigo-200 hover:text-indigo-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2"
+            >
+              <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+              <span>Filtros</span>
+            </button>,
+            { hideLabel: true },
+          )}
         </div>
 
         {isMobileFiltersOpen && (
