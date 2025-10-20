@@ -18,15 +18,6 @@ import ProductFilters, {
   type ProductFilterValues,
 } from "../components/ProductFilters";
 
-const gradientClasses = [
-  "from-indigo-200 via-indigo-100 to-white",
-  "from-rose-200 via-rose-100 to-white",
-  "from-emerald-200 via-emerald-100 to-white",
-  "from-sky-200 via-sky-100 to-white",
-  "from-amber-200 via-amber-100 to-white",
-  "from-purple-200 via-purple-100 to-white",
-];
-
 const DEFAULT_PAGE_SIZE = 10;
 
 type AddToCartFeedback = {
@@ -416,10 +407,9 @@ export default function Catalogo() {
 
       {hasProdutos ? (
         <div className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-2">
-            {produtos.map((p, index) => {
+          <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+            {produtos.map(p => {
               const minimo = minQtyFor(p, minQtyPadrao);
-              const gradient = gradientClasses[index % gradientClasses.length];
               const precoFormatado = formatCurrencyBRL(p.preco);
               const portes = p.porteNomes.length ? p.porteNomes.join(", ") : "Todos os portes";
               const imageUrl = p.imagemUrl;
@@ -430,10 +420,8 @@ export default function Catalogo() {
                   className="group flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white/90 shadow-sm ring-1 ring-transparent transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:ring-indigo-100"
                 >
                   <div className="flex flex-1 flex-col gap-4 p-5">
-                    <div
-                      className={`flex w-full flex-shrink-0 flex-col justify-center rounded-2xl border border-indigo-50 bg-gradient-to-br ${gradient} p-4`}
-                    >
-                      <div className="group/image relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl border border-white/70 bg-white/80 shadow-inner">
+                    <div className="flex w-full flex-shrink-0 flex-col justify-center rounded-2xl border border-indigo-50 bg-white p-4">
+                      <div className="group/image relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-xl border border-slate-100 bg-white">
                         {imageUrl ? (
                           <button
                             type="button"
@@ -449,7 +437,7 @@ export default function Catalogo() {
                             <img
                               src={imageUrl}
                               alt={`Imagem ilustrativa do produto ${p.descricao}`}
-                              className="h-full w-full object-contain"
+                              className="h-full w-full max-h-44 object-contain"
                               loading="lazy"
                             />
                             <span className="pointer-events-none absolute inset-x-3 bottom-3 flex items-center justify-center rounded-full bg-slate-900/80 px-3 py-1 text-[11px] font-medium text-white opacity-0 backdrop-blur transition group-hover/image:opacity-100">
