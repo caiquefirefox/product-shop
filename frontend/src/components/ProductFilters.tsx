@@ -10,10 +10,9 @@ import {
 import {
   Check,
   ChevronDown,
-  Minus,
-  Plus,
   Search,
   SlidersHorizontal,
+  X,
 } from "lucide-react";
 
 export type ProductFilterSelectOption = {
@@ -234,6 +233,31 @@ export function ProductFilters({
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
   const toggleMobileFilters = () =>
     setIsMobileFiltersOpen(previousState => !previousState);
+  const closeMobileFilters = useCallback(() => {
+    setIsMobileFiltersOpen(false);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobileFiltersOpen) {
+      return undefined;
+    }
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closeMobileFilters();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [closeMobileFilters, isMobileFiltersOpen]);
 
   const hasHeadingContent = title.trim() !== "" || description.trim() !== "";
   const fullClassName = combineClassNames(
@@ -244,7 +268,7 @@ export function ProductFilters({
 
   const renderSearchField = (
     wrapperClassName: string,
-    trailingSlot?: React.ReactNode,
+    trailingSlot?: ReactNode,
   ) => (
     <div className={wrapperClassName}>
       <label htmlFor={`${idPrefix}-${inputIds.query}`} className={filterLabelClasses}>
@@ -365,24 +389,45 @@ export function ProductFilters({
               >
                 <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
                 <span>Filtros</span>
-                {isMobileFiltersOpen ? (
-                  <Minus className="h-4 w-4" aria-hidden="true" />
-                ) : (
-                  <Plus className="h-4 w-4" aria-hidden="true" />
-                )}
               </button>,
-            )}
-
-            {isMobileFiltersOpen && (
-              <div className="flex flex-col gap-6 border-t border-slate-200 pt-6">
-                {renderDropdowns("grid grid-cols-1 gap-4 sm:grid-cols-2")}
-                {mobileClearButton && (
-                  <div className="flex w-full justify-center">{mobileClearButton}</div>
-                )}
-              </div>
             )}
           </div>
         </div>
+
+        {isMobileFiltersOpen && (
+          <div className="relative z-50 lg:hidden" role="dialog" aria-modal="true">
+            <div
+              className="fixed inset-0 bg-slate-900/30 transition-opacity"
+              aria-hidden="true"
+              onClick={closeMobileFilters}
+            />
+
+            <div className="fixed inset-0 flex">
+              <div className="ml-auto flex h-full w-full max-w-xs flex-col overflow-y-auto bg-white pb-6 shadow-xl">
+                <div className="flex items-center justify-between px-5 pt-6">
+                  <h2 className="text-lg font-semibold text-slate-900">Filtros</h2>
+                  <button
+                    type="button"
+                    onClick={closeMobileFilters}
+                    className="rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2"
+                  >
+                    <span className="sr-only">Fechar filtros</span>
+                    <X className="h-5 w-5" aria-hidden="true" />
+                  </button>
+                </div>
+
+                <div className="mt-6 flex flex-1 flex-col gap-6 border-t border-slate-200 px-5 pt-6">
+                  {renderDropdowns("flex flex-col gap-6")}
+                  {mobileClearButton && (
+                    <div className="mt-auto flex w-full justify-center">
+                      {mobileClearButton}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="hidden flex-col gap-4 lg:flex lg:flex-row lg:flex-nowrap lg:items-end lg:gap-4">
