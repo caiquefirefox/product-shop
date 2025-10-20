@@ -420,7 +420,7 @@ export default function Catalogo() {
                   className="group flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white/90 shadow-sm ring-1 ring-transparent transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:ring-indigo-100"
                 >
                   <div className="flex flex-1 flex-col gap-4 p-5">
-                    <div className="grid grid-cols-[minmax(0,168px)_1fr] gap-4 sm:flex sm:flex-col sm:gap-4">
+                    <div className="grid grid-cols-[minmax(0,210px)_1fr] items-start gap-4 sm:flex sm:flex-col sm:gap-4">
                       <div className="col-span-2 order-1 flex flex-wrap items-center gap-2 sm:order-2">
                         <span className="inline-flex items-center rounded-full bg-indigo-600/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-indigo-700">
                           {p.tipoProdutoNome}
@@ -440,8 +440,8 @@ export default function Catalogo() {
                         )}
                       </div>
 
-                      <div className="order-2 flex h-full w-full flex-col justify-center rounded-2xl bg-white p-4 sm:order-1">
-                        <div className="group/image relative flex aspect-[5/4] w-full items-center justify-center overflow-hidden rounded-xl bg-white">
+                      <div className="order-2 flex h-full w-full flex-col justify-center sm:order-1">
+                        <div className="group/image relative flex aspect-[4/3] h-full w-full items-center justify-center overflow-hidden rounded-2xl bg-white sm:aspect-[5/4]">
                           {imageUrl ? (
                             <button
                               type="button"
@@ -457,7 +457,7 @@ export default function Catalogo() {
                               <img
                                 src={imageUrl}
                                 alt={`Imagem ilustrativa do produto ${p.descricao}`}
-                                className="h-full w-full max-h-72 object-contain sm:max-h-44"
+                                className="h-full w-full object-contain sm:max-h-44"
                                 loading="lazy"
                               />
                               <span className="pointer-events-none absolute inset-x-3 bottom-3 flex items-center justify-center rounded-full bg-slate-900/80 px-3 py-1 text-[11px] font-medium text-white opacity-0 backdrop-blur transition group-hover/image:opacity-100">
