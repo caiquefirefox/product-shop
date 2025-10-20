@@ -1,5 +1,6 @@
 import {
   ChangeEvent,
+  ReactNode,
   useEffect,
   useMemo,
   useRef,
@@ -241,25 +242,48 @@ export function ProductFilters({
     className,
   );
 
-  const renderSearchField = (wrapperClassName: string) => (
+  const renderSearchField = (
+    wrapperClassName: string,
+    trailingSlot?: React.ReactNode,
+  ) => (
     <div className={wrapperClassName}>
       <label htmlFor={`${idPrefix}-${inputIds.query}`} className={filterLabelClasses}>
         Buscar
       </label>
-      <div className="relative">
-        <input
-          id={`${idPrefix}-${inputIds.query}`}
-          type="text"
-          value={values.query}
-          onChange={handleChange("query")}
-          placeholder="Buscar por código ou descrição"
-          className={`${filterInputClasses} pr-12`}
-        />
-        <Search
-          className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
-          aria-hidden="true"
-        />
-      </div>
+      {trailingSlot ? (
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1">
+            <input
+              id={`${idPrefix}-${inputIds.query}`}
+              type="text"
+              value={values.query}
+              onChange={handleChange("query")}
+              placeholder="Buscar por código ou descrição"
+              className={`${filterInputClasses} pr-12`}
+            />
+            <Search
+              className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+              aria-hidden="true"
+            />
+          </div>
+          {trailingSlot}
+        </div>
+      ) : (
+        <div className="relative">
+          <input
+            id={`${idPrefix}-${inputIds.query}`}
+            type="text"
+            value={values.query}
+            onChange={handleChange("query")}
+            placeholder="Buscar por código ou descrição"
+            className={`${filterInputClasses} pr-12`}
+          />
+          <Search
+            className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+            aria-hidden="true"
+          />
+        </div>
+      )}
     </div>
   );
 
@@ -330,32 +354,34 @@ export function ProductFilters({
 
       <div className="lg:hidden">
         <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <button
-            type="button"
-            onClick={toggleMobileFilters}
-            aria-expanded={isMobileFiltersOpen}
-            className="flex w-full items-center justify-between px-5 py-4 text-left text-sm font-semibold text-slate-700"
-          >
-            <span className="inline-flex items-center gap-2">
-              <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
-              Filtros
-            </span>
-            {isMobileFiltersOpen ? (
-              <Minus className="h-4 w-4" aria-hidden="true" />
-            ) : (
-              <Plus className="h-4 w-4" aria-hidden="true" />
+          <div className="flex flex-col gap-6 px-5 py-5">
+            {renderSearchField(
+              "flex flex-col gap-2 text-left",
+              <button
+                type="button"
+                onClick={toggleMobileFilters}
+                aria-expanded={isMobileFiltersOpen}
+                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-indigo-200 hover:text-indigo-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2"
+              >
+                <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+                <span>Filtros</span>
+                {isMobileFiltersOpen ? (
+                  <Minus className="h-4 w-4" aria-hidden="true" />
+                ) : (
+                  <Plus className="h-4 w-4" aria-hidden="true" />
+                )}
+              </button>,
             )}
-          </button>
 
-          {isMobileFiltersOpen && (
-            <div className="flex flex-col gap-6 border-t border-slate-200 px-5 py-6">
-              {renderSearchField("flex flex-col gap-2 text-left")}
-              {renderDropdowns("grid grid-cols-1 gap-4 sm:grid-cols-2")}
-              {mobileClearButton && (
-                <div className="flex w-full justify-center">{mobileClearButton}</div>
-              )}
-            </div>
-          )}
+            {isMobileFiltersOpen && (
+              <div className="flex flex-col gap-6 border-t border-slate-200 pt-6">
+                {renderDropdowns("grid grid-cols-1 gap-4 sm:grid-cols-2")}
+                {mobileClearButton && (
+                  <div className="flex w-full justify-center">{mobileClearButton}</div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
