@@ -6,7 +6,14 @@ import {
   useState,
   useCallback,
 } from "react";
-import { Check, ChevronDown, Search } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  Minus,
+  Plus,
+  Search,
+  SlidersHorizontal,
+} from "lucide-react";
 
 export type ProductFilterSelectOption = {
   value: string;
@@ -223,11 +230,93 @@ export function ProductFilters({
       onChange(field, event.target.value);
     };
 
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
+  const toggleMobileFilters = () =>
+    setIsMobileFiltersOpen(previousState => !previousState);
+
   const hasHeadingContent = title.trim() !== "" || description.trim() !== "";
   const fullClassName = combineClassNames(
     "flex flex-col gap-6",
     !hasHeadingContent && "pt-1",
     className,
+  );
+
+  const renderSearchField = (wrapperClassName: string) => (
+    <div className={wrapperClassName}>
+      <label htmlFor={`${idPrefix}-${inputIds.query}`} className={filterLabelClasses}>
+        Buscar
+      </label>
+      <div className="relative">
+        <input
+          id={`${idPrefix}-${inputIds.query}`}
+          type="text"
+          value={values.query}
+          onChange={handleChange("query")}
+          placeholder="Buscar por código ou descrição"
+          className={`${filterInputClasses} pr-12`}
+        />
+        <Search
+          className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+          aria-hidden="true"
+        />
+      </div>
+    </div>
+  );
+
+  const renderDropdowns = (wrapperClassName: string) => (
+    <div className={wrapperClassName}>
+      <CategoryFilterDropdown
+        id={`${idPrefix}-${inputIds.especie}`}
+        label="Espécie"
+        placeholder="Todas"
+        value={values.especie}
+        options={options.especies}
+        onChange={value => onChange("especie", value)}
+      />
+
+      <CategoryFilterDropdown
+        id={`${idPrefix}-${inputIds.tipoProduto}`}
+        label="Tipo de alimento"
+        placeholder="Todos"
+        value={values.tipoProduto}
+        options={options.tiposProduto}
+        onChange={value => onChange("tipoProduto", value)}
+      />
+
+      <CategoryFilterDropdown
+        id={`${idPrefix}-${inputIds.faixaEtaria}`}
+        label="Idade"
+        placeholder="Todas as faixas"
+        value={values.faixaEtaria}
+        options={options.faixasEtarias}
+        onChange={value => onChange("faixaEtaria", value)}
+      />
+
+      <CategoryFilterDropdown
+        id={`${idPrefix}-${inputIds.porte}`}
+        label="Porte"
+        placeholder="Todos"
+        value={values.porte}
+        options={options.portes}
+        onChange={value => onChange("porte", value)}
+      />
+    </div>
+  );
+
+  const renderClearButton = (additionalClasses: string) =>
+    hasFilters ? (
+      <button
+        type="button"
+        onClick={onClear}
+        className={`${clearButtonClasses} ${additionalClasses}`}
+      >
+        {clearLabel}
+      </button>
+    ) : null;
+
+  const mobileClearButton = renderClearButton("w-full justify-center");
+  const desktopClearButton = renderClearButton(
+    "self-start whitespace-nowrap lg:self-end",
   );
 
   return (
@@ -239,74 +328,41 @@ export function ProductFilters({
         </div>
       )}
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:flex-nowrap lg:items-end lg:gap-4">
-        <div className="flex min-w-[220px] flex-1 flex-col gap-2 text-left">
-          <label htmlFor={`${idPrefix}-${inputIds.query}`} className={filterLabelClasses}>
-            Buscar
-          </label>
-          <div className="relative">
-            <input
-              id={`${idPrefix}-${inputIds.query}`}
-              type="text"
-              value={values.query}
-              onChange={handleChange("query")}
-              placeholder="Buscar por código ou descrição"
-              className={`${filterInputClasses} pr-12`}
-            />
-            <Search
-              className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
-              aria-hidden="true"
-            />
-          </div>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2 sm:items-end lg:flex lg:flex-1 lg:flex-nowrap lg:gap-4">
-          <CategoryFilterDropdown
-            id={`${idPrefix}-${inputIds.especie}`}
-            label="Espécie"
-            placeholder="Todas"
-            value={values.especie}
-            options={options.especies}
-            onChange={value => onChange("especie", value)}
-          />
-
-          <CategoryFilterDropdown
-            id={`${idPrefix}-${inputIds.tipoProduto}`}
-            label="Tipo de alimento"
-            placeholder="Todos"
-            value={values.tipoProduto}
-            options={options.tiposProduto}
-            onChange={value => onChange("tipoProduto", value)}
-          />
-
-          <CategoryFilterDropdown
-            id={`${idPrefix}-${inputIds.faixaEtaria}`}
-            label="Idade"
-            placeholder="Todas as faixas"
-            value={values.faixaEtaria}
-            options={options.faixasEtarias}
-            onChange={value => onChange("faixaEtaria", value)}
-          />
-
-          <CategoryFilterDropdown
-            id={`${idPrefix}-${inputIds.porte}`}
-            label="Porte"
-            placeholder="Todos"
-            value={values.porte}
-            options={options.portes}
-            onChange={value => onChange("porte", value)}
-          />
-        </div>
-
-        {hasFilters && (
+      <div className="lg:hidden">
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
           <button
             type="button"
-            onClick={onClear}
-            className={`${clearButtonClasses} self-start whitespace-nowrap lg:self-end`}
+            onClick={toggleMobileFilters}
+            aria-expanded={isMobileFiltersOpen}
+            className="flex w-full items-center justify-between px-5 py-4 text-left text-sm font-semibold text-slate-700"
           >
-            {clearLabel}
+            <span className="inline-flex items-center gap-2">
+              <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+              Filtros
+            </span>
+            {isMobileFiltersOpen ? (
+              <Minus className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <Plus className="h-4 w-4" aria-hidden="true" />
+            )}
           </button>
-        )}
+
+          {isMobileFiltersOpen && (
+            <div className="flex flex-col gap-6 border-t border-slate-200 px-5 py-6">
+              {renderSearchField("flex flex-col gap-2 text-left")}
+              {renderDropdowns("grid grid-cols-1 gap-4 sm:grid-cols-2")}
+              {mobileClearButton && (
+                <div className="flex w-full justify-center">{mobileClearButton}</div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="hidden flex-col gap-4 lg:flex lg:flex-row lg:flex-nowrap lg:items-end lg:gap-4">
+        {renderSearchField("flex min-w-[220px] flex-1 flex-col gap-2 text-left")}
+        {renderDropdowns("grid gap-4 sm:grid-cols-2 sm:items-end lg:flex lg:flex-1 lg:flex-nowrap lg:gap-4")}
+        {desktopClearButton}
       </div>
     </div>
   );
