@@ -385,19 +385,18 @@ export default function Catalogo() {
           </div>
         )}
       </div>
-
-      <section className="overflow-hidden rounded-3xl border border-indigo-100 bg-white px-8 py-12 text-center shadow-sm">
-        <h1 className="mt-4 text-3xl font-bold text-slate-900 sm:text-4xl">Catálogo de produtos</h1>
-        <p className="mt-3 max-w-2xl mx-auto text-sm text-slate-600 sm:text-base">
-          Visualize todos os detalhes de cada item antes de adicionar ao carrinho: indicações, sabores, peso e faixa etária em um só lugar.
-        </p>
-      </section>
+        
+      <div className="space-y-8">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+            <h1 className="text-3xl font-bold">Produtos</h1>
+        </div>
+      </div>
 
       <section className="rounded-3xl border border-indigo-100 bg-white/80 px-6 py-6 shadow-sm">
         <ProductFilters
           idPrefix="catalogo-filtro"
-          title="Filtrar produtos"
-          description="Refine o catálogo utilizando os campos abaixo."
+          title=""
+          description=""
           values={filterValues}
           options={filterOptions}
           hasFilters={hasFilters}
@@ -475,7 +474,7 @@ export default function Catalogo() {
                       <h3 className="text-base font-bold text-slate-900 sm:text-lg">
                         {p.descricao}
                       </h3>
-                      <p className="text-sm font-semibold text-slate-600">
+                      <p className="text-sm font-semibold">
                         {p.sabores || "Variedade não informada"}
                       </p>
                       <p className="text-sm text-slate-500">

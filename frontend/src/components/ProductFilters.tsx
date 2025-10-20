@@ -78,15 +78,16 @@ export function ProductFilters({
       onChange(field, event.target.value);
     };
 
-  const fullClassName = combineClassNames("flex flex-col gap-6", className);
+  const notitle = title.trim() === '' && description.trim() === '';
+  const fullClassName = combineClassNames("flex flex-col" + (notitle ? "" : " gap-6"), className);
 
   return (
     <div className={fullClassName}>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="text-left">
+        { !notitle && (<div className="text-left">
           <h3 className="text-base font-semibold text-gray-900">{title}</h3>
           <p className="text-sm text-gray-500">{description}</p>
-        </div>
+        </div>) }
         {hasFilters && (
           <button type="button" onClick={onClear} className={clearButtonClasses}>
             {clearLabel}
@@ -97,7 +98,7 @@ export function ProductFilters({
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <div className="flex flex-col gap-2 text-left">
           <label htmlFor={`${idPrefix}-${inputIds.query}`} className={filterLabelClasses}>
-            Código ou descrição
+            Buscar
           </label>
           <input
             id={`${idPrefix}-${inputIds.query}`}
@@ -110,25 +111,6 @@ export function ProductFilters({
         </div>
 
         <div className="flex flex-col gap-2 text-left">
-          <label htmlFor={`${idPrefix}-${inputIds.tipoProduto}`} className={filterLabelClasses}>
-            Tipo do produto
-          </label>
-          <select
-            id={`${idPrefix}-${inputIds.tipoProduto}`}
-            value={values.tipoProduto}
-            onChange={handleChange("tipoProduto")}
-            className={filterInputClasses}
-          >
-            <option value="">Todos os tipos</option>
-            {options.tiposProduto.map(option => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col gap-2 text-left">
           <label htmlFor={`${idPrefix}-${inputIds.especie}`} className={filterLabelClasses}>
             Espécie
           </label>
@@ -138,7 +120,7 @@ export function ProductFilters({
             onChange={handleChange("especie")}
             className={filterInputClasses}
           >
-            <option value="">Todas as espécies</option>
+            <option value="">Todas</option>
             {options.especies.map(option => (
               <option key={option.value} value={option.value}>
                 {option.label}
@@ -148,8 +130,27 @@ export function ProductFilters({
         </div>
 
         <div className="flex flex-col gap-2 text-left">
+          <label htmlFor={`${idPrefix}-${inputIds.tipoProduto}`} className={filterLabelClasses}>
+            Tipo de alimento
+          </label>
+          <select
+            id={`${idPrefix}-${inputIds.tipoProduto}`}
+            value={values.tipoProduto}
+            onChange={handleChange("tipoProduto")}
+            className={filterInputClasses}
+          >
+            <option value="">Todos</option>
+            {options.tiposProduto.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-2 text-left">
           <label htmlFor={`${idPrefix}-${inputIds.faixaEtaria}`} className={filterLabelClasses}>
-            Faixa etária
+            Idade
           </label>
           <select
             id={`${idPrefix}-${inputIds.faixaEtaria}`}
@@ -176,7 +177,7 @@ export function ProductFilters({
             onChange={handleChange("porte")}
             className={filterInputClasses}
           >
-            <option value="">Todos os portes</option>
+            <option value="">Todos</option>
             {options.portes.map(option => (
               <option key={option.value} value={option.value}>
                 {option.label}
