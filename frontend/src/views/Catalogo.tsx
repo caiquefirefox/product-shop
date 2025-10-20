@@ -420,70 +420,86 @@ export default function Catalogo() {
                   className="group flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white/90 shadow-sm ring-1 ring-transparent transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:ring-indigo-100"
                 >
                   <div className="flex flex-1 flex-col gap-4 p-5">
-                    <div className="flex w-full flex-shrink-0 flex-col justify-center rounded-2xl bg-white p-4">
-                      <div className="group/image relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-xl bg-white">
-                        {imageUrl ? (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleExpandImage(
-                                imageUrl,
-                                `Imagem ilustrativa do produto ${p.descricao}`,
-                              )
-                            }
-                            className="relative flex h-full w-full items-center justify-center outline-none transition focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-                            aria-label={`Ampliar imagem do produto ${p.descricao}`}
-                          >
-                            <img
-                              src={imageUrl}
-                              alt={`Imagem ilustrativa do produto ${p.descricao}`}
-                              className="h-full w-full max-h-44 object-contain"
-                              loading="lazy"
-                            />
-                            <span className="pointer-events-none absolute inset-x-3 bottom-3 flex items-center justify-center rounded-full bg-slate-900/80 px-3 py-1 text-[11px] font-medium text-white opacity-0 backdrop-blur transition group-hover/image:opacity-100">
-                              Clique para ampliar
-                            </span>
-                          </button>
-                        ) : (
-                          <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Sem imagem</span>
+                    <div className="grid grid-cols-[minmax(0,120px)_1fr] gap-4 sm:flex sm:flex-col sm:gap-4">
+                      <div className="col-span-2 order-1 flex flex-wrap items-center gap-2 sm:order-2">
+                        <span className="inline-flex items-center rounded-full bg-indigo-600/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-indigo-700">
+                          {p.tipoProdutoNome}
+                        </span>
+                        <span className="inline-flex items-center rounded-full bg-cyan-600/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700">
+                          {p.especieNome}
+                        </span>
+                        {p.faixaEtariaNome && (
+                          <span className="inline-flex items-center rounded-full bg-lime-600/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+                            {p.faixaEtariaNome}
+                          </span>
+                        )}
+                        {minimo > 1 && (
+                          <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-600">
+                            Mín. {minimo} un.
+                          </span>
                         )}
                       </div>
-                    </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center rounded-full bg-indigo-600/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-indigo-700">
-                        {p.tipoProdutoNome}
-                      </span>
-                      <span className="inline-flex items-center rounded-full bg-cyan-600/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700">
-                        {p.especieNome}
-                      </span>
-                      {p.faixaEtariaNome && (
-                        <span className="inline-flex items-center rounded-full bg-lime-600/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
-                          {p.faixaEtariaNome}
-                        </span>
-                      )}
-                      {minimo > 1 && (
-                        <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-600">
-                          Mín. {minimo} un.
-                        </span>
-                      )}
-                    </div>
+                      <div className="order-2 flex h-full w-full flex-col justify-center rounded-2xl bg-white p-4 sm:order-1">
+                        <div className="group/image relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-xl bg-white">
+                          {imageUrl ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleExpandImage(
+                                  imageUrl,
+                                  `Imagem ilustrativa do produto ${p.descricao}`,
+                                )
+                              }
+                              className="relative flex h-full w-full items-center justify-center outline-none transition focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                              aria-label={`Ampliar imagem do produto ${p.descricao}`}
+                            >
+                              <img
+                                src={imageUrl}
+                                alt={`Imagem ilustrativa do produto ${p.descricao}`}
+                                className="h-full w-full max-h-44 object-contain"
+                                loading="lazy"
+                              />
+                              <span className="pointer-events-none absolute inset-x-3 bottom-3 flex items-center justify-center rounded-full bg-slate-900/80 px-3 py-1 text-[11px] font-medium text-white opacity-0 backdrop-blur transition group-hover/image:opacity-100">
+                                Clique para ampliar
+                              </span>
+                            </button>
+                          ) : (
+                            <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Sem imagem</span>
+                          )}
+                        </div>
+                      </div>
 
-                    <div className="space-y-1">
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">SKU #{p.codigo}</span>
-                      <h3 className="text-base font-bold text-slate-900 sm:text-lg">
-                        {p.descricao}
-                      </h3>
-                      <p className="text-sm font-semibold">
-                        {p.sabores || "Variedade não informada"}
-                      </p>
-                      <p className="text-sm text-slate-500">
-                        {`${portes} | ${formatPeso(p.peso, p.tipoPeso)}`}
-                      </p>
+                      <div className="order-3 flex flex-col gap-3 sm:order-3">
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">SKU #{p.codigo}</span>
+                          <h3 className="text-base font-bold text-slate-900 sm:text-lg">
+                            {p.descricao}
+                          </h3>
+                          <p className="text-sm font-semibold">
+                            {p.sabores || "Variedade não informada"}
+                          </p>
+                          <p className="text-sm text-slate-500">
+                            {`${portes} | ${formatPeso(p.peso, p.tipoPeso)}`}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/85 px-4 py-3 sm:hidden">
+                          <p className="text-lg font-bold text-[#FF6900]">{precoFormatado}</p>
+
+                          <button
+                            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#FF6900] text-white shadow-sm transition-colors duration-200 hover:bg-[#e65f00] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FF6900]"
+                            aria-label="Adicionar produto ao carrinho"
+                            onClick={() => handleAdd(p)}
+                          >
+                            <ShoppingCart className="h-4 w-4" aria-hidden="true" />
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between gap-3 bg-white/85 px-5 pb-5">
+                  <div className="hidden items-center justify-between gap-3 bg-white/85 px-5 pb-5 sm:flex">
                     <p className="text-lg font-bold text-[#FF6900] sm:text-xl">{precoFormatado}</p>
 
                     <button
