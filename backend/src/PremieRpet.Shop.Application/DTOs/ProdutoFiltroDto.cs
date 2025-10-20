@@ -13,5 +13,5 @@ public sealed record ProdutoFiltroDto(
     int Page,
     int PageSize)
 {
-    public const int DefaultPageSize = 10;
+    public const int DefaultPageSize = 12;
 }
