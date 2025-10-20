@@ -18,7 +18,7 @@ import ProductFilters, {
   type ProductFilterValues,
 } from "../components/ProductFilters";
 
-const DEFAULT_PAGE_SIZE = 10;
+const DEFAULT_PAGE_SIZE = 12;
 
 type AddToCartFeedback = {
   descricao: string;
@@ -182,6 +182,7 @@ export default function Catalogo() {
     if (faixaEtariaFiltro) params.faixaEtariaOpcaoId = faixaEtariaFiltro;
     if (porteFiltro) params.porteOpcaoId = porteFiltro;
     params.page = Math.max(page, 1).toString();
+    params.pageSize = DEFAULT_PAGE_SIZE.toString();
 
     const requestId = ++catalogoRequestIdRef.current;
     let isSubscribed = true;
@@ -420,8 +421,8 @@ export default function Catalogo() {
                   className="group flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white/90 shadow-sm ring-1 ring-transparent transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:ring-indigo-100"
                 >
                   <div className="flex flex-1 flex-col gap-4 p-5">
-                    <div className="flex w-full flex-shrink-0 flex-col justify-center rounded-2xl border border-indigo-50 bg-white p-4">
-                      <div className="group/image relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-xl border border-slate-100 bg-white">
+                    <div className="flex w-full flex-shrink-0 flex-col justify-center rounded-2xl bg-white p-4">
+                      <div className="group/image relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-xl bg-white">
                         {imageUrl ? (
                           <button
                             type="button"
@@ -462,7 +463,7 @@ export default function Catalogo() {
                           {p.faixaEtariaNome}
                         </span>
                       )}
-                      {minimo > 1 && (
+                      {minimo > 0 && (
                         <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-600">
                           Mín. {minimo} un.
                         </span>
@@ -483,11 +484,11 @@ export default function Catalogo() {
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-3 bg-white/85 px-5 pb-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-col gap-3 bg-white/85 px-5 pb-5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                     <p className="text-xl font-bold text-[#FF6900] sm:text-2xl">{precoFormatado}</p>
 
                     <button
-                      className="inline-flex items-center justify-center gap-2 rounded-full bg-[#FF6900] px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white shadow-sm transition-colors duration-200 hover:bg-[#e65f00] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FF6900]"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#FF6900] px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white shadow-sm transition-colors duration-200 hover:bg-[#e65f00] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FF6900] sm:w-auto"
                       onClick={() => handleAdd(p)}
                     >
                       <ShoppingCart className="h-4 w-4" aria-hidden="true" />
