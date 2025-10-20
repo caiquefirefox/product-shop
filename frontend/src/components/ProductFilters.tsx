@@ -141,7 +141,7 @@ function CategoryFilterDropdown({
   };
 
   return (
-    <div className="relative flex flex-col gap-2 text-left min-w-[200px]">
+    <div className="relative flex min-w-[160px] flex-1 flex-col gap-2 text-left">
       <label htmlFor={id} className={filterLabelClasses}>
         {label}
       </label>
@@ -223,27 +223,24 @@ export function ProductFilters({
       onChange(field, event.target.value);
     };
 
-  const notitle = title.trim() === '' && description.trim() === '';
-  const fullClassName = combineClassNames("flex flex-col" + (notitle ? "" : " gap-6"), className);
+  const hasHeadingContent = title.trim() !== "" || description.trim() !== "";
+  const fullClassName = combineClassNames(
+    "flex flex-col gap-6",
+    !hasHeadingContent && "pt-1",
+    className,
+  );
 
   return (
     <div className={fullClassName}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        {!notitle && (
-          <div className="text-left">
-            <h3 className="text-base font-semibold text-gray-900">{title}</h3>
-            <p className="text-sm text-gray-500">{description}</p>
-          </div>
-        )}
-        {hasFilters && (
-          <button type="button" onClick={onClear} className={clearButtonClasses}>
-            {clearLabel}
-          </button>
-        )}
-      </div>
+      {hasHeadingContent && (
+        <div className="flex flex-col text-left">
+          <h3 className="text-base font-semibold text-gray-900">{title}</h3>
+          <p className="text-sm text-gray-500">{description}</p>
+        </div>
+      )}
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:flex-nowrap lg:items-end lg:gap-5">
-        <div className="flex flex-col gap-2 text-left lg:min-w-[260px]">
+      <div className="flex flex-col gap-4 lg:flex-row lg:flex-nowrap lg:items-end lg:gap-4">
+        <div className="flex min-w-[220px] flex-1 flex-col gap-2 text-left">
           <label htmlFor={`${idPrefix}-${inputIds.query}`} className={filterLabelClasses}>
             Buscar
           </label>
@@ -263,7 +260,7 @@ export function ProductFilters({
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 sm:items-end lg:flex lg:flex-nowrap lg:gap-4">
+        <div className="grid gap-4 sm:grid-cols-2 sm:items-end lg:flex lg:flex-1 lg:flex-nowrap lg:gap-4">
           <CategoryFilterDropdown
             id={`${idPrefix}-${inputIds.especie}`}
             label="Espécie"
@@ -300,6 +297,16 @@ export function ProductFilters({
             onChange={value => onChange("porte", value)}
           />
         </div>
+
+        {hasFilters && (
+          <button
+            type="button"
+            onClick={onClear}
+            className={`${clearButtonClasses} self-start whitespace-nowrap lg:self-end`}
+          >
+            {clearLabel}
+          </button>
+        )}
       </div>
     </div>
   );
