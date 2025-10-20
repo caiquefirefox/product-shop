@@ -457,7 +457,7 @@ export default function Catalogo() {
                               <img
                                 src={imageUrl}
                                 alt={`Imagem ilustrativa do produto ${p.descricao}`}
-                                className="h-full w-full max-h-44 object-contain"
+                                className="h-full w-full max-h-60 object-contain sm:max-h-44"
                                 loading="lazy"
                               />
                               <span className="pointer-events-none absolute inset-x-3 bottom-3 flex items-center justify-center rounded-full bg-slate-900/80 px-3 py-1 text-[11px] font-medium text-white opacity-0 backdrop-blur transition group-hover/image:opacity-100">
