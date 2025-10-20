@@ -411,7 +411,7 @@ export default function Catalogo() {
             {produtos.map(p => {
               const minimo = minQtyFor(p, minQtyPadrao);
               const precoFormatado = formatCurrencyBRL(p.preco);
-              const portes = p.porteNomes.length ? p.porteNomes.join(", ") : "Todos os portes";
+              const portes = "Porte " + (p.porteNomes.length ? p.porteNomes.join(", ") : "Todos os portes");
               const imageUrl = p.imagemUrl;
 
               return (
