@@ -463,7 +463,7 @@ export default function Catalogo() {
                           {p.faixaEtariaNome}
                         </span>
                       )}
-                      {minimo > 0 && (
+                      {minimo > 1 && (
                         <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-600">
                           Mín. {minimo} un.
                         </span>
@@ -472,13 +472,13 @@ export default function Catalogo() {
 
                     <div className="space-y-1">
                       <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">SKU #{p.codigo}</span>
-                      <h3 className="text-base font-semibold text-slate-900 sm:text-lg">
+                      <h3 className="text-base font-bold text-slate-900 sm:text-lg">
                         {p.descricao}
                       </h3>
-                      <p className="text-sm text-slate-600">
+                      <p className="text-sm font-semibold text-slate-600">
                         {p.sabores || "Variedade não informada"}
                       </p>
-                      <p className="text-sm font-medium text-slate-700">
+                      <p className="text-sm text-slate-500">
                         {`${portes} | ${formatPeso(p.peso, p.tipoPeso)}`}
                       </p>
                     </div>
