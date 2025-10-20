@@ -386,13 +386,13 @@ export default function Catalogo() {
         )}
       </div>
         
-      <div className="space-y-8">
+      <div className="space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
-            <h1 className="text-3xl font-bold">Produtos</h1>
+          <h1 className="text-3xl font-bold">Produtos</h1>
         </div>
       </div>
 
-      <section className="rounded-3xl border border-indigo-100 bg-white/80 px-6 py-6 shadow-sm">
+      <section className="mt-2 mb-6 rounded-3xl border border-indigo-100 bg-white/80 px-6 py-6 shadow-sm lg:mt-4">
         <ProductFilters
           idPrefix="catalogo-filtro"
           title=""

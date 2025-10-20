@@ -178,7 +178,7 @@ export default function App() {
       )}
 
       {!isLoginRoute && !isLoading && (
-        <div className={`transition-all duration-300 ${isScrolled ? "h-20" : "h-24"}`} aria-hidden />
+        <div className={`transition-all duration-300 ${isScrolled ? "h-16" : "h-20"}`} aria-hidden />
       )}
 
       <main className={isLoginRoute ? "" : "max-w-6xl mx-auto p-4"}>
