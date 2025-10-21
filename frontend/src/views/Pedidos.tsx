@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, ArrowUpRight, Check, Pencil, X } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, Check, FilePenLine, X } from "lucide-react";
 import api from "../lib/api";
 import { formatCurrencyBRL, formatPeso, startOfDayISO_BR, endOfDayISO_BR, formatDateBR } from "../lib/format";
 import { DateUserFilters, type SimpleOption } from "../components/DateUserFilters";
@@ -1036,15 +1036,15 @@ export default function Pedidos() {
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-[#E9E9E9]">
-                  <tr>
-                    <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wide text-black">Código</th>
-                    <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wide text-black">Data</th>
-                    <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wide text-black">Colaborador</th>
-                    <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wide text-black">Status</th>
-                    <th className="px-4 py-2 text-right text-xs font-bold uppercase tracking-wide text-black">Peso (kg)</th>
-                    <th className="px-4 py-2 text-right text-xs font-bold uppercase tracking-wide text-black">Total</th>
-                    <th className="px-4 py-2 text-center text-xs font-bold uppercase tracking-wide text-black">Editar</th>
-                    <th className="px-4 py-2 text-right text-xs font-bold uppercase tracking-wide text-black">Ações</th>
+                  <tr className="h-[49px]">
+                    <th className="px-4 text-left text-xs font-bold uppercase tracking-wide text-black align-middle">Código</th>
+                    <th className="px-4 text-left text-xs font-bold uppercase tracking-wide text-black align-middle">Data</th>
+                    <th className="px-4 text-left text-xs font-bold uppercase tracking-wide text-black align-middle">Colaborador</th>
+                    <th className="px-4 text-left text-xs font-bold uppercase tracking-wide text-black align-middle">Status</th>
+                    <th className="px-4 text-right text-xs font-bold uppercase tracking-wide text-black align-middle">Peso (kg)</th>
+                    <th className="px-4 text-right text-xs font-bold uppercase tracking-wide text-black align-middle">Total</th>
+                    <th className="px-4 text-center text-xs font-bold uppercase tracking-wide text-black align-middle">Editar</th>
+                    <th className="px-4 text-right text-xs font-bold uppercase tracking-wide text-black align-middle">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -1108,11 +1108,11 @@ export default function Pedidos() {
                                 disabled={isAbrindo}
                                 aria-label={isEditandoAtual ? "Editando pedido" : "Editar pedido"}
                               >
-                                <Pencil className="h-4 w-4" aria-hidden="true" />
+                                <FilePenLine className="h-4 w-4" aria-hidden="true" />
                               </button>
                             ) : (
                               <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-transparent text-gray-300">
-                                <Pencil className="h-4 w-4" aria-hidden="true" />
+                                <FilePenLine className="h-4 w-4" aria-hidden="true" />
                                 <span className="sr-only">Edição indisponível</span>
                               </span>
                             )}
@@ -1465,6 +1465,7 @@ export default function Pedidos() {
                         onChange={handleFilterChange}
                         onClear={clearCatalogFilters}
                         clearLabel="Limpar"
+                        wrapOnLarge
                       />
                     </div>
 

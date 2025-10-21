@@ -261,6 +261,7 @@ export function DateUserFilters({
         <input
           id="filtro-de"
           type="date"
+          lang="pt-BR"
           value={de ? formatDateForInput(de) : ""}
           onChange={handleDateChange(onChangeDe)}
           className={inputBaseClasses}
@@ -275,6 +276,7 @@ export function DateUserFilters({
         <input
           id="filtro-ate"
           type="date"
+          lang="pt-BR"
           value={ate ? formatDateForInput(ate) : ""}
           onChange={handleDateChange(onChangeAte)}
           className={inputBaseClasses}

@@ -51,6 +51,7 @@ export type ProductFiltersProps = {
   onClear: () => void;
   className?: string;
   clearLabel?: string;
+  wrapOnLarge?: boolean;
 };
 
 const filterLabelClasses =
@@ -222,6 +223,7 @@ export function ProductFilters({
   onClear,
   className,
   clearLabel = "Limpar filtros",
+  wrapOnLarge = false,
 }: ProductFiltersProps) {
   const handleChange = (
     field: keyof ProductFilterValues,
@@ -317,6 +319,8 @@ export function ProductFilters({
       )}
     </div>
   );
+
+  const largeWrapClass = wrapOnLarge ? "lg:flex-wrap" : "lg:flex-nowrap";
 
   const renderDropdowns = (wrapperClassName: string) => (
     <div className={wrapperClassName}>
@@ -436,9 +440,9 @@ export function ProductFilters({
         )}
       </div>
 
-      <div className="hidden flex-col gap-4 lg:flex lg:flex-row lg:flex-nowrap lg:items-end lg:gap-4">
+      <div className={`hidden w-full flex-col gap-4 lg:flex lg:flex-row ${largeWrapClass} lg:items-end lg:gap-4`}>
         {renderSearchField("flex min-w-[220px] flex-1 flex-col gap-2 text-left")}
-        {renderDropdowns("grid gap-4 sm:grid-cols-2 sm:items-end lg:flex lg:flex-1 lg:flex-nowrap lg:gap-4")}
+        {renderDropdowns(`grid gap-4 sm:grid-cols-2 sm:items-end lg:flex lg:flex-1 ${largeWrapClass} lg:gap-4`)}
         {desktopClearButton}
       </div>
     </div>
