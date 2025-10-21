@@ -144,10 +144,12 @@ export default function CartSidebar({ open, onClose, onCheckout }: CartSidebarPr
                         )}
                       </div>
 
-                      <div className="flex flex-1 items-start gap-4">
-                        <div className="flex flex-1 flex-col text-sm text-gray-600">
-                          <div>
-                            <div className="text-[16px] font-bold text-gray-900 leading-snug">{item.descricao}</div>
+                      <div className="flex min-w-0 flex-1 items-start gap-4">
+                        <div className="flex min-w-0 flex-1 flex-col text-sm text-gray-600">
+                          <div className="min-w-0">
+                            <div className="break-words text-[16px] font-bold leading-snug text-gray-900">
+                              {item.descricao}
+                            </div>
                             {sabor ? (
                               <div className="mt-1 font-semibold text-gray-700 leading-snug">{sabor}</div>
                             ) : null}
@@ -168,13 +170,13 @@ export default function CartSidebar({ open, onClose, onCheckout }: CartSidebarPr
                                 step={min}
                                 value={item.quantidade}
                                 onChange={event => setQuantity(item.codigo, Number(event.target.value))}
-                                className={`w-[64px] rounded-lg border px-2 py-1 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-[#FF6900]/40 ${
+                                className={`w-[56px] rounded-lg border px-2 py-1 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-[#FF6900]/40 ${
                                   below ? "border-red-300 bg-red-50" : "border-gray-200"
                                 }`}
                                 title={`Informe múltiplos de ${min} unidade(s).`}
                               />
                             </label>
-                            <span className="min-w-[108px] text-right text-sm text-gray-500 tabular-nums whitespace-nowrap">
+                            <span className="flex-1 text-right text-sm text-gray-500 tabular-nums whitespace-nowrap">
                               {formatCurrencyBRL(item.preco)} Un
                             </span>
                             <button
@@ -187,8 +189,8 @@ export default function CartSidebar({ open, onClose, onCheckout }: CartSidebarPr
                           </div>
                         </div>
 
-                        <div className="flex h-full flex-col items-end text-right">
-                          <div className="text-base font-semibold text-gray-900">
+                        <div className="flex h-full max-w-[120px] shrink-0 flex-col items-end text-right">
+                          <div className="break-words text-base font-semibold text-gray-900">
                             {formatCurrencyBRL(itemSubtotal(item))}
                           </div>
                         </div>
