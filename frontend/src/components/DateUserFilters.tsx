@@ -258,30 +258,48 @@ export function DateUserFilters({
         <label className={filterLabelClasses} htmlFor="filtro-de">
           De
         </label>
-        <input
-          id="filtro-de"
-          type="date"
-          lang="pt-BR"
-          value={de ? formatDateForInput(de) : ""}
-          onChange={handleDateChange(onChangeDe)}
-          className={inputBaseClasses}
-          disabled={disabled}
-        />
+        <div className="relative">
+          <input
+            id="filtro-de"
+            type="date"
+            lang="pt-BR"
+            value={de ? formatDateForInput(de) : ""}
+            onChange={handleDateChange(onChangeDe)}
+            className={`${inputBaseClasses} text-transparent caret-transparent`}
+            disabled={disabled}
+          />
+          <div className="pointer-events-none absolute inset-0 flex items-center px-4">
+            {de ? (
+              <span className={`text-sm ${disabled ? "text-slate-400" : "text-slate-700"}`}>{de}</span>
+            ) : (
+              <span className="text-sm text-slate-400">dd/mm/aaaa</span>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="flex min-w-[160px] flex-1 flex-col gap-2">
         <label className={filterLabelClasses} htmlFor="filtro-ate">
           Até
         </label>
-        <input
-          id="filtro-ate"
-          type="date"
-          lang="pt-BR"
-          value={ate ? formatDateForInput(ate) : ""}
-          onChange={handleDateChange(onChangeAte)}
-          className={inputBaseClasses}
-          disabled={disabled}
-        />
+        <div className="relative">
+          <input
+            id="filtro-ate"
+            type="date"
+            lang="pt-BR"
+            value={ate ? formatDateForInput(ate) : ""}
+            onChange={handleDateChange(onChangeAte)}
+            className={`${inputBaseClasses} text-transparent caret-transparent`}
+            disabled={disabled}
+          />
+          <div className="pointer-events-none absolute inset-0 flex items-center px-4">
+            {ate ? (
+              <span className={`text-sm ${disabled ? "text-slate-400" : "text-slate-700"}`}>{ate}</span>
+            ) : (
+              <span className="text-sm text-slate-400">dd/mm/aaaa</span>
+            )}
+          </div>
+        </div>
       </div>
 
       {(onApply || children) && (
