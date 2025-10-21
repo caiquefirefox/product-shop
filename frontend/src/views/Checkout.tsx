@@ -340,8 +340,6 @@ export default function Checkout() {
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{perfilErro}</div>
             )}
 
-            <div className="border-t border-gray-100" aria-hidden="true" />
-
             <div className="flex flex-col gap-2">
               {loadingUnidades ? (
                 <>
@@ -370,7 +368,7 @@ export default function Checkout() {
 
         <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
           <div className="flex flex-col gap-4">
-            <h2 className="text-lg font-semibold text-gray-900">Resumo do pedido</h2>
+            <h2 className="text-lg font-bold text-[20px]">Resumo do pedido</h2>
 
             <div className="flex flex-col gap-3 text-sm text-gray-600">
               <div className="flex items-center gap-3">
@@ -386,7 +384,7 @@ export default function Checkout() {
               <div className="h-2" aria-hidden="true" />
               <div className="mx-2 border-t border-gray-200" aria-hidden="true" />
               <div className="flex items-center gap-3 text-[20px]">
-                <span className="font-semibold text-gray-900">Valor total:</span>
+                <span className="text-gray-900">Valor total:</span>
                 <span className="ml-auto font-semibold text-gray-900">{formatCurrencyBRL(totalValor)}</span>
               </div>
             </div>
