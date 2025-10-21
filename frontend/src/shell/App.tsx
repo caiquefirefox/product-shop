@@ -14,12 +14,13 @@ import Protected from "../auth/Protected";
 import { useUser } from "../auth/useUser";
 import { useCart } from "../cart/CartContext";
 import { formatPeso, formatCurrencyBRL } from "../lib/format";
+import premierPetLogo from "../assets/images/premierpet-logo.png";
 
 const PREMIERPET_LOGO_SRC =
   typeof import.meta.env.VITE_PREMIERPET_LOGO_URL === "string" &&
   import.meta.env.VITE_PREMIERPET_LOGO_URL.trim().length > 0
     ? import.meta.env.VITE_PREMIERPET_LOGO_URL
-    : "premierpet-logo.png";
+    : premierPetLogo;
 
 export default function App() {
   const { instance } = useMsal();
