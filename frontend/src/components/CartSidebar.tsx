@@ -144,48 +144,21 @@ export default function CartSidebar({ open, onClose, onCheckout }: CartSidebarPr
                         )}
                       </div>
 
-                      <div className="flex min-w-0 flex-1 items-start gap-4">
-                        <div className="flex min-w-0 flex-1 flex-col text-sm text-gray-600">
+                      <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
+                        <div className="flex min-w-0 flex-col text-sm text-gray-600">
                           <div className="min-w-0">
                             <div className="break-words text-[16px] font-bold leading-snug text-gray-900">
                               {item.descricao}
                             </div>
                             {sabor ? (
-                              <div className="mt-1 font-semibold text-gray-700 leading-snug">{sabor}</div>
+                              <div className="mt-1 font-semibold leading-snug text-gray-700">{sabor}</div>
                             ) : null}
                             {portePesoLabel ? (
-                              <div className="mt-1 text-sm text-gray-500 leading-snug">{portePesoLabel}</div>
+                              <div className="mt-2 text-sm leading-snug text-gray-500">{portePesoLabel}</div>
                             ) : null}
                             {below ? (
                               <div className="mt-2 text-xs text-red-600">Mínimo: {min} unidade(s).</div>
                             ) : null}
-                          </div>
-
-                          <div className="mt-auto flex w-full items-center gap-3 text-sm text-gray-500">
-                            <label className="flex items-center gap-2 text-sm text-gray-500">
-                              <span className="sr-only">Quantidade</span>
-                              <input
-                                type="number"
-                                min={min}
-                                step={min}
-                                value={item.quantidade}
-                                onChange={event => setQuantity(item.codigo, Number(event.target.value))}
-                                className={`w-[56px] rounded-lg border px-2 py-1 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-[#FF6900]/40 ${
-                                  below ? "border-red-300 bg-red-50" : "border-gray-200"
-                                }`}
-                                title={`Informe múltiplos de ${min} unidade(s).`}
-                              />
-                            </label>
-                            <span className="flex-1 text-right text-sm text-gray-500 tabular-nums whitespace-nowrap">
-                              {formatCurrencyBRL(item.preco)} Un
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => remove(item.codigo)}
-                              className="ml-auto text-sm font-medium text-[#FF6900] transition-opacity hover:opacity-80"
-                            >
-                              Remover
-                            </button>
                           </div>
                         </div>
 
@@ -193,6 +166,33 @@ export default function CartSidebar({ open, onClose, onCheckout }: CartSidebarPr
                           <div className="break-words text-base font-semibold text-gray-900">
                             {formatCurrencyBRL(itemSubtotal(item))}
                           </div>
+                        </div>
+
+                        <div className="col-span-2 mt-3 flex w-full items-center gap-3 text-sm text-gray-500">
+                          <label className="flex items-center gap-2 text-sm text-gray-500">
+                            <span className="sr-only">Quantidade</span>
+                            <input
+                              type="number"
+                              min={min}
+                              step={min}
+                              value={item.quantidade}
+                              onChange={event => setQuantity(item.codigo, Number(event.target.value))}
+                              className={`w-[52px] rounded-lg border px-2 py-1 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-[#FF6900]/40 ${
+                                below ? "border-red-300 bg-red-50" : "border-gray-200"
+                              }`}
+                              title={`Informe múltiplos de ${min} unidade(s).`}
+                            />
+                          </label>
+                          <span className="text-sm text-gray-500 tabular-nums whitespace-nowrap">
+                            {formatCurrencyBRL(item.preco)} Un
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => remove(item.codigo)}
+                            className="ml-auto text-sm font-medium text-[#FF6900] transition-opacity hover:opacity-80"
+                          >
+                            Remover
+                          </button>
                         </div>
                       </div>
                     </div>
