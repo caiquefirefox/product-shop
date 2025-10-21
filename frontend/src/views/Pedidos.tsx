@@ -189,6 +189,13 @@ export default function Pedidos() {
 
   const pedidoSelecionado = detalhe?.pedido;
   const isViewMode = detailMode === "view";
+
+  const canEditPedido = useMemo(() => {
+    if (!pedidoSelecionado) return false;
+    if (pedidoSelecionado.statusId === STATUS_CANCELADO) return false;
+    return isAdmin || editWindowActive;
+  }, [pedidoSelecionado, isAdmin, editWindowActive]);
+
   const effectiveCanEdit = !isViewMode && canEditPedido;
   const painelTitulo = isViewMode ? "Detalhes do pedido" : "Editar pedido";
 
@@ -204,12 +211,6 @@ export default function Pedidos() {
     }
     return "";
   }, [unidadeSelecionadaOption, pedidoSelecionado, unidadeEntregaId]);
-
-  const canEditPedido = useMemo(() => {
-    if (!pedidoSelecionado) return false;
-    if (pedidoSelecionado.statusId === STATUS_CANCELADO) return false;
-    return isAdmin || editWindowActive;
-  }, [pedidoSelecionado, isAdmin, editWindowActive]);
 
   const hasActiveFilters = useMemo(() => {
     const status = appliedStatusFiltro.trim();
