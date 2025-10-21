@@ -81,9 +81,6 @@ export default function App() {
           >
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-2 md:gap-3">
-                <Link to="/" className="flex items-center" aria-label="PremieRpet">
-                  <img src={PREMIERPET_LOGO_SRC} alt="PremieRpet" className="h-10 w-auto sm:h-12" />
-                </Link>
                 <button
                   type="button"
                   className="md:hidden inline-flex items-center justify-center rounded-lg p-2 text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
@@ -93,6 +90,9 @@ export default function App() {
                 >
                   {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
                 </button>
+                <Link to="/" className="flex items-center" aria-label="PremieRpet">
+                  <img src={PREMIERPET_LOGO_SRC} alt="PremieRpet" className="h-10 w-auto sm:h-12" />
+                </Link>
                 <nav className="hidden md:flex items-center gap-1 md:ml-6">
                   <NavLink to="/" end className={navLinkClassName}>
                     Catálogo
@@ -135,14 +135,14 @@ export default function App() {
                 </button>
 
                 {account ? (
-                  <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="hidden items-center gap-2 sm:flex sm:gap-3">
                     <span className="hidden text-sm font-semibold text-gray-600 sm:inline">{account.name}</span>
                     <button onClick={logout} className="rounded-lg border px-3 py-1 text-sm">
                       Sair
                     </button>
                   </div>
                 ) : (
-                  <button onClick={gotoLogin} className="rounded-lg border px-3 py-1 text-sm">
+                  <button onClick={gotoLogin} className="hidden rounded-lg border px-3 py-1 text-sm sm:inline-flex">
                     Entrar
                   </button>
                 )}
