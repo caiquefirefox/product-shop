@@ -297,7 +297,7 @@ export default function Checkout() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Finalizar pedido</h1>
+        <h1 className="text-3xl font-bold">Finalizar pedido</h1>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
