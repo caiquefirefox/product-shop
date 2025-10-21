@@ -129,8 +129,11 @@ export default function CartSidebar({ open, onClose, onCheckout }: CartSidebarPr
 
                 return (
                   <div key={item.codigo} className="flex flex-col gap-4">
-                    <div className="grid grid-cols-[120px_minmax(0,1fr)_auto] grid-rows-[auto_auto_auto_auto_auto] gap-x-4 gap-y-2">
-                      <div className="col-start-1 row-span-5 row-start-1 flex h-full overflow-hidden rounded-lg bg-gray-100">
+                    <div className="grid grid-cols-[120px_minmax(0,1fr)_auto] gap-x-4 gap-y-2">
+                      <div
+                        className="col-start-1 row-start-1 flex h-full overflow-hidden rounded-lg bg-gray-100"
+                        style={{ gridRow: "1 / -1" }}
+                      >
                         {item.imagemUrl ? (
                           <img
                             src={item.imagemUrl}
