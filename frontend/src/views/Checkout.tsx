@@ -366,11 +366,11 @@ export default function Checkout() {
           </div>
         </section>
 
-        <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
-          <div className="flex flex-col gap-4">
+        <section className="flex h-full flex-col rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
+          <div className="flex flex-1 flex-col gap-4">
             <h2 className="text-lg font-bold text-[20px]">Resumo do pedido</h2>
 
-            <div className="flex flex-col gap-3 text-sm text-gray-600">
+            <div className="flex flex-1 flex-col gap-3 text-sm text-gray-600">
               <div className="flex items-center gap-3">
                 <span className="font-medium text-gray-600">Limite mensal:</span>
                 <span className="ml-auto font-semibold text-gray-900">
@@ -381,11 +381,12 @@ export default function Checkout() {
                 <span className="font-medium text-gray-600">Peso total:</span>
                 <span className="ml-auto font-semibold text-gray-900">{pesoTotalFormatado}</span>
               </div>
-              <div className="h-2" aria-hidden="true" />
-              <div className="mx-2 border-t border-gray-200" aria-hidden="true" />
-              <div className="flex items-center gap-3 text-[20px]">
-                <span className="text-gray-900">Valor total:</span>
-                <span className="ml-auto font-semibold text-gray-900">{formatCurrencyBRL(totalValor)}</span>
+              <div className="mt-auto space-y-3">
+                <div className="border-t border-gray-200" aria-hidden="true" />
+                <div className="flex items-center justify-between text-[20px]">
+                  <span className="text-gray-900">Valor total:</span>
+                  <span className="font-semibold text-gray-900">{formatCurrencyBRL(totalValor)}</span>
+                </div>
               </div>
             </div>
 
