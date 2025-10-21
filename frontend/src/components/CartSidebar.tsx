@@ -130,12 +130,12 @@ export default function CartSidebar({ open, onClose, onCheckout }: CartSidebarPr
                 return (
                   <div key={item.codigo} className="flex flex-col gap-4">
                     <div className="flex items-start gap-4">
-                      <div className="flex h-[110px] shrink-0 overflow-hidden rounded-lg bg-gray-100">
+                      <div className="flex h-[110px] w-[110px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gray-100">
                         {item.imagemUrl ? (
                           <img
                             src={item.imagemUrl}
                             alt={item.descricao}
-                            className="h-full w-auto max-w-none object-cover"
+                            className="h-full w-full object-contain"
                           />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">
