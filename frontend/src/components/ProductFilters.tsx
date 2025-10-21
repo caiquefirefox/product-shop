@@ -321,6 +321,7 @@ export function ProductFilters({
   );
 
   const largeWrapClass = wrapOnLarge ? "lg:flex-wrap" : "lg:flex-nowrap";
+  const largeAlignClass = wrapOnLarge ? "lg:items-start" : "lg:items-end";
 
   const renderDropdowns = (wrapperClassName: string) => (
     <div className={wrapperClassName}>
@@ -440,9 +441,13 @@ export function ProductFilters({
         )}
       </div>
 
-      <div className={`hidden w-full flex-col gap-4 lg:flex lg:flex-row ${largeWrapClass} lg:items-end lg:gap-4`}>
+      <div
+        className={`hidden w-full flex-col gap-4 lg:flex lg:flex-row ${largeWrapClass} ${largeAlignClass} lg:gap-4`}
+      >
         {renderSearchField("flex min-w-[220px] flex-1 flex-col gap-2 text-left")}
-        {renderDropdowns(`grid gap-4 sm:grid-cols-2 sm:items-end lg:flex lg:flex-1 ${largeWrapClass} lg:gap-4`)}
+        {renderDropdowns(
+          `grid gap-4 sm:grid-cols-2 sm:items-end lg:flex lg:flex-1 ${largeWrapClass} ${largeAlignClass} lg:gap-4`,
+        )}
         {desktopClearButton}
       </div>
     </div>
