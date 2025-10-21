@@ -76,13 +76,13 @@ export default function App() {
         >
           <div
             className={`max-w-6xl mx-auto px-4 transition-all duration-300 ${
-              isScrolled ? "py-2" : "py-4"
+              isScrolled ? "py-2" : "py-3"
             }`}
           >
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-2 md:gap-3">
                 <Link to="/" className="flex items-center" aria-label="PremieRpet">
-                  <img src={PREMIERPET_LOGO_SRC} alt="PremieRpet" className="h-12 w-auto sm:h-14" />
+                  <img src={PREMIERPET_LOGO_SRC} alt="PremieRpet" className="h-10 w-auto sm:h-12" />
                 </Link>
                 <button
                   type="button"
