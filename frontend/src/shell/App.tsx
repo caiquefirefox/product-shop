@@ -82,7 +82,7 @@ export default function App() {
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-2 md:gap-3">
                 <Link to="/" className="flex items-center" aria-label="PremieRpet">
-                  <img src={PREMIERPET_LOGO_SRC} alt="PremieRpet" className="h-10 w-auto sm:h-12" />
+                  <img src={PREMIERPET_LOGO_SRC} alt="PremieRpet" className="h-12 w-auto sm:h-14" />
                 </Link>
                 <button
                   type="button"
@@ -123,11 +123,15 @@ export default function App() {
                   onClick={() => navigate("/carrinho")}
                   className="relative flex items-center gap-2 rounded-full bg-[#FF6900] px-3 py-2 text-white transition-colors duration-150 hover:bg-[#FF6900]/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6900]/40"
                   title={`${itensLabel} | ${valorFormatado} | ${pesoResumo}`}
+                  aria-label={`${itensLabel} • ${valorFormatado} • ${pesoResumo}`}
                 >
-                  <ShoppingCart size={20} className="text-white" />
-                  <span className="text-sm font-semibold tabular-nums whitespace-nowrap">{itensLabel}</span>
-                  <span className="text-sm tabular-nums">| {valorFormatado}</span>
-                  <span className="text-sm tabular-nums">| {pesoResumo}</span>
+                  <div className="flex items-center gap-1">
+                    <ShoppingCart size={20} className="text-white" />
+                    <span className="text-sm font-semibold tabular-nums sm:hidden">{totalUnidades}</span>
+                  </div>
+                  <span className="hidden text-sm font-semibold tabular-nums whitespace-nowrap sm:inline">{itensLabel}</span>
+                  <span className="hidden text-sm tabular-nums sm:inline">| {valorFormatado}</span>
+                  <span className="hidden text-sm tabular-nums sm:inline">| {pesoResumo}</span>
                 </button>
 
                 {account ? (
