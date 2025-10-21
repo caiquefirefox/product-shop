@@ -84,21 +84,11 @@ type CategoryFilterDropdownProps = {
   onChange: (value: string) => void;
 };
 
-const normalizeOptionLabel = (
-  option: ProductFilterSelectOption,
-  fallback: string,
-) => {
-  const rawLabel = typeof option.label === "string" ? option.label.trim() : "";
-  if (rawLabel) {
-    return rawLabel;
-  }
+const sanitizeOption = (option: ProductFilterSelectOption) => {
+  const value = typeof option.value === "string" ? option.value.trim() : "";
+  const label = typeof option.label === "string" ? option.label.trim() : "";
 
-  const rawValue = typeof option.value === "string" ? option.value.trim() : "";
-  if (rawValue) {
-    return rawValue;
-  }
-
-  return fallback;
+  return { value, label } satisfies ProductFilterSelectOption;
 };
 
 function CategoryFilterDropdown({
@@ -114,23 +104,25 @@ function CategoryFilterDropdown({
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   const optionsWithPlaceholder = useMemo(() => {
-    const existingPlaceholder = options.find(option => option.value === "");
-    const sanitizedOptions = options
-      .filter(option => option.value !== "")
-      .map(option => ({
-        ...option,
-        label: normalizeOptionLabel(option, placeholder),
-      }));
+    const sanitizedOptions = options.map(sanitizeOption);
+
+    const existingPlaceholder = sanitizedOptions.find(option => option.value === "");
 
     const placeholderOption = existingPlaceholder
       ? {
-          ...existingPlaceholder,
           value: "",
-          label: normalizeOptionLabel(existingPlaceholder, placeholder),
+          label: existingPlaceholder.label || placeholder,
         }
       : { value: "", label: placeholder };
 
-    return [placeholderOption, ...sanitizedOptions];
+    const nonPlaceholderOptions = sanitizedOptions
+      .filter(option => option.value !== "")
+      .map(option => ({
+        value: option.value,
+        label: option.label || option.value,
+      }));
+
+    return [placeholderOption, ...nonPlaceholderOptions];
   }, [options, placeholder]);
 
   const selectedOption = useMemo(
@@ -220,7 +212,7 @@ function CategoryFilterDropdown({
                     isSelected ? "bg-indigo-50 text-indigo-600" : ""
                   }`}
                 >
-                  <span className="truncate">{normalizeOptionLabel(option, placeholder)}</span>
+                  <span className="truncate">{option.label}</span>
                   {isSelected && <Check className="h-4 w-4 flex-shrink-0" aria-hidden="true" />}
                 </button>
               );
