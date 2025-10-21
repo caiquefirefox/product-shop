@@ -213,14 +213,17 @@ export default function CartSidebar({ open, onClose, onCheckout }: CartSidebarPr
                 </div>
               )}
 
-              {passouLimite && (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                  Atenção: seu carrinho tem {totalPesoFormatado}. O limite mensal é {limiteMensalFormatado} por colaborador.
-                </div>
-              )}
             </div>
           )}
         </div>
+
+        {passouLimite && (
+          <div className="px-6 pb-4">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              Atenção: seu carrinho tem {totalPesoFormatado}. O limite mensal é {limiteMensalFormatado} por colaborador.
+            </div>
+          </div>
+        )}
 
         {items.length > 0 && (
           <div className="mt-auto border-t border-gray-200 px-6 py-5">
