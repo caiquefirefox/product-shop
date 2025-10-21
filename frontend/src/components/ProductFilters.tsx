@@ -149,7 +149,7 @@ function CategoryFilterDropdown({
   };
 
   return (
-    <div className="relative flex min-w-[160px] flex-1 flex-col gap-2 text-left">
+    <div className="relative flex min-w-0 flex-1 flex-col gap-2 text-left sm:min-w-[160px]">
       <label htmlFor={id} className={filterLabelClasses}>
         {label}
       </label>
@@ -392,7 +392,11 @@ export function ProductFilters({
   );
 
   const desktopDropdownWrapperClass = wrapOnLarge
-    ? "grid gap-4 sm:grid-cols-2 sm:items-end lg:basis-full lg:grid lg:grid-cols-2 lg:items-start lg:gap-4 xl:basis-auto xl:grid-cols-4"
+    ? combineClassNames(
+        "grid gap-4 sm:grid-cols-2 sm:items-end",
+        "lg:basis-full lg:grid lg:items-start lg:gap-4 lg:[grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]",
+        "xl:basis-auto xl:[grid-template-columns:repeat(4,minmax(0,1fr))]",
+      )
     : "grid gap-4 sm:grid-cols-2 sm:items-end lg:flex lg:flex-1 lg:items-end lg:gap-4";
 
   return (
