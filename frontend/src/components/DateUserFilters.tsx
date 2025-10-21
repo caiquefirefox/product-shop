@@ -118,7 +118,7 @@ function StatusDropdown({ id, label, options, value, onChange, disabled }: Statu
   };
 
   return (
-    <div className="relative flex min-w-0 flex-1 flex-col gap-2 text-left sm:min-w-[220px]">
+    <div className="relative flex min-w-[220px] flex-1 flex-col gap-2 text-left">
       <label htmlFor={id} className={filterLabelClasses}>
         {label}
       </label>
@@ -221,7 +221,7 @@ export function DateUserFilters({
   return (
     <div className={containerClasses}>
       {showUsuario && onChangeUsuario && (
-        <div className="flex min-w-0 flex-1 flex-col gap-2 sm:min-w-[260px]">
+        <div className="flex min-w-[260px] flex-1 flex-col gap-2">
           <label className={filterLabelClasses} htmlFor="filtro-usuario">
             Buscar
           </label>
@@ -254,7 +254,7 @@ export function DateUserFilters({
         />
       )}
 
-      <div className="flex min-w-0 flex-1 flex-col gap-2 sm:min-w-[160px]">
+      <div className="flex min-w-[160px] flex-1 flex-col gap-2">
         <label className={filterLabelClasses} htmlFor="filtro-de">
           De
         </label>
@@ -278,7 +278,7 @@ export function DateUserFilters({
         </div>
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-2 sm:min-w-[160px]">
+      <div className="flex min-w-[160px] flex-1 flex-col gap-2">
         <label className={filterLabelClasses} htmlFor="filtro-ate">
           Até
         </label>
@@ -303,11 +303,11 @@ export function DateUserFilters({
       </div>
 
       {(onApply || children) && (
-        <div className="flex w-full flex-col gap-3 self-stretch sm:ml-auto sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-3 sm:self-end">
+        <div className="ml-auto flex items-center gap-3 self-end">
           {onApply && (
             <button
               type="button"
-              className="w-full rounded-full bg-[#FF6900] px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#FF6900]/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6900]/40 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+              className="rounded-full bg-[#FF6900] px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#FF6900]/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6900]/40 disabled:cursor-not-allowed disabled:opacity-60"
               onClick={onApply}
               disabled={disabled}
             >
