@@ -9,6 +9,7 @@ interface ImportMetaEnv {
 
   readonly VITE_PEDIDOS_EDIT_WINDOW_OPENING_DAY?: string;
   readonly VITE_PEDIDOS_EDIT_WINDOW_CLOSING_DAY?: string;
+  readonly VITE_PREMIERPET_LOGO_URL?: string;
 }
 
 interface ImportMeta {

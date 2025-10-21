@@ -15,6 +15,12 @@ import { useUser } from "../auth/useUser";
 import { useCart } from "../cart/CartContext";
 import { formatPeso, formatCurrencyBRL } from "../lib/format";
 
+const PREMIERPET_LOGO_SRC =
+  typeof import.meta.env.VITE_PREMIERPET_LOGO_URL === "string" &&
+  import.meta.env.VITE_PREMIERPET_LOGO_URL.trim().length > 0
+    ? import.meta.env.VITE_PREMIERPET_LOGO_URL
+    : "premierpet-logo.png";
+
 export default function App() {
   const { instance } = useMsal();
   const navigate = useNavigate();
@@ -46,7 +52,7 @@ export default function App() {
   const valorFormatado = formatCurrencyBRL(totalValor);
   const itensLabel = totalUnidades === 1 ? "1 item" : `${totalUnidades} itens`;
   const navLinkClassName = ({ isActive }: { isActive: boolean }) =>
-    `px-3 py-2 rounded-lg transition-colors duration-150 ${
+    `px-3 py-2 rounded-lg text-base transition-colors duration-150 ${
       isActive
         ? "text-[#FF6900] bg-[#FF6900]/10 font-bold"
         : "text-gray-600 hover:text-[#FF6900] hover:bg-[#FF6900]/10"
@@ -74,9 +80,8 @@ export default function App() {
           >
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-2 md:gap-3">
-                <Link to="/" className="flex items-center gap-2 text-lg font-bold text-[#FF6900] whitespace-nowrap" aria-label="PremieRpet">
-                  <span className="hidden sm:inline">PremieRpet</span>
-                  <span className="sm:hidden">PR</span>
+                <Link to="/" className="flex items-center" aria-label="PremieRpet">
+                  <img src={PREMIERPET_LOGO_SRC} alt="PremieRpet" className="h-8 w-auto sm:h-10" />
                 </Link>
                 <button
                   type="button"
@@ -87,7 +92,7 @@ export default function App() {
                 >
                   {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
                 </button>
-                <nav className="hidden md:flex items-center gap-1 text-sm">
+                <nav className="hidden md:flex items-center gap-1">
                   <NavLink to="/" end className={navLinkClassName}>
                     Catálogo
                   </NavLink>
@@ -120,8 +125,8 @@ export default function App() {
                 >
                   <ShoppingCart size={20} className="text-white" />
                   <span className="text-sm font-semibold tabular-nums whitespace-nowrap">{itensLabel}</span>
-                  <span className="text-sm font-semibold tabular-nums">| {valorFormatado}</span>
-                  <span className="text-sm font-semibold tabular-nums">| {pesoResumo}</span>
+                  <span className="text-sm tabular-nums">| {valorFormatado}</span>
+                  <span className="text-sm tabular-nums">| {pesoResumo}</span>
                 </button>
 
                 {account ? (
@@ -142,7 +147,7 @@ export default function App() {
 
           {isMenuOpen && (
             <div className="md:hidden border-t border-gray-100 bg-white">
-              <nav className="max-w-6xl mx-auto flex flex-col gap-1 px-4 py-3 text-sm">
+              <nav className="max-w-6xl mx-auto flex flex-col gap-1 px-4 py-3 text-base">
                 <NavLink to="/" end className={({ isActive }) => `${navLinkClassName({ isActive })} w-full text-left`}>
                   Catálogo
                 </NavLink>
