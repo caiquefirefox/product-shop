@@ -3,7 +3,7 @@ import api from "../lib/api";
 import { useCart } from "../cart/CartContext";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../ui/toast";
-import { formatPeso } from "../lib/format";
+import { formatCurrencyBRL, formatPeso } from "../lib/format";
 import { sanitizeCpf, isValidCpf, formatCpf } from "../lib/cpf";
 import type { UsuarioPerfil } from "../types/user";
 import { usePedidosConfig } from "../hooks/usePedidosConfig";
@@ -301,72 +301,72 @@ export default function Checkout() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
-        <div className="space-y-6">
-          <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-medium text-gray-700" htmlFor="cpf-input">
-                  CPF
-                </label>
-                {loadingPerfil ? (
-                  <div className="text-sm text-gray-600">Carregando informações...</div>
-                ) : (
-                  <>
-                    <input
-                      id="cpf-input"
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="000.000.000-00"
-                      value={formatCpf(cpf)}
-                      onChange={e => onCpfChange(e.target.value)}
-                      disabled={cpfBloqueado}
-                      className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-700 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-60"
-                    />
-                    {cpfBloqueado ? (
-                      <p className="text-xs text-gray-500">
-                        CPF já cadastrado. Entre em contato com o suporte para alterações.
-                      </p>
-                    ) : (
-                      <p className="text-xs text-gray-500">Informe seu CPF para concluir o pedido.</p>
-                    )}
-                  </>
-                )}
-              </div>
-
-              {cpfErro && (
-                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{cpfErro}</div>
-              )}
-
-              {perfilErro && (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{perfilErro}</div>
+        <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-gray-700" htmlFor="cpf-input">
+                CPF
+              </label>
+              {loadingPerfil ? (
+                <div className="text-sm text-gray-600">Carregando informações...</div>
+              ) : (
+                <>
+                  <input
+                    id="cpf-input"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="000.000.000-00"
+                    value={formatCpf(cpf)}
+                    onChange={e => onCpfChange(e.target.value)}
+                    disabled={cpfBloqueado}
+                    className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-700 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-60"
+                  />
+                  {cpfBloqueado ? (
+                    <p className="text-xs text-gray-500">
+                      CPF já cadastrado. Entre em contato com o suporte para alterações.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-500">Informe seu CPF para concluir o pedido.</p>
+                  )}
+                </>
               )}
             </div>
-          </section>
 
-          <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
-            {loadingUnidades ? (
-              <div className="flex flex-col gap-2">
-                <span className="text-sm font-medium text-gray-700">Entrega</span>
-                <div className="text-sm text-gray-600">Carregando unidades...</div>
-              </div>
-            ) : unidades.length ? (
-              <DeliveryDropdown
-                id="entrega-select"
-                label="Entrega"
-                options={unidades}
-                value={unidadeId}
-                onChange={setUnidadeId}
-              />
-            ) : (
-              <div className="flex flex-col gap-2">
-                <span className="text-sm font-medium text-gray-700">Entrega</span>
-                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                  Não foi possível carregar as unidades de entrega. Tente novamente mais tarde.
-                </div>
-              </div>
+            {cpfErro && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{cpfErro}</div>
             )}
-          </section>
-        </div>
+
+            {perfilErro && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{perfilErro}</div>
+            )}
+
+            <div className="border-t border-gray-100" aria-hidden="true" />
+
+            <div className="flex flex-col gap-2">
+              {loadingUnidades ? (
+                <>
+                  <span className="text-sm font-medium text-gray-700">Entrega</span>
+                  <div className="text-sm text-gray-600">Carregando unidades...</div>
+                </>
+              ) : unidades.length ? (
+                <DeliveryDropdown
+                  id="entrega-select"
+                  label="Entrega"
+                  options={unidades}
+                  value={unidadeId}
+                  onChange={setUnidadeId}
+                />
+              ) : (
+                <>
+                  <span className="text-sm font-medium text-gray-700">Entrega</span>
+                  <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                    Não foi possível carregar as unidades de entrega. Tente novamente mais tarde.
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </section>
 
         <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-100">
           <div className="flex flex-col gap-4">
@@ -387,7 +387,7 @@ export default function Checkout() {
               <div className="mx-2 border-t border-gray-200" aria-hidden="true" />
               <div className="flex items-center gap-3 text-[20px]">
                 <span className="font-semibold text-gray-900">Valor total:</span>
-                <span className="ml-auto font-semibold text-gray-900">R$ {totalValor.toFixed(2)}</span>
+                <span className="ml-auto font-semibold text-gray-900">{formatCurrencyBRL(totalValor)}</span>
               </div>
             </div>
 
