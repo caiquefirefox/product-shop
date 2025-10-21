@@ -84,6 +84,23 @@ type CategoryFilterDropdownProps = {
   onChange: (value: string) => void;
 };
 
+const normalizeOptionLabel = (
+  option: ProductFilterSelectOption,
+  fallback: string,
+) => {
+  const rawLabel = typeof option.label === "string" ? option.label.trim() : "";
+  if (rawLabel) {
+    return rawLabel;
+  }
+
+  const rawValue = typeof option.value === "string" ? option.value.trim() : "";
+  if (rawValue) {
+    return rawValue;
+  }
+
+  return fallback;
+};
+
 function CategoryFilterDropdown({
   id,
   label,
@@ -97,32 +114,32 @@ function CategoryFilterDropdown({
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   const optionsWithPlaceholder = useMemo(() => {
-    const existingPlaceholderIndex = options.findIndex(
-      option => option.value === "",
-    );
+    const existingPlaceholder = options.find(option => option.value === "");
+    const sanitizedOptions = options
+      .filter(option => option.value !== "")
+      .map(option => ({
+        ...option,
+        label: normalizeOptionLabel(option, placeholder),
+      }));
 
-    if (existingPlaceholderIndex !== -1) {
-      const placeholderOption = {
-        ...options[existingPlaceholderIndex],
-        label: options[existingPlaceholderIndex].label || placeholder,
-      };
+    const placeholderOption = existingPlaceholder
+      ? {
+          ...existingPlaceholder,
+          value: "",
+          label: normalizeOptionLabel(existingPlaceholder, placeholder),
+        }
+      : { value: "", label: placeholder };
 
-      return [
-        placeholderOption,
-        ...options.filter((_, index) => index !== existingPlaceholderIndex),
-      ];
-    }
-
-    return [{ value: "", label: placeholder }, ...options];
+    return [placeholderOption, ...sanitizedOptions];
   }, [options, placeholder]);
 
   const selectedOption = useMemo(
-    () => options.find(option => option.value === value) ?? null,
-    [options, value],
+    () => optionsWithPlaceholder.find(option => option.value === value) ?? null,
+    [optionsWithPlaceholder, value],
   );
 
   const displayLabel = selectedOption?.label ?? placeholder;
-  const isPlaceholder = !selectedOption;
+  const isPlaceholder = value === "";
 
   const closeMenu = useCallback(() => setIsOpen(false), []);
 
@@ -190,11 +207,11 @@ function CategoryFilterDropdown({
           aria-activedescendant={selectedOption?.value ?? ""}
         >
           <div className="max-h-64 overflow-y-auto">
-            {optionsWithPlaceholder.map(option => {
+            {optionsWithPlaceholder.map((option, index) => {
               const isSelected = option.value === value || (!value && option.value === "");
               return (
                 <button
-                  key={option.value === "" ? "placeholder-option" : option.value}
+                  key={`${option.value || "placeholder"}-${index}`}
                   type="button"
                   role="option"
                   aria-selected={isSelected}
@@ -203,7 +220,7 @@ function CategoryFilterDropdown({
                     isSelected ? "bg-indigo-50 text-indigo-600" : ""
                   }`}
                 >
-                  <span className="truncate">{option.label}</span>
+                  <span className="truncate">{normalizeOptionLabel(option, placeholder)}</span>
                   {isSelected && <Check className="h-4 w-4 flex-shrink-0" aria-hidden="true" />}
                 </button>
               );
