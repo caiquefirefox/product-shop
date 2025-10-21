@@ -320,9 +320,6 @@ export function ProductFilters({
     </div>
   );
 
-  const largeWrapClass = wrapOnLarge ? "lg:flex-wrap" : "lg:flex-nowrap";
-  const largeAlignClass = wrapOnLarge ? "lg:items-start" : "lg:items-end";
-
   const renderDropdowns = (wrapperClassName: string) => (
     <div className={wrapperClassName}>
       <CategoryFilterDropdown
@@ -376,8 +373,27 @@ export function ProductFilters({
 
   const mobileClearButton = renderClearButton("w-full justify-center");
   const desktopClearButton = renderClearButton(
-    "self-start whitespace-nowrap lg:self-end",
+    combineClassNames(
+      "self-start whitespace-nowrap",
+      wrapOnLarge ? "lg:self-start xl:self-end" : "lg:self-end",
+    ),
   );
+
+  const desktopContainerClasses = combineClassNames(
+    "hidden w-full flex-col gap-4 lg:flex lg:flex-row lg:gap-4",
+    wrapOnLarge
+      ? "lg:flex-wrap lg:items-start xl:flex-nowrap xl:items-end"
+      : "lg:flex-nowrap lg:items-end",
+  );
+
+  const desktopSearchWrapperClass = combineClassNames(
+    "flex min-w-[220px] flex-1 flex-col gap-2 text-left",
+    wrapOnLarge ? "lg:basis-full xl:basis-auto xl:flex-1" : "",
+  );
+
+  const desktopDropdownWrapperClass = wrapOnLarge
+    ? "grid gap-4 sm:grid-cols-2 sm:items-end lg:basis-full lg:grid lg:grid-cols-2 lg:items-start lg:gap-4 xl:basis-auto xl:grid-cols-4"
+    : "grid gap-4 sm:grid-cols-2 sm:items-end lg:flex lg:flex-1 lg:items-end lg:gap-4";
 
   return (
     <div className={fullClassName}>
@@ -441,13 +457,9 @@ export function ProductFilters({
         )}
       </div>
 
-      <div
-        className={`hidden w-full flex-col gap-4 lg:flex lg:flex-row ${largeWrapClass} ${largeAlignClass} lg:gap-4`}
-      >
-        {renderSearchField("flex min-w-[220px] flex-1 flex-col gap-2 text-left")}
-        {renderDropdowns(
-          `grid gap-4 sm:grid-cols-2 sm:items-end lg:flex lg:flex-1 ${largeWrapClass} ${largeAlignClass} lg:gap-4`,
-        )}
+      <div className={desktopContainerClasses}>
+        {renderSearchField(desktopSearchWrapperClass)}
+        {renderDropdowns(desktopDropdownWrapperClass)}
         {desktopClearButton}
       </div>
     </div>
