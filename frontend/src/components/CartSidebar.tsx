@@ -151,13 +151,13 @@ export default function CartSidebar({ open, onClose, onCheckout }: CartSidebarPr
                               {item.descricao}
                             </div>
                             {sabor ? (
-                              <div className="mt-1 font-semibold leading-snug text-gray-700">{sabor}</div>
+                              <div className="font-semibold leading-snug text-gray-700">{sabor}</div>
                             ) : null}
                             {portePesoLabel ? (
-                              <div className="mt-2 text-sm leading-snug text-gray-500">{portePesoLabel}</div>
+                              <div className="text-sm leading-snug text-gray-500">{portePesoLabel}</div>
                             ) : null}
                             {below ? (
-                              <div className="mt-2 text-xs text-red-600">Mínimo: {min} unidade(s).</div>
+                              <div className="text-xs text-red-600">Mínimo: {min} unidade(s).</div>
                             ) : null}
                           </div>
                         </div>
@@ -168,7 +168,7 @@ export default function CartSidebar({ open, onClose, onCheckout }: CartSidebarPr
                           </div>
                         </div>
 
-                        <div className="col-span-2 mt-3 flex w-full items-center gap-3 text-sm text-gray-500">
+                        <div className="col-span-2 mt-1 flex w-full items-center gap-3 text-sm text-gray-500">
                           <label className="flex items-center gap-2 text-sm text-gray-500">
                             <span className="sr-only">Quantidade</span>
                             <input
@@ -215,7 +215,7 @@ export default function CartSidebar({ open, onClose, onCheckout }: CartSidebarPr
 
               {passouLimite && (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                  Atenção: seu carrinho tem {totalPesoFormatado}. O limite mensal é {limiteMensalFormatado} por colaborador (validado no checkout).
+                  Atenção: seu carrinho tem {totalPesoFormatado}. O limite mensal é {limiteMensalFormatado} por colaborador.
                 </div>
               )}
             </div>
