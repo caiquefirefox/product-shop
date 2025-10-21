@@ -96,10 +96,25 @@ function CategoryFilterDropdown({
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
-  const optionsWithPlaceholder = useMemo(
-    () => [{ value: "", label: placeholder }, ...options],
-    [options, placeholder],
-  );
+  const optionsWithPlaceholder = useMemo(() => {
+    const existingPlaceholderIndex = options.findIndex(
+      option => option.value === "",
+    );
+
+    if (existingPlaceholderIndex !== -1) {
+      const placeholderOption = {
+        ...options[existingPlaceholderIndex],
+        label: options[existingPlaceholderIndex].label || placeholder,
+      };
+
+      return [
+        placeholderOption,
+        ...options.filter((_, index) => index !== existingPlaceholderIndex),
+      ];
+    }
+
+    return [{ value: "", label: placeholder }, ...options];
+  }, [options, placeholder]);
 
   const selectedOption = useMemo(
     () => options.find(option => option.value === value) ?? null,
@@ -179,7 +194,7 @@ function CategoryFilterDropdown({
               const isSelected = option.value === value || (!value && option.value === "");
               return (
                 <button
-                  key={option.value || "placeholder"}
+                  key={option.value === "" ? "placeholder-option" : option.value}
                   type="button"
                   role="option"
                   aria-selected={isSelected}
