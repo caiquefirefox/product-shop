@@ -76,7 +76,7 @@ export default function App() {
         >
           <div
             className={`max-w-6xl mx-auto px-4 transition-all duration-300 ${
-              isScrolled ? "py-2" : "py-3"
+              isScrolled ? "py-1.5" : "py-2.5"
             }`}
           >
             <div className="flex items-center justify-between gap-4">
@@ -91,7 +91,7 @@ export default function App() {
                   {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
                 </button>
                 <Link to="/" className="flex items-center" aria-label="PremieRpet">
-                  <img src={PREMIERPET_LOGO_SRC} alt="PremieRpet" className="h-10 w-auto sm:h-12" />
+                  <img src={PREMIERPET_LOGO_SRC} alt="PremieRpet" className="h-10 w-auto sm:h-12 md:h-14" />
                 </Link>
                 <nav className="hidden md:flex items-center gap-1 md:ml-6">
                   <NavLink to="/" end className={navLinkClassName}>
@@ -195,7 +195,10 @@ export default function App() {
       )}
 
       {!isLoginRoute && !isLoading && (
-        <div className={`transition-all duration-300 ${isScrolled ? "h-16" : "h-20"}`} aria-hidden />
+        <div
+          className={`transition-all duration-300 ${isScrolled ? "h-[68px]" : "h-[76px]"}`}
+          aria-hidden
+        />
       )}
 
       <main className={isLoginRoute ? "" : "max-w-6xl mx-auto p-4"}>
