@@ -375,28 +375,26 @@ export function ProductFilters({
   const desktopClearButton = renderClearButton(
     combineClassNames(
       "self-start whitespace-nowrap",
-      wrapOnLarge ? "lg:self-start xl:self-end" : "lg:self-end",
+      wrapOnLarge
+        ? "lg:col-span-full lg:justify-self-end"
+        : "lg:self-end",
     ),
   );
 
   const desktopContainerClasses = combineClassNames(
-    "hidden w-full flex-col gap-4 lg:flex lg:flex-row lg:gap-4",
+    "hidden w-full flex-col gap-4",
     wrapOnLarge
-      ? "lg:flex-wrap lg:items-start xl:flex-nowrap xl:items-end"
-      : "lg:flex-nowrap lg:items-end",
+      ? "lg:grid lg:gap-4 lg:[grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]"
+      : "lg:flex lg:flex-row lg:flex-nowrap lg:items-end lg:gap-4",
   );
 
   const desktopSearchWrapperClass = combineClassNames(
     "flex min-w-[220px] flex-1 flex-col gap-2 text-left",
-    wrapOnLarge ? "lg:basis-full xl:basis-auto xl:flex-1" : "",
+    wrapOnLarge ? "lg:col-span-full lg:min-w-0" : "",
   );
 
   const desktopDropdownWrapperClass = wrapOnLarge
-    ? combineClassNames(
-        "grid gap-4 sm:grid-cols-2 sm:items-end",
-        "lg:basis-full lg:grid lg:items-start lg:gap-4 lg:[grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]",
-        "xl:basis-auto xl:[grid-template-columns:repeat(4,minmax(0,1fr))]",
-      )
+    ? "grid gap-4 sm:grid-cols-2 sm:items-end lg:contents"
     : "grid gap-4 sm:grid-cols-2 sm:items-end lg:flex lg:flex-1 lg:items-end lg:gap-4";
 
   return (
