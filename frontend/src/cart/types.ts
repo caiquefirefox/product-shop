@@ -26,4 +26,9 @@ export type CartItem = {
   pesoKg: number;        // normalizado em kg
   quantidade: number;    // unidades
   minQty?: number;       // mínimo do produto no momento da adição
+  imagemUrl?: string | null;
+  sabores?: string | null;
+  porteNomes?: string[];
+  peso?: number;
+  tipoPeso?: TipoPesoCodigo;
 };
