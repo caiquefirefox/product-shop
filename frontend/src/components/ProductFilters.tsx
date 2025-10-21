@@ -84,12 +84,22 @@ type CategoryFilterDropdownProps = {
   onChange: (value: string) => void;
 };
 
-const sanitizeOption = (option: ProductFilterSelectOption) => {
-  const value = typeof option.value === "string" ? option.value.trim() : "";
-  const label = typeof option.label === "string" ? option.label.trim() : "";
+const toTrimmedString = (value: unknown) => {
+  if (typeof value === "string") {
+    return value.trim();
+  }
 
-  return { value, label } satisfies ProductFilterSelectOption;
+  if (value == null) {
+    return "";
+  }
+
+  return String(value).trim();
 };
+
+const sanitizeOption = (option: ProductFilterSelectOption) => ({
+  value: toTrimmedString(option.value),
+  label: toTrimmedString(option.label),
+});
 
 function CategoryFilterDropdown({
   id,
