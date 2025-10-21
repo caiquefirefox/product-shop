@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, Check, FilePenLine, X } from "lucide-react";
 import api from "../lib/api";
 import { formatCurrencyBRL, formatPeso, startOfDayISO_BR, endOfDayISO_BR, formatDateBR } from "../lib/format";
 import { DateUserFilters, type SimpleOption } from "../components/DateUserFilters";
@@ -11,6 +11,12 @@ import { usePedidosConfig } from "../hooks/usePedidosConfig";
 const STATUS_SOLICITADO = 1;
 const STATUS_APROVADO = 2;
 const STATUS_CANCELADO = 3;
+
+const STATUS_BADGE_STYLES: Record<number, { background: string; color: string }> = {
+  [STATUS_SOLICITADO]: { background: "#D9F1C1", color: "#00851F" },
+  [STATUS_APROVADO]: { background: "#D6EEFF", color: "#04409A" },
+  [STATUS_CANCELADO]: { background: "#FFD6D6", color: "#FF0000" },
+};
 const EDIT_WINDOW_OPENING_DAY = ENV.PEDIDOS_EDIT_WINDOW_OPENING_DAY;
 const EDIT_WINDOW_CLOSING_DAY = ENV.PEDIDOS_EDIT_WINDOW_CLOSING_DAY;
 
@@ -46,6 +52,8 @@ type UnidadeEntregaOption = {
   id: string;
   nome: string;
 };
+
+type DetailMode = "edit" | "view";
 
 function formatDateTimePtBr(iso: string) {
   const date = new Date(iso);
@@ -103,6 +111,7 @@ export default function Pedidos() {
   const resumoRequestIdRef = useRef(0);
 
   const [selectedPedidoId, setSelectedPedidoId] = useState<string | null>(null);
+  const [detailMode, setDetailMode] = useState<DetailMode>("edit");
   const [detalhe, setDetalhe] = useState<PedidoDetalheCompleto | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
@@ -179,6 +188,16 @@ export default function Pedidos() {
   }, [editorItens]);
 
   const pedidoSelecionado = detalhe?.pedido;
+  const isViewMode = detailMode === "view";
+
+  const canEditPedido = useMemo(() => {
+    if (!pedidoSelecionado) return false;
+    if (pedidoSelecionado.statusId === STATUS_CANCELADO) return false;
+    return isAdmin || editWindowActive;
+  }, [pedidoSelecionado, isAdmin, editWindowActive]);
+
+  const effectiveCanEdit = !isViewMode && canEditPedido;
+  const painelTitulo = isViewMode ? "Detalhes do pedido" : "Editar pedido";
 
   const unidadeSelecionadaOption = useMemo(
     () => unidadesEntrega.find((unidade) => unidade.id === unidadeEntregaId) || null,
@@ -192,12 +211,6 @@ export default function Pedidos() {
     }
     return "";
   }, [unidadeSelecionadaOption, pedidoSelecionado, unidadeEntregaId]);
-
-  const canEditPedido = useMemo(() => {
-    if (!pedidoSelecionado) return false;
-    if (pedidoSelecionado.statusId === STATUS_CANCELADO) return false;
-    return isAdmin || editWindowActive;
-  }, [pedidoSelecionado, isAdmin, editWindowActive]);
 
   const hasActiveFilters = useMemo(() => {
     const status = appliedStatusFiltro.trim();
@@ -512,7 +525,9 @@ export default function Pedidos() {
     };
   }, []);
 
-  const loadPedidoDetalhe = useCallback(async (id: string) => {
+  const loadPedidoDetalhe = useCallback(async (id: string, mode?: DetailMode) => {
+    const nextMode = mode ?? (selectedPedidoId === id ? detailMode : "edit");
+    setDetailMode(nextMode);
     setDetailLoading(true);
     setDetailError(null);
     setSaveError(null);
@@ -543,16 +558,16 @@ export default function Pedidos() {
       setDetailLoading(false);
       setLoadingPedidoId((current) => (current === id ? null : current));
     }
-  }, [minQtyPadrao]);
+  }, [detailMode, minQtyPadrao, selectedPedidoId]);
 
   const aposAlterarStatus = useCallback(
     async (pedidoId: string) => {
       await Promise.all([loadPedidos(), loadResumo()]);
       if (selectedPedidoId === pedidoId) {
-        await loadPedidoDetalhe(pedidoId);
+        await loadPedidoDetalhe(pedidoId, detailMode);
       }
     },
-    [loadPedidos, loadResumo, loadPedidoDetalhe, selectedPedidoId]
+    [detailMode, loadPedidos, loadResumo, loadPedidoDetalhe, selectedPedidoId]
   );
 
   const aprovarPedido = useCallback(
@@ -608,7 +623,7 @@ export default function Pedidos() {
   }, []);
 
   const loadCatalogo = useCallback(async () => {
-    if (!selectedPedidoId) return;
+    if (!selectedPedidoId || detailMode !== "edit") return;
     setCatalogLoading(true);
     const requestId = ++catalogRequestId.current;
     try {
@@ -640,12 +655,23 @@ export default function Pedidos() {
         setCatalogLoading(false);
       }
     }
-  }, [selectedPedidoId, catalogPage, catalogPageSize, buscaFiltro, tipoProdutoFiltro, especieFiltro, faixaEtariaFiltro, porteFiltro, toastError]);
+  }, [
+    selectedPedidoId,
+    detailMode,
+    catalogPage,
+    catalogPageSize,
+    buscaFiltro,
+    tipoProdutoFiltro,
+    especieFiltro,
+    faixaEtariaFiltro,
+    porteFiltro,
+    toastError,
+  ]);
 
   useEffect(() => {
-    if (!selectedPedidoId) return;
+    if (!selectedPedidoId || detailMode !== "edit") return;
     loadCatalogo();
-  }, [selectedPedidoId, loadCatalogo]);
+  }, [selectedPedidoId, detailMode, loadCatalogo]);
 
   useEffect(() => {
     setCatalogPage(1);
@@ -689,10 +715,19 @@ export default function Pedidos() {
     setDetalhe(null);
     setEditorItens([]);
     setDetailError(null);
+    setDetailMode("edit");
   }, [appliedDe, appliedAte, appliedUsuarioFiltro, appliedStatusFiltro]);
 
+  const fecharDetalhes = () => {
+    setSelectedPedidoId(null);
+    setDetalhe(null);
+    setEditorItens([]);
+    setDetailError(null);
+    setDetailMode("edit");
+  };
+
   const updateItemQuantity = (codigo: string, quantidade: number) => {
-    if (!canEditPedido) return;
+    if (!canEditPedido || detailMode !== "edit") return;
     setEditorItens((prev) => {
       return prev
         .map((item) => {
@@ -707,12 +742,12 @@ export default function Pedidos() {
   };
 
   const removeItem = (codigo: string) => {
-    if (!canEditPedido) return;
+    if (!canEditPedido || detailMode !== "edit") return;
     setEditorItens((prev) => prev.filter((item) => item.codigo !== codigo));
   };
 
   const addProduto = (produto: Produto) => {
-    if (!canEditPedido) return;
+    if (!canEditPedido || detailMode !== "edit") return;
     setEditorItens((prev) => {
       const min = minQtyFor(produto, minQtyPadrao);
       const pesoKg = toKg(produto.peso, produto.tipoPeso);
@@ -743,7 +778,7 @@ export default function Pedidos() {
   };
 
   const salvarAlteracoes = async () => {
-    if (!selectedPedidoId || !canEditPedido) return;
+    if (!selectedPedidoId || !canEditPedido || detailMode !== "edit") return;
     setSaving(true);
     setSaveError(null);
     try {
@@ -757,7 +792,7 @@ export default function Pedidos() {
       const response = await api.put<PedidoDetalhe>(`/pedidos/${selectedPedidoId}`, payload);
       success("Pedido atualizado", "As alterações foram salvas com sucesso.");
       await loadPedidos();
-      await loadPedidoDetalhe(selectedPedidoId);
+      await loadPedidoDetalhe(selectedPedidoId, "edit");
       await loadResumo();
       const atualizado = response.data;
       setPedidos((prev) => prev.map((p) => (p.id === atualizado.id ? { ...p, ...atualizado } : p)));
@@ -955,10 +990,7 @@ export default function Pedidos() {
         </div>
       )}
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Pedidos</h1>
-          <p className="text-sm text-gray-600">Visualize e gerencie os pedidos do período selecionado.</p>
-        </div>
+        <h1 className="text-3xl font-bold text-gray-900">Pedidos</h1>
       </div>
 
       <DateUserFilters
@@ -980,7 +1012,7 @@ export default function Pedidos() {
           <button
             type="button"
             onClick={limparFiltros}
-            className="px-3 py-2 rounded-lg border border-gray-300 text-sm hover:bg-gray-50 disabled:opacity-50"
+            className="rounded-full border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={listLoading || statusLoading}
           >
             Limpar filtros
@@ -992,7 +1024,7 @@ export default function Pedidos() {
 
       <div className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
         <div className="border-b border-gray-100 px-4 py-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Pedidos do período</h2>
+          <h2 className="text-lg font-bold text-gray-900">Histórico</h2>
           <div className="text-xs text-gray-500">Total: {totalItems}</div>
         </div>
         {listLoading ? (
@@ -1003,21 +1035,22 @@ export default function Pedidos() {
           <>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Código</th>
-                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Data</th>
-                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Colaborador</th>
-                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
-                    <th className="px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Peso (kg)</th>
-                    <th className="px-4 py-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Total</th>
-                    <th className="px-4 py-2 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide">Ações</th>
+                <thead className="bg-[#E9E9E9]">
+                  <tr className="h-[49px]">
+                    <th className="px-4 text-left text-xs font-bold uppercase tracking-wide text-black align-middle">Código</th>
+                    <th className="px-4 text-left text-xs font-bold uppercase tracking-wide text-black align-middle">Data</th>
+                    <th className="px-4 text-left text-xs font-bold uppercase tracking-wide text-black align-middle">Colaborador</th>
+                    <th className="px-4 text-center text-xs font-bold uppercase tracking-wide text-black align-middle">Status</th>
+                    <th className="px-4 text-right text-xs font-bold uppercase tracking-wide text-black align-middle">Peso (kg)</th>
+                    <th className="px-4 text-center text-xs font-bold uppercase tracking-wide text-black align-middle">Total</th>
+                    <th className="px-4 text-center text-xs font-bold uppercase tracking-wide text-black align-middle">Editar</th>
+                    <th className="px-4 text-center text-xs font-bold uppercase tracking-wide text-black align-middle">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {pedidos.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-4 py-6 text-center text-sm text-gray-500">
+                      <td colSpan={8} className="px-4 py-6 text-center text-sm text-gray-500">
                         Nenhum pedido encontrado para o período selecionado.
                       </td>
                     </tr>
@@ -1033,15 +1066,18 @@ export default function Pedidos() {
                       const podeEditarConteudo = pedido.statusId !== STATUS_CANCELADO && (isAdmin || editWindowActive);
                       const mostraAprovar = isAdmin && pedido.statusId === STATUS_SOLICITADO;
                       const mostraCancelar = pedido.statusId !== STATUS_CANCELADO && (isAdmin || editWindowActive);
-                      const editLabel = isAbrindo
+                      const isEditandoAtual = isSelecionado && detailMode === "edit";
+                      const isVisualizandoAtual = isSelecionado && detailMode === "view";
+                      const statusStyle =
+                        STATUS_BADGE_STYLES[pedido.statusId] ?? {
+                          background: "#E5E7EB",
+                          color: "#1F2937",
+                        };
+                      const verLabel = isAbrindo
                         ? "Abrindo..."
-                        : isSelecionado
-                          ? podeEditarConteudo
-                            ? "Editando"
-                            : "Visualizando"
-                          : podeEditarConteudo
-                            ? "Editar"
-                            : "Ver";
+                        : isVisualizandoAtual
+                          ? "Visualizando"
+                          : "Ver";
 
                       return (
                         <tr key={pedido.id} className={linhaClasse}>
@@ -1051,40 +1087,73 @@ export default function Pedidos() {
                             <div>{pedido.usuarioNome}</div>
                             {pedido.usuarioCpf && <div className="text-xs text-gray-400">CPF: {pedido.usuarioCpf}</div>}
                           </td>
-                          <td className="px-4 py-3 text-sm">
-                            <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-gray-600">
+                          <td className="px-4 py-3 text-sm text-center">
+                            <span
+                              className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
+                              style={{ backgroundColor: statusStyle.background, color: statusStyle.color }}
+                            >
                               {pedido.statusNome}
                             </span>
                           </td>
                           <td className="px-4 py-3 text-right text-sm text-gray-600">{formatPeso(pedido.pesoTotalKg, "kg", { unit: "kg" })}</td>
                           <td className="px-4 py-3 text-right text-sm text-gray-600">{formatCurrencyBRL(pedido.total)}</td>
                           <td className="px-4 py-3 text-center">
-                            <div className="flex flex-wrap items-center justify-center gap-2">
+                            {podeEditarConteudo ? (
                               <button
-                                className="px-3 py-1.5 text-sm rounded-lg border border-indigo-200 text-indigo-600 hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                                onClick={() => loadPedidoDetalhe(pedido.id)}
+                                type="button"
+                                className={`inline-flex h-9 w-9 items-center justify-center text-[#878787] transition hover:bg-[#FF6900]/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FF6900] focus-visible:outline-offset-2 ${
+                                  isEditandoAtual ? "bg-[#FF6900]/10" : ""
+                                }`}
+                                onClick={() => loadPedidoDetalhe(pedido.id, "edit")}
                                 disabled={isAbrindo}
+                                aria-label={isEditandoAtual ? "Editando pedido" : "Editar pedido"}
                               >
-                                {editLabel}
+                                <FilePenLine className="h-4 w-4" aria-hidden="true" />
                               </button>
+                            ) : (
+                              <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-transparent text-gray-300">
+                                <FilePenLine className="h-4 w-4" aria-hidden="true" />
+                                <span className="sr-only">Edição indisponível</span>
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex flex-wrap items-center justify-end gap-2">
                               {mostraAprovar && (
                                 <button
-                                  className="px-3 py-1.5 text-sm rounded-lg border border-green-200 text-green-600 hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  type="button"
+                                  className="inline-flex items-center gap-2 rounded-full border border-[#EDECE5] px-4 py-2 text-sm font-semibold text-[#16A34A] transition hover:bg-[#16A34A]/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#16A34A] focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                   onClick={() => aprovarPedido(pedido.id)}
                                   disabled={approvingId === pedido.id || cancellingId === pedido.id}
                                 >
+                                  <Check className="h-4 w-4 text-[#16A34A]" aria-hidden="true" />
                                   {approvingId === pedido.id ? "Aprovando..." : "Aprovar"}
                                 </button>
                               )}
                               {mostraCancelar && (
                                 <button
-                                  className="px-3 py-1.5 text-sm rounded-lg border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  type="button"
+                                  className="inline-flex items-center gap-2 rounded-full border border-[#EDECE5] px-4 py-2 text-sm font-semibold text-[#DC2626] transition hover:bg-[#DC2626]/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#DC2626] focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                   onClick={() => solicitarCancelamento(pedido)}
-                                  disabled={cancellingId === pedido.id || approvingId === pedido.id || (!isAdmin && !editWindowActive)}
+                                  disabled={
+                                    cancellingId === pedido.id || approvingId === pedido.id || (!isAdmin && !editWindowActive)
+                                  }
                                 >
+                                  <X className="h-4 w-4 text-[#DC2626]" aria-hidden="true" />
                                   {cancellingId === pedido.id ? "Cancelando..." : "Cancelar"}
                                 </button>
                               )}
+                              <button
+                                type="button"
+                                className={`inline-flex items-center gap-2 rounded-full border border-[#EDECE5] px-4 py-2 text-sm font-semibold text-[#FF6900] transition hover:bg-[#FF6900]/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FF6900] focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+                                  isVisualizandoAtual ? "bg-[#FF6900]/10" : ""
+                                }`}
+                                onClick={() => loadPedidoDetalhe(pedido.id, "view")}
+                                disabled={isAbrindo}
+                              >
+                                <ArrowUpRight className="h-4 w-4 text-[#FF6900]" aria-hidden="true" />
+                                {verLabel}
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -1141,9 +1210,9 @@ export default function Pedidos() {
       {selectedPedidoId && (
         <div className="space-y-6" ref={editorRef}>
           <div className="bg-white rounded-xl shadow border border-gray-100 p-5">
-            <div className="flex flex-col gap-4 border-b border-gray-100 pb-4 mb-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+            <div className="mb-4 flex flex-col gap-4 border-b border-gray-100 pb-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
               <div className="space-y-2">
-                <h2 className="text-xl font-semibold">Editar pedido</h2>
+                <h2 className="text-xl font-semibold text-gray-900">{painelTitulo}</h2>
                 {pedidoSelecionado && (
                   <div className="space-y-1 text-sm text-gray-600">
                     <p>
@@ -1158,7 +1227,7 @@ export default function Pedidos() {
                   </div>
                 )}
               </div>
-              {!isAdmin && !editWindowActive && pedidoSelecionado?.statusId !== STATUS_CANCELADO && (
+              {!isViewMode && !isAdmin && !editWindowActive && pedidoSelecionado?.statusId !== STATUS_CANCELADO && (
                 <div className="px-3 py-2 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg text-sm max-w-md">
                   As edições estão disponíveis apenas entre os dias 15 e 20 de cada mês para colaboradores.
                 </div>
@@ -1175,23 +1244,29 @@ export default function Pedidos() {
             ) : detailError ? (
               <div className="text-sm text-red-600">{detailError}</div>
             ) : pedidoSelecionado ? (
-              <div className="grid gap-6 lg:grid-cols-2">
+              <div className={`grid gap-6 ${effectiveCanEdit ? "lg:grid-cols-2" : ""}`}>
                 <div className="space-y-4">
-                  <div>
+                  <div className="space-y-2">
                     <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Unidade de entrega</label>
-                    <select
-                      value={unidadeEntregaId}
-                      onChange={(event) => setUnidadeEntregaId(event.target.value)}
-                      disabled={unidadesLoading || !canEditPedido || saving}
-                      className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                    >
-                      {unidadesEntrega.map((unidade) => (
-                        <option key={unidade.id} value={unidade.id}>{unidade.nome}</option>
-                      ))}
-                      {!unidadeSelecionadaOption && unidadeEntregaId && (
-                        <option value={unidadeEntregaId}>{unidadeSelecionadaNome || unidadeEntregaId}</option>
-                      )}
-                    </select>
+                    {effectiveCanEdit ? (
+                      <select
+                        value={unidadeEntregaId}
+                        onChange={(event) => setUnidadeEntregaId(event.target.value)}
+                        disabled={unidadesLoading || !effectiveCanEdit || saving}
+                        className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      >
+                        {unidadesEntrega.map((unidade) => (
+                          <option key={unidade.id} value={unidade.id}>{unidade.nome}</option>
+                        ))}
+                        {!unidadeSelecionadaOption && unidadeEntregaId && (
+                          <option value={unidadeEntregaId}>{unidadeSelecionadaNome || unidadeEntregaId}</option>
+                        )}
+                      </select>
+                    ) : (
+                      <div className="mt-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700">
+                        {unidadeSelecionadaNome || pedidoSelecionado.unidadeEntregaNome || "Não informado"}
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-3 md:hidden">
@@ -1214,35 +1289,44 @@ export default function Pedidos() {
                                   <div className="text-xs text-amber-600">Mínimo por adição: {minStep}</div>
                                 )}
                               </div>
-                              <div className="flex flex-col gap-2">
-                                <label className="text-xs font-semibold uppercase tracking-wide text-gray-500" htmlFor={inputId}>
-                                  Quantidade
-                                </label>
-                                <input
-                                  id={inputId}
-                                  type="number"
-                                  min={minStep}
-                                  step={minStep}
-                                  value={item.quantidade}
-                                  onChange={(event) => updateItemQuantity(item.codigo, Number(event.target.value))}
-                                  disabled={!canEditPedido || saving}
-                                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-right text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                                />
-                              </div>
+                              {effectiveCanEdit ? (
+                                <div className="flex flex-col gap-2">
+                                  <label className="text-xs font-semibold uppercase tracking-wide text-gray-500" htmlFor={inputId}>
+                                    Quantidade
+                                  </label>
+                                  <input
+                                    id={inputId}
+                                    type="number"
+                                    min={minStep}
+                                    step={minStep}
+                                    value={item.quantidade}
+                                    onChange={(event) => updateItemQuantity(item.codigo, Number(event.target.value))}
+                                    disabled={!effectiveCanEdit || saving}
+                                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-right text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                  />
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-between text-sm text-gray-600">
+                                  <span>Quantidade</span>
+                                  <span className="font-semibold text-gray-900">{item.quantidade}</span>
+                                </div>
+                              )}
                               <div className="flex items-center justify-between text-sm text-gray-600">
                                 <span>Subtotal</span>
                                 <span className="font-semibold text-gray-800">{formatCurrencyBRL(item.preco * item.quantidade)}</span>
                               </div>
                             </div>
-                            <div className="mt-3 flex justify-end">
-                              <button
-                                className="text-xs px-3 py-1 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                                onClick={() => removeItem(item.codigo)}
-                                disabled={!canEditPedido || saving}
-                              >
-                                Remover
-                              </button>
-                            </div>
+                            {effectiveCanEdit && (
+                              <div className="mt-3 flex justify-end">
+                                <button
+                                  className="text-xs px-3 py-1 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  onClick={() => removeItem(item.codigo)}
+                                  disabled={!effectiveCanEdit || saving}
+                                >
+                                  Remover
+                                </button>
+                              </div>
+                            )}
                           </div>
                         );
                       })
@@ -1251,18 +1335,18 @@ export default function Pedidos() {
 
                   <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-200 bg-white">
                     <table className="min-w-[520px] w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
+                      <thead className="bg-[#E9E9E9]">
                         <tr>
-                          <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Produto</th>
-                          <th className="px-3 py-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Quantidade</th>
-                          <th className="px-3 py-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Subtotal</th>
-                          <th className="px-3 py-2"></th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-700">Produto</th>
+                          <th className="px-3 py-2 text-right text-xs font-semibold uppercase tracking-wide text-gray-700">Quantidade</th>
+                          <th className="px-3 py-2 text-right text-xs font-semibold uppercase tracking-wide text-gray-700">Subtotal</th>
+                          {effectiveCanEdit && <th className="px-3 py-2" />}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
                         {editorItens.length === 0 ? (
                           <tr>
-                            <td colSpan={4} className="px-3 py-4 text-center text-sm text-gray-500">Nenhum item no pedido.</td>
+                            <td colSpan={effectiveCanEdit ? 4 : 3} className="px-3 py-4 text-center text-sm text-gray-500">Nenhum item no pedido.</td>
                           </tr>
                         ) : (
                           editorItens.map((item) => {
@@ -1277,29 +1361,35 @@ export default function Pedidos() {
                                     <div className="text-xs text-amber-600">Mínimo por adição: {minStep}</div>
                                   )}
                                 </td>
-                                <td className="px-3 py-2 text-right text-sm">
-                                  <input
-                                    type="number"
-                                    min={minStep}
-                                    step={minStep}
-                                    value={item.quantidade}
-                                    onChange={(event) => updateItemQuantity(item.codigo, Number(event.target.value))}
-                                    disabled={!canEditPedido || saving}
-                                    className="w-24 rounded-lg border border-gray-200 px-2 py-1 text-sm text-right shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                                  />
+                                <td className="px-3 py-2 text-right text-sm text-gray-700">
+                                  {effectiveCanEdit ? (
+                                    <input
+                                      type="number"
+                                      min={minStep}
+                                      step={minStep}
+                                      value={item.quantidade}
+                                      onChange={(event) => updateItemQuantity(item.codigo, Number(event.target.value))}
+                                      disabled={!effectiveCanEdit || saving}
+                                      className="w-24 rounded-lg border border-gray-200 px-2 py-1 text-sm text-right shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                    />
+                                  ) : (
+                                    <span className="font-semibold text-gray-900">{item.quantidade}</span>
+                                  )}
                                 </td>
                                 <td className="px-3 py-2 text-right text-sm text-gray-700">
                                   {formatCurrencyBRL(item.preco * item.quantidade)}
                                 </td>
-                                <td className="px-3 py-2 text-right">
-                                  <button
-                                    className="text-xs px-2 py-1 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    onClick={() => removeItem(item.codigo)}
-                                    disabled={!canEditPedido || saving}
-                                  >
-                                    Remover
-                                  </button>
-                                </td>
+                                {effectiveCanEdit && (
+                                  <td className="px-3 py-2 text-right">
+                                    <button
+                                      className="text-xs px-2 py-1 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                      onClick={() => removeItem(item.codigo)}
+                                      disabled={!effectiveCanEdit || saving}
+                                    >
+                                      Remover
+                                    </button>
+                                  </td>
+                                )}
                               </tr>
                             );
                           })
@@ -1323,110 +1413,124 @@ export default function Pedidos() {
                     </div>
                   </div>
 
-                  {saveError && <div className="text-sm text-red-600">{saveError}</div>}
-
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-                    <button
-                      className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50 sm:w-auto"
-                      onClick={() => {
-                        setSelectedPedidoId(null);
-                        setDetalhe(null);
-                        setEditorItens([]);
-                        setDetailError(null);
-                      }}
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      className="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-                      onClick={salvarAlteracoes}
-                      disabled={!canEditPedido || saving || editorItens.length === 0 || !unidadeEntregaId}
-                    >
-                      {saving ? "Salvando..." : "Salvar alterações"}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-                    <ProductFilters
-                      idPrefix="pedido-edicao"
-                      title="Catálogo"
-                      description="Use os filtros para adicionar novos produtos ao pedido."
-                      values={catalogFilterValues}
-                      options={catalogFilterOptions}
-                      hasFilters={hasCatalogFilters}
-                      onChange={handleFilterChange}
-                      onClear={clearCatalogFilters}
-                      clearLabel="Limpar"
-                    />
-                  </div>
-
-                  <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
-                    <div className="flex flex-col gap-2 border-b border-gray-100 px-4 py-3 text-sm font-semibold text-gray-700 sm:flex-row sm:items-center sm:justify-between">
-                      <span>Produtos disponíveis</span>
-                      <span className="text-xs text-gray-500">{catalogTotalItems} encontrado(s)</span>
-                    </div>
-                    {catalogLoading ? (
-                      <div className="p-4 text-sm text-gray-500">Carregando catálogo...</div>
-                    ) : catalogProducts.length === 0 ? (
-                      <div className="p-4 text-sm text-gray-500">Nenhum produto encontrado com os filtros selecionados.</div>
-                    ) : (
-                      <div className="divide-y divide-gray-100">
-                        {catalogProducts.map((produto) => {
-                          const pesoUnit = toKg(produto.peso, produto.tipoPeso);
-                          const minimoProduto = minQtyFor(produto, minQtyPadrao);
-                          return (
-                            <div key={produto.codigo} className="px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                              <div>
-                                <div className="font-medium text-gray-800">{produto.descricao}</div>
-                                <div className="text-xs text-gray-500">Código: {produto.codigo}</div>
-                                <div className="text-xs text-gray-400">
-                                  Peso unitário: {formatPeso(pesoUnit, "kg", { unit: "kg" })} · Mínimo: {minimoProduto} unidade(s)
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <div className="text-sm font-semibold text-indigo-600">{formatCurrencyBRL(produto.preco)}</div>
-                                <button
-                                  className="px-3 py-1.5 rounded-lg border border-indigo-200 text-indigo-600 text-sm hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                                  onClick={() => addProduto(produto)}
-                                  disabled={!canEditPedido || saving}
-                                >
-                                  Adicionar
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {catalogTotalPages > 1 && (
-                      <div className="flex flex-col gap-3 border-t border-gray-100 px-4 py-3 text-sm text-gray-600 sm:flex-row sm:items-center sm:justify-between">
-                        <button
-                          className="px-3 py-1 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50"
-                          onClick={() => setCatalogPage((prev) => Math.max(1, prev - 1))}
-                          disabled={catalogPage <= 1}
-                        >
-                          Anterior
-                        </button>
-                        <div>Pagina {catalogPage} de {catalogTotalPages}</div>
-                        <button
-                          className="px-3 py-1 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50"
-                          onClick={() => setCatalogPage((prev) => Math.min(catalogTotalPages, prev + 1))}
-                          disabled={catalogPage >= catalogTotalPages}
-                        >
-                          Próxima
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
                   <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-4">
                     <h3 className="text-sm font-semibold text-gray-700 mb-2">Histórico de alterações</h3>
                     {renderHistorico()}
                   </div>
+
+                  {effectiveCanEdit ? (
+                    <>
+                      {saveError && <div className="text-sm text-red-600">{saveError}</div>}
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+                        <button
+                          type="button"
+                          className="w-full rounded-full border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 sm:w-auto"
+                          onClick={fecharDetalhes}
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="button"
+                          className="w-full rounded-full bg-[#FF6900] px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#FF6900]/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6900]/40 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                          onClick={salvarAlteracoes}
+                          disabled={!effectiveCanEdit || saving || editorItens.length === 0 || !unidadeEntregaId}
+                        >
+                          {saving ? "Salvando..." : "Salvar alterações"}
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        className="rounded-full border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+                        onClick={fecharDetalhes}
+                      >
+                        Fechar
+                      </button>
+                    </div>
+                  )}
                 </div>
+
+                {effectiveCanEdit && (
+                  <div className="space-y-4">
+                    <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                      <ProductFilters
+                        idPrefix="pedido-edicao"
+                        title="Catálogo"
+                        description="Use os filtros para adicionar novos produtos ao pedido."
+                        values={catalogFilterValues}
+                        options={catalogFilterOptions}
+                        hasFilters={hasCatalogFilters}
+                        onChange={handleFilterChange}
+                        onClear={clearCatalogFilters}
+                        clearLabel="Limpar"
+                        wrapOnLarge
+                      />
+                    </div>
+
+                    <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
+                      <div className="flex flex-col gap-2 border-b border-gray-100 px-4 py-3 text-sm font-semibold text-gray-700 sm:flex-row sm:items-center sm:justify-between">
+                        <span>Produtos disponíveis</span>
+                        <span className="text-xs text-gray-500">{catalogTotalItems} encontrado(s)</span>
+                      </div>
+                      {catalogLoading ? (
+                        <div className="p-4 text-sm text-gray-500">Carregando catálogo...</div>
+                      ) : catalogProducts.length === 0 ? (
+                        <div className="p-4 text-sm text-gray-500">Nenhum produto encontrado com os filtros selecionados.</div>
+                      ) : (
+                        <div className="divide-y divide-gray-100">
+                          {catalogProducts.map((produto) => {
+                            const pesoUnit = toKg(produto.peso, produto.tipoPeso);
+                            const minimoProduto = minQtyFor(produto, minQtyPadrao);
+                            return (
+                              <div key={produto.codigo} className="px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                <div>
+                                  <div className="font-medium text-gray-800">{produto.descricao}</div>
+                                  <div className="text-xs text-gray-500">Código: {produto.codigo}</div>
+                                  <div className="text-xs text-gray-400">
+                                    Peso unitário: {formatPeso(pesoUnit, "kg", { unit: "kg" })} · Mínimo: {minimoProduto} unidade(s)
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <div className="text-sm font-semibold text-indigo-600">{formatCurrencyBRL(produto.preco)}</div>
+                                  <button
+                                    className="px-3 py-1.5 rounded-lg border border-indigo-200 text-indigo-600 text-sm hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    onClick={() => addProduto(produto)}
+                                    disabled={!effectiveCanEdit || saving}
+                                  >
+                                    Adicionar
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {catalogTotalPages > 1 && (
+                        <div className="flex flex-col gap-3 border-t border-gray-100 px-4 py-3 text-sm text-gray-600 sm:flex-row sm:items-center sm:justify-between">
+                          <button
+                            className="px-3 py-1 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50"
+                            onClick={() => setCatalogPage((prev) => Math.max(1, prev - 1))}
+                            disabled={catalogPage <= 1}
+                          >
+                            Anterior
+                          </button>
+                          <div>Pagina {catalogPage} de {catalogTotalPages}</div>
+                          <button
+                            className="px-3 py-1 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50"
+                            onClick={() => setCatalogPage((prev) => Math.min(catalogTotalPages, prev + 1))}
+                            disabled={catalogPage >= catalogTotalPages}
+                          >
+                            Próxima
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
               </div>
             ) : null}
           </div>

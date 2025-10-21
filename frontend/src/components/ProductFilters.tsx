@@ -51,6 +51,7 @@ export type ProductFiltersProps = {
   onClear: () => void;
   className?: string;
   clearLabel?: string;
+  wrapOnLarge?: boolean;
 };
 
 const filterLabelClasses =
@@ -83,6 +84,56 @@ type CategoryFilterDropdownProps = {
   onChange: (value: string) => void;
 };
 
+const toTrimmedString = (value: unknown) => {
+  if (typeof value === "string") {
+    return value.trim();
+  }
+
+  if (value == null) {
+    return "";
+  }
+
+  return String(value).trim();
+};
+
+const extractRawValue = (option: ProductFilterSelectOption) => {
+  const candidate =
+    option.value ??
+    (option as unknown as { id?: unknown }).id ??
+    (option as unknown as { codigo?: unknown }).codigo ??
+    (option as unknown as { key?: unknown }).key ??
+    (option as unknown as { valor?: unknown }).valor ??
+    (option as unknown as { value?: unknown }).value;
+
+  return toTrimmedString(candidate);
+};
+
+const extractRawLabel = (option: ProductFilterSelectOption) => {
+  const candidate =
+    option.label ??
+    (option as unknown as { nome?: unknown }).nome ??
+    (option as unknown as { descricao?: unknown }).descricao ??
+    (option as unknown as { description?: unknown }).description ??
+    (option as unknown as { label?: unknown }).label;
+
+  return toTrimmedString(candidate);
+};
+
+const sanitizeOption = (option: ProductFilterSelectOption) => {
+  const value = extractRawValue(option);
+  const label = extractRawLabel(option);
+
+  if (value) {
+    return { value, label: label || value };
+  }
+
+  if (label) {
+    return { value: label, label };
+  }
+
+  return { value: "", label: "" };
+};
+
 function CategoryFilterDropdown({
   id,
   label,
@@ -95,18 +146,35 @@ function CategoryFilterDropdown({
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
-  const optionsWithPlaceholder = useMemo(
-    () => [{ value: "", label: placeholder }, ...options],
-    [options, placeholder],
-  );
+  const optionsWithPlaceholder = useMemo(() => {
+    const sanitizedOptions = options.map(sanitizeOption);
+
+    const existingPlaceholder = sanitizedOptions.find(option => option.value === "");
+
+    const placeholderOption = existingPlaceholder
+      ? {
+          value: "",
+          label: existingPlaceholder.label || placeholder,
+        }
+      : { value: "", label: placeholder };
+
+    const nonPlaceholderOptions = sanitizedOptions
+      .filter(option => option.value !== "")
+      .map(option => ({
+        value: option.value,
+        label: option.label || option.value,
+      }));
+
+    return [placeholderOption, ...nonPlaceholderOptions];
+  }, [options, placeholder]);
 
   const selectedOption = useMemo(
-    () => options.find(option => option.value === value) ?? null,
-    [options, value],
+    () => optionsWithPlaceholder.find(option => option.value === value) ?? null,
+    [optionsWithPlaceholder, value],
   );
 
   const displayLabel = selectedOption?.label ?? placeholder;
-  const isPlaceholder = !selectedOption;
+  const isPlaceholder = value === "";
 
   const closeMenu = useCallback(() => setIsOpen(false), []);
 
@@ -148,7 +216,7 @@ function CategoryFilterDropdown({
   };
 
   return (
-    <div className="relative flex min-w-[160px] flex-1 flex-col gap-2 text-left">
+    <div className="relative flex min-w-0 flex-1 flex-col gap-2 text-left sm:min-w-[160px]">
       <label htmlFor={id} className={filterLabelClasses}>
         {label}
       </label>
@@ -174,11 +242,11 @@ function CategoryFilterDropdown({
           aria-activedescendant={selectedOption?.value ?? ""}
         >
           <div className="max-h-64 overflow-y-auto">
-            {optionsWithPlaceholder.map(option => {
+            {optionsWithPlaceholder.map((option, index) => {
               const isSelected = option.value === value || (!value && option.value === "");
               return (
                 <button
-                  key={option.value || "placeholder"}
+                  key={`${option.value || "placeholder"}-${index}`}
                   type="button"
                   role="option"
                   aria-selected={isSelected}
@@ -222,6 +290,7 @@ export function ProductFilters({
   onClear,
   className,
   clearLabel = "Limpar filtros",
+  wrapOnLarge = false,
 }: ProductFiltersProps) {
   const handleChange = (
     field: keyof ProductFilterValues,
@@ -371,8 +440,29 @@ export function ProductFilters({
 
   const mobileClearButton = renderClearButton("w-full justify-center");
   const desktopClearButton = renderClearButton(
-    "self-start whitespace-nowrap lg:self-end",
+    combineClassNames(
+      "self-start whitespace-nowrap",
+      wrapOnLarge
+        ? "lg:col-span-full lg:justify-self-end"
+        : "lg:self-end",
+    ),
   );
+
+  const desktopContainerClasses = combineClassNames(
+    "hidden w-full flex-col gap-4",
+    wrapOnLarge
+      ? "lg:grid lg:gap-4 lg:[grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]"
+      : "lg:flex lg:flex-row lg:flex-nowrap lg:items-end lg:gap-4",
+  );
+
+  const desktopSearchWrapperClass = combineClassNames(
+    "flex min-w-[220px] flex-1 flex-col gap-2 text-left",
+    wrapOnLarge ? "lg:col-span-full lg:min-w-0" : "",
+  );
+
+  const desktopDropdownWrapperClass = wrapOnLarge
+    ? "grid gap-4 sm:grid-cols-2 sm:items-end lg:contents"
+    : "grid gap-4 sm:grid-cols-2 sm:items-end lg:flex lg:flex-1 lg:items-end lg:gap-4";
 
   return (
     <div className={fullClassName}>
@@ -436,9 +526,9 @@ export function ProductFilters({
         )}
       </div>
 
-      <div className="hidden flex-col gap-4 lg:flex lg:flex-row lg:flex-nowrap lg:items-end lg:gap-4">
-        {renderSearchField("flex min-w-[220px] flex-1 flex-col gap-2 text-left")}
-        {renderDropdowns("grid gap-4 sm:grid-cols-2 sm:items-end lg:flex lg:flex-1 lg:flex-nowrap lg:gap-4")}
+      <div className={desktopContainerClasses}>
+        {renderSearchField(desktopSearchWrapperClass)}
+        {renderDropdowns(desktopDropdownWrapperClass)}
         {desktopClearButton}
       </div>
     </div>
