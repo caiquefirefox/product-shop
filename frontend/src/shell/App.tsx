@@ -82,7 +82,7 @@ export default function App() {
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-2 md:gap-3">
                 <Link to="/" className="flex items-center" aria-label="PremieRpet">
-                  <img src={PREMIERPET_LOGO_SRC} alt="PremieRpet" className="h-8 w-auto sm:h-10" />
+                  <img src={PREMIERPET_LOGO_SRC} alt="PremieRpet" className="h-10 w-auto sm:h-12" />
                 </Link>
                 <button
                   type="button"
@@ -93,7 +93,7 @@ export default function App() {
                 >
                   {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
                 </button>
-                <nav className="hidden md:flex items-center gap-1">
+                <nav className="hidden md:flex items-center gap-1 md:ml-6">
                   <NavLink to="/" end className={navLinkClassName}>
                     Catálogo
                   </NavLink>
