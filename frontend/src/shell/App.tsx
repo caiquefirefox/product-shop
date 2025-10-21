@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMsal } from "@azure/msal-react";
-import { Routes, Route, NavLink, Navigate, useNavigate, useLocation } from "react-router-dom";
+import { Routes, Route, NavLink, Navigate, useNavigate, useLocation, Link } from "react-router-dom";
 import { Menu, ShoppingCart, X } from "lucide-react";
 import Catalogo from "../views/Catalogo";
 import Carrinho from "../views/Carrinho";
@@ -13,7 +13,7 @@ import Login from "../views/Login";
 import Protected from "../auth/Protected";
 import { useUser } from "../auth/useUser";
 import { useCart } from "../cart/CartContext";
-import { formatPeso } from "../lib/format";
+import { formatPeso, formatCurrencyBRL } from "../lib/format";
 
 export default function App() {
   const { instance } = useMsal();
@@ -43,9 +43,13 @@ export default function App() {
     setIsMenuOpen(false);
   }, [location.pathname]);
   const pesoResumo = formatPeso(totalPesoKg, "kg", { unit: "kg", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const valorFormatado = formatCurrencyBRL(totalValor);
+  const itensLabel = totalUnidades === 1 ? "1 item" : `${totalUnidades} itens`;
   const navLinkClassName = ({ isActive }: { isActive: boolean }) =>
     `px-3 py-2 rounded-lg transition-colors duration-150 ${
-      isActive ? "text-blue-700 bg-blue-50 font-semibold" : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+      isActive
+        ? "text-[#FF6900] bg-[#FF6900]/10 font-bold"
+        : "text-gray-600 hover:text-[#FF6900] hover:bg-[#FF6900]/10"
     }`;
 
   const gotoLogin = () => navigate("/login");
@@ -70,6 +74,10 @@ export default function App() {
           >
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-2 md:gap-3">
+                <Link to="/" className="flex items-center gap-2 text-lg font-bold text-[#FF6900] whitespace-nowrap" aria-label="PremieRpet">
+                  <span className="hidden sm:inline">PremieRpet</span>
+                  <span className="sm:hidden">PR</span>
+                </Link>
                 <button
                   type="button"
                   className="md:hidden inline-flex items-center justify-center rounded-lg p-2 text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
@@ -107,19 +115,18 @@ export default function App() {
               <div className="flex items-center gap-3 sm:gap-4">
                 <button
                   onClick={() => navigate("/carrinho")}
-                  className="relative flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-gray-50"
-                  title={`Itens: ${totalUnidades} • ${pesoResumo} • R$ ${totalValor.toFixed(2)}`}
+                  className="relative flex items-center gap-2 rounded-full bg-[#FF6900] px-3 py-2 text-white transition-colors duration-150 hover:bg-[#FF6900]/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6900]/40"
+                  title={`${itensLabel} | ${valorFormatado} | ${pesoResumo}`}
                 >
-                  <ShoppingCart size={20} />
-                  <span className="text-sm tabular-nums">{totalUnidades}</span>
-                  <span className="hidden md:inline text-xs text-gray-600">
-                    {pesoResumo} • R$ {totalValor.toFixed(2)}
-                  </span>
+                  <ShoppingCart size={20} className="text-white" />
+                  <span className="text-sm font-semibold tabular-nums whitespace-nowrap">{itensLabel}</span>
+                  <span className="text-sm font-semibold tabular-nums">| {valorFormatado}</span>
+                  <span className="text-sm font-semibold tabular-nums">| {pesoResumo}</span>
                 </button>
 
                 {account ? (
                   <div className="flex items-center gap-2 sm:gap-3">
-                    <span className="hidden text-sm text-gray-600 sm:inline">{account.name}</span>
+                    <span className="hidden text-sm font-semibold text-gray-600 sm:inline">{account.name}</span>
                     <button onClick={logout} className="rounded-lg border px-3 py-1 text-sm">
                       Sair
                     </button>
@@ -161,7 +168,7 @@ export default function App() {
               <div className="max-w-6xl mx-auto flex flex-col gap-3 px-4 pb-3">
                 {account ? (
                   <>
-                    <span className="text-sm text-gray-600">{account.name}</span>
+                    <span className="text-sm font-semibold text-gray-600">{account.name}</span>
                     <button onClick={logout} className="rounded-lg border px-3 py-2 text-sm">
                       Sair
                     </button>
