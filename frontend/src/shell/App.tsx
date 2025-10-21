@@ -29,6 +29,8 @@ export default function App() {
   const { account, isAdmin, isLoading, clearRolesCache } = useUser();
   const { totalUnidades, totalPesoKg, totalValor } = useCart();
   const isLoginRoute = location.pathname.startsWith("/login");
+  const isCatalogActive =
+    location.pathname === "/" || location.pathname.startsWith("/checkout");
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -100,7 +102,13 @@ export default function App() {
                   <img src={PREMIERPET_LOGO_SRC} alt="PremieRpet" className="h-10 w-auto sm:h-12 md:h-14" />
                 </Link>
                 <nav className="hidden md:flex items-center gap-1 md:ml-6">
-                  <NavLink to="/" end className={navLinkClassName}>
+                  <NavLink
+                    to="/"
+                    end
+                    className={({ isActive }) =>
+                      navLinkClassName({ isActive: isActive || isCatalogActive })
+                    }
+                  >
                     Catálogo
                   </NavLink>
                   <NavLink to="/pedidos" className={navLinkClassName}>
@@ -159,7 +167,13 @@ export default function App() {
           {isMenuOpen && (
             <div className="md:hidden border-t border-gray-100 bg-white">
               <nav className="max-w-6xl mx-auto flex flex-col gap-1 px-4 py-3 text-base">
-                <NavLink to="/" end className={({ isActive }) => `${navLinkClassName({ isActive })} w-full text-left`}>
+                <NavLink
+                  to="/"
+                  end
+                  className={({ isActive }) =>
+                    `${navLinkClassName({ isActive: isActive || isCatalogActive })} w-full text-left`
+                  }
+                >
                   Catálogo
                 </NavLink>
                 <NavLink to="/pedidos" className={({ isActive }) => `${navLinkClassName({ isActive })} w-full text-left`}>
