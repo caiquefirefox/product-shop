@@ -76,7 +76,9 @@ export default function App() {
         >
           <div
             className={`max-w-6xl mx-auto px-4 transition-all duration-300 ${
-              isScrolled ? "py-1.5" : "py-2.5"
+              isScrolled
+                ? "py-1.5 md:py-0.5 md:h-[60px]"
+                : "py-2.5 md:py-1 md:h-16"
             }`}
           >
             <div className="flex items-center justify-between gap-4">
@@ -196,7 +198,9 @@ export default function App() {
 
       {!isLoginRoute && !isLoading && (
         <div
-          className={`transition-all duration-300 ${isScrolled ? "h-[68px]" : "h-[76px]"}`}
+          className={`transition-all duration-300 ${
+            isScrolled ? "h-[68px] md:h-[60px]" : "h-[76px] md:h-16"
+          }`}
           aria-hidden
         />
       )}
