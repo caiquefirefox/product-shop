@@ -130,12 +130,12 @@ export default function CartSidebar({ open, onClose, onCheckout }: CartSidebarPr
                 return (
                   <div key={item.codigo} className="flex flex-col gap-4">
                     <div className="flex items-start gap-4">
-                      <div className="flex h-[110px] shrink-0 overflow-hidden rounded-lg bg-gray-100">
+                      <div className="flex h-[110px] w-[110px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gray-100">
                         {item.imagemUrl ? (
                           <img
                             src={item.imagemUrl}
                             alt={item.descricao}
-                            className="h-full w-auto max-w-none object-cover"
+                            className="h-full w-full object-contain"
                           />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">
@@ -213,17 +213,17 @@ export default function CartSidebar({ open, onClose, onCheckout }: CartSidebarPr
                 </div>
               )}
 
-              {passouLimite && (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                  Atenção: seu carrinho tem {totalPesoFormatado}. O limite mensal é {limiteMensalFormatado} por colaborador.
-                </div>
-              )}
             </div>
           )}
         </div>
 
         {items.length > 0 && (
           <div className="mt-auto border-t border-gray-200 px-6 py-5">
+            {passouLimite && (
+              <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                Atenção: seu carrinho tem {totalPesoFormatado}. O limite mensal é {limiteMensalFormatado} por colaborador.
+              </div>
+            )}
             <div className="grid grid-cols-[repeat(3,minmax(0,1fr))] items-center gap-4">
               <div className="flex flex-col gap-1 pr-4 text-sm text-gray-500">
                 <span>Peso total:</span>
