@@ -1431,7 +1431,7 @@ export default function Pedidos() {
                         </button>
                         <button
                           type="button"
-                          className="w-full rounded-full bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                          className="w-full rounded-full bg-[#FF6900] px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#FF6900]/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6900]/40 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                           onClick={salvarAlteracoes}
                           disabled={!effectiveCanEdit || saving || editorItens.length === 0 || !unidadeEntregaId}
                         >
