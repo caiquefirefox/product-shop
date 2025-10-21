@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMsal } from "@azure/msal-react";
-import { Routes, Route, NavLink, Navigate, useNavigate, useLocation } from "react-router-dom";
+import { Routes, Route, NavLink, Navigate, useNavigate, useLocation, Link } from "react-router-dom";
 import { Menu, ShoppingCart, X } from "lucide-react";
 import Catalogo from "../views/Catalogo";
 import Carrinho from "../views/Carrinho";
@@ -13,7 +13,13 @@ import Login from "../views/Login";
 import Protected from "../auth/Protected";
 import { useUser } from "../auth/useUser";
 import { useCart } from "../cart/CartContext";
-import { formatPeso } from "../lib/format";
+import { formatPeso, formatCurrencyBRL } from "../lib/format";
+
+const PREMIERPET_LOGO_SRC =
+  typeof import.meta.env.VITE_PREMIERPET_LOGO_URL === "string" &&
+  import.meta.env.VITE_PREMIERPET_LOGO_URL.trim().length > 0
+    ? import.meta.env.VITE_PREMIERPET_LOGO_URL
+    : "premierpet-logo.png";
 
 export default function App() {
   const { instance } = useMsal();
@@ -43,9 +49,13 @@ export default function App() {
     setIsMenuOpen(false);
   }, [location.pathname]);
   const pesoResumo = formatPeso(totalPesoKg, "kg", { unit: "kg", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const valorFormatado = formatCurrencyBRL(totalValor);
+  const itensLabel = totalUnidades === 1 ? "1 item" : `${totalUnidades} itens`;
   const navLinkClassName = ({ isActive }: { isActive: boolean }) =>
-    `px-3 py-2 rounded-lg transition-colors duration-150 ${
-      isActive ? "text-blue-700 bg-blue-50 font-semibold" : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+    `px-3 py-2 rounded-lg text-base transition-colors duration-150 ${
+      isActive
+        ? "text-[#FF6900] bg-[#FF6900]/10 font-bold"
+        : "text-gray-600 hover:text-[#FF6900] hover:bg-[#FF6900]/10"
     }`;
 
   const gotoLogin = () => navigate("/login");
@@ -70,6 +80,9 @@ export default function App() {
           >
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-2 md:gap-3">
+                <Link to="/" className="flex items-center" aria-label="PremieRpet">
+                  <img src={PREMIERPET_LOGO_SRC} alt="PremieRpet" className="h-8 w-auto sm:h-10" />
+                </Link>
                 <button
                   type="button"
                   className="md:hidden inline-flex items-center justify-center rounded-lg p-2 text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
@@ -79,7 +92,7 @@ export default function App() {
                 >
                   {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
                 </button>
-                <nav className="hidden md:flex items-center gap-1 text-sm">
+                <nav className="hidden md:flex items-center gap-1">
                   <NavLink to="/" end className={navLinkClassName}>
                     Catálogo
                   </NavLink>
@@ -107,19 +120,18 @@ export default function App() {
               <div className="flex items-center gap-3 sm:gap-4">
                 <button
                   onClick={() => navigate("/carrinho")}
-                  className="relative flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-gray-50"
-                  title={`Itens: ${totalUnidades} • ${pesoResumo} • R$ ${totalValor.toFixed(2)}`}
+                  className="relative flex items-center gap-2 rounded-full bg-[#FF6900] px-3 py-2 text-white transition-colors duration-150 hover:bg-[#FF6900]/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6900]/40"
+                  title={`${itensLabel} | ${valorFormatado} | ${pesoResumo}`}
                 >
-                  <ShoppingCart size={20} />
-                  <span className="text-sm tabular-nums">{totalUnidades}</span>
-                  <span className="hidden md:inline text-xs text-gray-600">
-                    {pesoResumo} • R$ {totalValor.toFixed(2)}
-                  </span>
+                  <ShoppingCart size={20} className="text-white" />
+                  <span className="text-sm font-semibold tabular-nums whitespace-nowrap">{itensLabel}</span>
+                  <span className="text-sm tabular-nums">| {valorFormatado}</span>
+                  <span className="text-sm tabular-nums">| {pesoResumo}</span>
                 </button>
 
                 {account ? (
                   <div className="flex items-center gap-2 sm:gap-3">
-                    <span className="hidden text-sm text-gray-600 sm:inline">{account.name}</span>
+                    <span className="hidden text-sm font-semibold text-gray-600 sm:inline">{account.name}</span>
                     <button onClick={logout} className="rounded-lg border px-3 py-1 text-sm">
                       Sair
                     </button>
@@ -135,7 +147,7 @@ export default function App() {
 
           {isMenuOpen && (
             <div className="md:hidden border-t border-gray-100 bg-white">
-              <nav className="max-w-6xl mx-auto flex flex-col gap-1 px-4 py-3 text-sm">
+              <nav className="max-w-6xl mx-auto flex flex-col gap-1 px-4 py-3 text-base">
                 <NavLink to="/" end className={({ isActive }) => `${navLinkClassName({ isActive })} w-full text-left`}>
                   Catálogo
                 </NavLink>
@@ -161,7 +173,7 @@ export default function App() {
               <div className="max-w-6xl mx-auto flex flex-col gap-3 px-4 pb-3">
                 {account ? (
                   <>
-                    <span className="text-sm text-gray-600">{account.name}</span>
+                    <span className="text-sm font-semibold text-gray-600">{account.name}</span>
                     <button onClick={logout} className="rounded-lg border px-3 py-2 text-sm">
                       Sair
                     </button>
