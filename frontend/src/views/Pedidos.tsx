@@ -1040,11 +1040,11 @@ export default function Pedidos() {
                     <th className="px-4 text-left text-xs font-bold uppercase tracking-wide text-black align-middle">Código</th>
                     <th className="px-4 text-left text-xs font-bold uppercase tracking-wide text-black align-middle">Data</th>
                     <th className="px-4 text-left text-xs font-bold uppercase tracking-wide text-black align-middle">Colaborador</th>
-                    <th className="px-4 text-left text-xs font-bold uppercase tracking-wide text-black align-middle">Status</th>
+                    <th className="px-4 text-center text-xs font-bold uppercase tracking-wide text-black align-middle">Status</th>
                     <th className="px-4 text-right text-xs font-bold uppercase tracking-wide text-black align-middle">Peso (kg)</th>
-                    <th className="px-4 text-right text-xs font-bold uppercase tracking-wide text-black align-middle">Total</th>
+                    <th className="px-4 text-center text-xs font-bold uppercase tracking-wide text-black align-middle">Total</th>
                     <th className="px-4 text-center text-xs font-bold uppercase tracking-wide text-black align-middle">Editar</th>
-                    <th className="px-4 text-right text-xs font-bold uppercase tracking-wide text-black align-middle">Ações</th>
+                    <th className="px-4 text-center text-xs font-bold uppercase tracking-wide text-black align-middle">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -1087,7 +1087,7 @@ export default function Pedidos() {
                             <div>{pedido.usuarioNome}</div>
                             {pedido.usuarioCpf && <div className="text-xs text-gray-400">CPF: {pedido.usuarioCpf}</div>}
                           </td>
-                          <td className="px-4 py-3 text-sm">
+                          <td className="px-4 py-3 text-sm text-center">
                             <span
                               className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
                               style={{ backgroundColor: statusStyle.background, color: statusStyle.color }}
@@ -1101,7 +1101,7 @@ export default function Pedidos() {
                             {podeEditarConteudo ? (
                               <button
                                 type="button"
-                                className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#EDECE5] text-[#FF6900] transition hover:bg-[#FF6900]/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FF6900] focus-visible:outline-offset-2 ${
+                                className={`inline-flex h-9 w-9 items-center justify-center text-[#878787] transition hover:bg-[#FF6900]/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FF6900] focus-visible:outline-offset-2 ${
                                   isEditandoAtual ? "bg-[#FF6900]/10" : ""
                                 }`}
                                 onClick={() => loadPedidoDetalhe(pedido.id, "edit")}
