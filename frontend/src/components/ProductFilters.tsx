@@ -96,10 +96,43 @@ const toTrimmedString = (value: unknown) => {
   return String(value).trim();
 };
 
-const sanitizeOption = (option: ProductFilterSelectOption) => ({
-  value: toTrimmedString(option.value),
-  label: toTrimmedString(option.label),
-});
+const extractRawValue = (option: ProductFilterSelectOption) => {
+  const candidate =
+    option.value ??
+    (option as unknown as { id?: unknown }).id ??
+    (option as unknown as { codigo?: unknown }).codigo ??
+    (option as unknown as { key?: unknown }).key ??
+    (option as unknown as { valor?: unknown }).valor ??
+    (option as unknown as { value?: unknown }).value;
+
+  return toTrimmedString(candidate);
+};
+
+const extractRawLabel = (option: ProductFilterSelectOption) => {
+  const candidate =
+    option.label ??
+    (option as unknown as { nome?: unknown }).nome ??
+    (option as unknown as { descricao?: unknown }).descricao ??
+    (option as unknown as { description?: unknown }).description ??
+    (option as unknown as { label?: unknown }).label;
+
+  return toTrimmedString(candidate);
+};
+
+const sanitizeOption = (option: ProductFilterSelectOption) => {
+  const value = extractRawValue(option);
+  const label = extractRawLabel(option);
+
+  if (value) {
+    return { value, label: label || value };
+  }
+
+  if (label) {
+    return { value: label, label };
+  }
+
+  return { value: "", label: "" };
+};
 
 function CategoryFilterDropdown({
   id,
