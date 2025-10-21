@@ -66,6 +66,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           pesoKg: toKg(p.peso, p.tipoPeso),
           quantidade: qty,
           minQty: min, // guarda o mínimo vigente para o item
+          imagemUrl: p.imagemUrl ?? null,
+          sabores: p.sabores ?? null,
+          porteNomes: p.porteNomes,
+          peso: p.peso,
+          tipoPeso: p.tipoPeso,
         }];
       } else {
         const copy = [...prev];

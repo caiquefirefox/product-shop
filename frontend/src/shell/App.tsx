@@ -3,7 +3,6 @@ import { useMsal } from "@azure/msal-react";
 import { Routes, Route, NavLink, Navigate, useNavigate, useLocation, Link } from "react-router-dom";
 import { Menu, ShoppingCart, X } from "lucide-react";
 import Catalogo from "../views/Catalogo";
-import Carrinho from "../views/Carrinho";
 import Checkout from "../views/Checkout";
 import Produtos from "../views/Produtos";
 import Relatorios from "../views/Relatorios";
@@ -15,6 +14,7 @@ import { useUser } from "../auth/useUser";
 import { useCart } from "../cart/CartContext";
 import { formatPeso, formatCurrencyBRL } from "../lib/format";
 import premierPetLogo from "../assets/images/premierpet-logo.png";
+import CartSidebar from "../components/CartSidebar";
 
 const PREMIERPET_LOGO_SRC =
   typeof import.meta.env.VITE_PREMIERPET_LOGO_URL === "string" &&
@@ -31,6 +31,7 @@ export default function App() {
   const isLoginRoute = location.pathname.startsWith("/login");
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isCartOpen, setIsCartOpen] = useState(false);
 
   useEffect(() => {
     if (isLoginRoute) {
@@ -48,6 +49,9 @@ export default function App() {
   }, [isLoginRoute]);
   useEffect(() => {
     setIsMenuOpen(false);
+  }, [location.pathname]);
+  useEffect(() => {
+    setIsCartOpen(false);
   }, [location.pathname]);
   const pesoResumo = formatPeso(totalPesoKg, "kg", { unit: "kg", minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const valorFormatado = formatCurrencyBRL(totalValor);
@@ -122,7 +126,7 @@ export default function App() {
 
               <div className="flex items-center gap-3 sm:gap-4">
                 <button
-                  onClick={() => navigate("/carrinho")}
+                  onClick={() => setIsCartOpen(true)}
                   className="relative flex items-center gap-2 rounded-full bg-[#FF6900] px-3 py-2 text-white transition-colors duration-150 hover:bg-[#FF6900]/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6900]/40"
                   title={`${itensLabel} | ${valorFormatado} | ${pesoResumo}`}
                   aria-label={`${itensLabel} • ${valorFormatado} • ${pesoResumo}`}
@@ -210,7 +214,6 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<Protected><Catalogo/></Protected>} />
           <Route path="/pedidos" element={<Protected><Pedidos/></Protected>} />
-          <Route path="/carrinho" element={<Protected><Carrinho/></Protected>} />
           <Route path="/checkout" element={<Protected><Checkout/></Protected>} />
           <Route path="/produtos" element={<Protected requiredRole="Admin"><Produtos/></Protected>} />
           <Route path="/relatorios" element={<Protected requiredRole="Admin"><Relatorios/></Protected>} />
@@ -218,6 +221,17 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+
+      {!isLoginRoute && !isLoading && (
+        <CartSidebar
+          open={isCartOpen}
+          onClose={() => setIsCartOpen(false)}
+          onCheckout={() => {
+            setIsCartOpen(false);
+            navigate("/checkout");
+          }}
+        />
+      )}
     </div>
   );
 }
