@@ -129,22 +129,8 @@ export default function CartSidebar({ open, onClose, onCheckout }: CartSidebarPr
 
                 return (
                   <div key={item.codigo} className="flex flex-col gap-4">
-                    <div
-                      className="grid grid-cols-[120px_minmax(0,1fr)_auto] gap-x-4 gap-y-2"
-                      style={{
-                        gridTemplateRows: [
-                          "auto",
-                          sabor ? "auto" : "0px",
-                          portePesoLabel ? "auto" : "0px",
-                          "auto",
-                          below ? "auto" : "0px",
-                        ].join(" "),
-                      }}
-                    >
-                      <div
-                        className="col-start-1 row-start-1 flex overflow-hidden rounded-lg bg-gray-100"
-                        style={{ gridRow: `1 / span ${4 + (below ? 1 : 0)}` }}
-                      >
+                    <div className="flex items-stretch gap-4">
+                      <div className="flex w-[110px] shrink-0 overflow-hidden rounded-lg bg-gray-100 self-stretch">
                         {item.imagemUrl ? (
                           <img
                             src={item.imagemUrl}
@@ -158,58 +144,56 @@ export default function CartSidebar({ open, onClose, onCheckout }: CartSidebarPr
                         )}
                       </div>
 
-                      <div className="col-start-2 row-start-1 flex flex-col gap-1 text-sm text-gray-600">
-                        <div className="font-semibold text-gray-900">{item.descricao}</div>
-                      </div>
+                      <div className="flex flex-1 items-start gap-4">
+                        <div className="flex flex-1 flex-col gap-3 text-sm text-gray-600">
+                          <div className="flex flex-col">
+                            <div className="text-base font-bold text-gray-900">{item.descricao}</div>
+                            {sabor ? (
+                              <div className="mt-1 font-semibold text-gray-700">{sabor}</div>
+                            ) : null}
+                            {portePesoLabel ? (
+                              <div className="mt-1 text-sm text-gray-500">{portePesoLabel}</div>
+                            ) : null}
+                          </div>
 
-                      <div
-                        className={`col-start-2 row-start-2 font-medium text-gray-700 ${sabor ? "" : "hidden"}`}
-                      >
-                        {sabor}
-                      </div>
+                          <div className="flex items-center gap-3 text-sm text-gray-500">
+                            <label className="flex items-center gap-2 text-sm text-gray-500">
+                              <span className="sr-only">Quantidade</span>
+                              <input
+                                type="number"
+                                min={min}
+                                step={min}
+                                value={item.quantidade}
+                                onChange={event => setQuantity(item.codigo, Number(event.target.value))}
+                                className={`w-20 rounded-lg border px-2 py-1 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-[#FF6900]/40 ${
+                                  below ? "border-red-300 bg-red-50" : "border-gray-200"
+                                }`}
+                                title={`Informe múltiplos de ${min} unidade(s).`}
+                              />
+                            </label>
+                            <span className="text-sm text-gray-500">
+                              {formatCurrencyBRL(item.preco)} Un
+                            </span>
+                          </div>
 
-                      <div
-                        className={`col-start-2 row-start-3 text-sm text-gray-500 ${portePesoLabel ? "" : "hidden"}`}
-                      >
-                        {portePesoLabel}
-                      </div>
+                          {below ? (
+                            <div className="text-xs text-red-600">Mínimo: {min} unidade(s).</div>
+                          ) : null}
+                        </div>
 
-                      <div className="col-start-2 row-start-4 mt-2 flex flex-wrap items-center gap-3 text-sm text-gray-500">
-                        <label className="flex items-center gap-2 text-sm text-gray-500">
-                          <span className="sr-only">Quantidade</span>
-                          <input
-                            type="number"
-                            min={min}
-                            step={min}
-                            value={item.quantidade}
-                            onChange={event => setQuantity(item.codigo, Number(event.target.value))}
-                            className={`w-20 rounded-lg border px-2 py-1 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-[#FF6900]/40 ${
-                              below ? "border-red-300 bg-red-50" : "border-gray-200"
-                            }`}
-                            title={`Informe múltiplos de ${min} unidade(s).`}
-                          />
-                        </label>
-                        <span className="text-sm text-gray-500">
-                          {formatCurrencyBRL(item.preco)} Un
-                        </span>
+                        <div className="flex h-full flex-col items-end justify-between text-right">
+                          <div className="text-base font-semibold text-gray-900">
+                            {formatCurrencyBRL(itemSubtotal(item))}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => remove(item.codigo)}
+                            className="text-sm font-medium text-[#FF6900] transition-opacity hover:opacity-80"
+                          >
+                            Remover
+                          </button>
+                        </div>
                       </div>
-
-                      <div
-                        className={`col-span-2 col-start-2 row-start-5 text-xs text-red-600 ${below ? "" : "hidden"}`}
-                      >
-                        {below ? `Mínimo: ${min} unidade(s).` : null}
-                      </div>
-
-                      <div className="col-start-3 row-start-1 self-start text-base font-semibold text-gray-900">
-                        {formatCurrencyBRL(itemSubtotal(item))}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => remove(item.codigo)}
-                        className="col-start-3 row-start-4 justify-self-end text-sm font-medium text-[#FF6900] transition-opacity hover:opacity-80"
-                      >
-                        Remover
-                      </button>
                     </div>
                     {index < items.length - 1 && <div className="mx-2 h-px bg-gray-200" />}
                   </div>
