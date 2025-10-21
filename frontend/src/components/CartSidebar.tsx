@@ -159,7 +159,7 @@ export default function CartSidebar({ open, onClose, onCheckout }: CartSidebarPr
                             ) : null}
                           </div>
 
-                          <div className="mt-auto flex flex-wrap items-center gap-3 text-sm text-gray-500">
+                          <div className="mt-auto flex items-center gap-3 text-sm text-gray-500">
                             <label className="flex items-center gap-2 text-sm text-gray-500">
                               <span className="sr-only">Quantidade</span>
                               <input
@@ -168,7 +168,7 @@ export default function CartSidebar({ open, onClose, onCheckout }: CartSidebarPr
                                 step={min}
                                 value={item.quantidade}
                                 onChange={event => setQuantity(item.codigo, Number(event.target.value))}
-                                className={`w-20 rounded-lg border px-2 py-1 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-[#FF6900]/40 ${
+                                className={`w-[76px] rounded-lg border px-2 py-1 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-[#FF6900]/40 ${
                                   below ? "border-red-300 bg-red-50" : "border-gray-200"
                                 }`}
                                 title={`Informe múltiplos de ${min} unidade(s).`}
