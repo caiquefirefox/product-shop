@@ -130,12 +130,12 @@ export default function CartSidebar({ open, onClose, onCheckout }: CartSidebarPr
                 return (
                   <div key={item.codigo} className="flex flex-col gap-4">
                     <div className="flex items-start gap-4">
-                      <div className="flex h-[110px] w-[110px] shrink-0 overflow-hidden rounded-lg bg-gray-100">
+                      <div className="flex h-[110px] shrink-0 overflow-hidden rounded-lg bg-gray-100">
                         {item.imagemUrl ? (
                           <img
                             src={item.imagemUrl}
                             alt={item.descricao}
-                            className="h-full w-full object-cover"
+                            className="h-full w-auto max-w-none object-cover"
                           />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">
@@ -159,7 +159,7 @@ export default function CartSidebar({ open, onClose, onCheckout }: CartSidebarPr
                             ) : null}
                           </div>
 
-                          <div className="mt-auto flex items-center gap-3 text-sm text-gray-500">
+                          <div className="mt-auto flex flex-wrap items-center gap-3 text-sm text-gray-500">
                             <label className="flex items-center gap-2 text-sm text-gray-500">
                               <span className="sr-only">Quantidade</span>
                               <input
@@ -177,20 +177,20 @@ export default function CartSidebar({ open, onClose, onCheckout }: CartSidebarPr
                             <span className="text-sm text-gray-500">
                               {formatCurrencyBRL(item.preco)} Un
                             </span>
+                            <button
+                              type="button"
+                              onClick={() => remove(item.codigo)}
+                              className="text-sm font-medium text-[#FF6900] transition-opacity hover:opacity-80"
+                            >
+                              Remover
+                            </button>
                           </div>
                         </div>
 
-                        <div className="flex h-full flex-col items-end justify-between text-right">
+                        <div className="flex h-full flex-col items-end text-right">
                           <div className="text-base font-semibold text-gray-900">
                             {formatCurrencyBRL(itemSubtotal(item))}
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => remove(item.codigo)}
-                            className="text-sm font-medium text-[#FF6900] transition-opacity hover:opacity-80"
-                          >
-                            Remover
-                          </button>
                         </div>
                       </div>
                     </div>
