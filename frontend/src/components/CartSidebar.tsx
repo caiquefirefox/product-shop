@@ -129,8 +129,8 @@ export default function CartSidebar({ open, onClose, onCheckout }: CartSidebarPr
 
                 return (
                   <div key={item.codigo} className="flex flex-col gap-4">
-                    <div className="flex items-stretch gap-4">
-                      <div className="flex w-[110px] shrink-0 overflow-hidden rounded-lg bg-gray-100 self-stretch">
+                    <div className="flex items-start gap-4">
+                      <div className="flex h-[110px] w-[110px] shrink-0 overflow-hidden rounded-lg bg-gray-100">
                         {item.imagemUrl ? (
                           <img
                             src={item.imagemUrl}
@@ -145,18 +145,21 @@ export default function CartSidebar({ open, onClose, onCheckout }: CartSidebarPr
                       </div>
 
                       <div className="flex flex-1 items-start gap-4">
-                        <div className="flex flex-1 flex-col gap-3 text-sm text-gray-600">
-                          <div className="flex flex-col">
-                            <div className="text-base font-bold text-gray-900">{item.descricao}</div>
+                        <div className="flex flex-1 flex-col text-sm text-gray-600">
+                          <div>
+                            <div className="text-[16px] font-bold text-gray-900 leading-snug">{item.descricao}</div>
                             {sabor ? (
-                              <div className="mt-1 font-semibold text-gray-700">{sabor}</div>
+                              <div className="mt-1 font-semibold text-gray-700 leading-snug">{sabor}</div>
                             ) : null}
                             {portePesoLabel ? (
-                              <div className="mt-1 text-sm text-gray-500">{portePesoLabel}</div>
+                              <div className="mt-1 text-sm text-gray-500 leading-snug">{portePesoLabel}</div>
+                            ) : null}
+                            {below ? (
+                              <div className="mt-2 text-xs text-red-600">Mínimo: {min} unidade(s).</div>
                             ) : null}
                           </div>
 
-                          <div className="flex items-center gap-3 text-sm text-gray-500">
+                          <div className="mt-auto flex items-center gap-3 text-sm text-gray-500">
                             <label className="flex items-center gap-2 text-sm text-gray-500">
                               <span className="sr-only">Quantidade</span>
                               <input
@@ -175,10 +178,6 @@ export default function CartSidebar({ open, onClose, onCheckout }: CartSidebarPr
                               {formatCurrencyBRL(item.preco)} Un
                             </span>
                           </div>
-
-                          {below ? (
-                            <div className="text-xs text-red-600">Mínimo: {min} unidade(s).</div>
-                          ) : null}
                         </div>
 
                         <div className="flex h-full flex-col items-end justify-between text-right">
