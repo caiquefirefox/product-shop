@@ -89,68 +89,42 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white via-[#FFF3E5] to-[#FFE3CC]">
-      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col overflow-hidden rounded-none bg-white shadow-none lg:my-16 lg:flex-row lg:rounded-3xl lg:shadow-2xl">
-        <div className="relative hidden w-full max-w-xl flex-1 flex-col justify-between bg-[#FF6900] px-12 py-12 text-white lg:flex">
-          <img
-            src={PREMIERPET_LOGO_SRC}
-            alt="PremieRpet"
-            className="h-14 w-auto"
-          />
-          <div className="mt-16 space-y-6">
-            <h1 className="text-4xl font-semibold leading-tight">
-              Tudo o que você precisa para gerir seu catálogo em um único lugar.
-            </h1>
-            <p className="text-base text-white/90">
-              Acesse o sistema para acompanhar pedidos, gerenciar produtos e visualizar relatórios personalizados.
+    <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4 py-12">
+      <div className="w-full max-w-3xl rounded-[32px] border border-gray-100 bg-white px-8 py-10 shadow-[0_24px_60px_rgba(15,23,42,0.12)] sm:px-12 sm:py-14">
+        <div className="mx-auto flex w-full max-w-md flex-col items-center text-center">
+          <img src={PREMIERPET_LOGO_SRC} alt="PremieRpet" className="h-14 w-auto" />
+
+          <div className="mt-10 space-y-3">
+            <h1 className="text-3xl font-semibold text-slate-900">Bem-vindo ao portal PremieRpet</h1>
+            <p className="text-base text-slate-500">
+              Utilize sua conta Microsoft corporativa para acessar seu painel de trabalho.
             </p>
           </div>
-          <div className="mt-auto text-sm text-white/80">
-            <p>Compatível com dispositivos desktop e mobile.</p>
-            <p>Suporte dedicado PremieRpet.</p>
-          </div>
-        </div>
 
-        <div className="flex flex-1 items-center justify-center bg-white px-6 py-12 sm:px-10 lg:px-16">
-          <div className="w-full max-w-md">
-            <div className="mb-8 flex items-center gap-4 lg:hidden">
-              <img src={PREMIERPET_LOGO_SRC} alt="PremieRpet" className="h-12 w-auto" />
-              <div>
-                <h1 className="text-2xl font-semibold text-gray-900">Bem-vindo</h1>
-                <p className="text-sm text-gray-500">Entre com sua conta Microsoft para continuar</p>
-              </div>
+          {err && (
+            <div className="mt-6 w-full rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {err}
             </div>
+          )}
 
-            <div className="hidden lg:block">
-              <h2 className="text-3xl font-semibold text-gray-900">Entrar no sistema</h2>
-              <p className="mt-2 text-base text-gray-500">Use sua conta Microsoft corporativa para acessar as funcionalidades do portal.</p>
-            </div>
-
-            {err && (
-              <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                {err}
-              </div>
+          <button
+            onClick={doLogin}
+            disabled={loading}
+            className="mt-8 flex w-full items-center justify-center gap-3 rounded-full bg-[#FF6900] px-6 py-3 text-base font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-[#e65f00] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6900]/40 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loading ? (
+              <span>Entrando...</span>
+            ) : (
+              <>
+                <MicrosoftIcon className="h-5 w-5" />
+                <span>Entrar com Microsoft</span>
+              </>
             )}
+          </button>
 
-            <button
-              onClick={doLogin}
-              disabled={loading}
-              className="mt-8 flex w-full items-center justify-center gap-3 rounded-full bg-[#FF6900] px-6 py-3 text-base font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-[#e65f00] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6900]/40 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {loading ? (
-                <span>Entrando...</span>
-              ) : (
-                <>
-                  <MicrosoftIcon className="h-5 w-5" />
-                  <span>Entrar com Microsoft</span>
-                </>
-              )}
-            </button>
-
-            <p className="mt-6 text-center text-sm text-gray-400">
-              Ao acessar, você concorda com os termos de uso e política de privacidade do portal PremieRpet.
-            </p>
-          </div>
+          <p className="mt-6 text-sm text-slate-400">
+            Ao acessar, você concorda com os termos de uso e política de privacidade do portal PremieRpet.
+          </p>
         </div>
       </div>
     </div>
