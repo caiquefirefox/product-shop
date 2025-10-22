@@ -665,10 +665,10 @@ export default function Produtos() {
     setPeso("1");
     setTipoPeso(1);
     setSabores("");
-    setEspecieId(especies[0]?.id ?? "");
+    setEspecieId("");
     setPorteIds([]);
-    setTipoProdutoId(tiposProduto[0]?.id ?? "");
-    setFaixaEtariaId(faixasEtarias[0]?.id ?? "");
+    setTipoProdutoId("");
+    setFaixaEtariaId("");
     setPreco("0");
     setQuantidadeMinimaDeCompra("1");
     resetImagemCampos();
@@ -849,21 +849,24 @@ export default function Produtos() {
   useEffect(() => {
     setEspecieId(prev => {
       if (!especies.length) return "";
-      return especies.some(opcao => opcao.id === prev) ? prev : especies[0].id;
+      if (!prev) return "";
+      return especies.some(opcao => opcao.id === prev) ? prev : "";
     });
   }, [especies]);
 
   useEffect(() => {
     setTipoProdutoId(prev => {
       if (!tiposProduto.length) return "";
-      return tiposProduto.some(opcao => opcao.id === prev) ? prev : tiposProduto[0].id;
+      if (!prev) return "";
+      return tiposProduto.some(opcao => opcao.id === prev) ? prev : "";
     });
   }, [tiposProduto]);
 
   useEffect(() => {
     setFaixaEtariaId(prev => {
       if (!faixasEtarias.length) return "";
-      return faixasEtarias.some(opcao => opcao.id === prev) ? prev : faixasEtarias[0].id;
+      if (!prev) return "";
+      return faixasEtarias.some(opcao => opcao.id === prev) ? prev : "";
     });
   }, [faixasEtarias]);
 
