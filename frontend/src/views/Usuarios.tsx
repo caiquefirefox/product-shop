@@ -1,9 +1,18 @@
-import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  ChangeEvent,
+  FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import api from "../lib/api";
 import { useToast } from "../ui/toast";
 import { formatCpf, isValidCpf, sanitizeCpf } from "../lib/cpf";
 import type { UsuarioPerfil, UsuarioLookup } from "../types/user";
 import { useUser } from "../auth/useUser";
+import { Check, ChevronDown, Plus, RefreshCcw } from "lucide-react";
 
 const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
   dateStyle: "short",
@@ -21,6 +30,139 @@ const filterInputClasses =
   "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200";
 const clearFiltersButtonClasses =
   "inline-flex items-center gap-2 rounded-full border border-indigo-200 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-indigo-600 transition hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2";
+
+const perfilDropdownButtonBaseClasses =
+  "inline-flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-indigo-200 hover:text-indigo-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2";
+const perfilDropdownButtonActiveClasses = "border-indigo-300 bg-indigo-50 text-indigo-600";
+const perfilDropdownListClasses =
+  "absolute left-0 top-full z-10 mt-2 w-full min-w-[200px] origin-top-left rounded-xl border border-slate-200 bg-white p-2 shadow-xl";
+const perfilDropdownOptionClasses =
+  "flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-600";
+
+const primaryActionButtonClasses =
+  "inline-flex items-center justify-center gap-2 rounded-full bg-[#FF6900] px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#FF6900]/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6900]/40 disabled:cursor-not-allowed disabled:opacity-60";
+
+type PerfilOption = {
+  value: string;
+  label: string;
+};
+
+const perfilFilterOptions: PerfilOption[] = [
+  { value: "", label: "Todos os perfis" },
+  { value: "Admin", label: "Administrador" },
+  { value: "Colaborador", label: "Colaborador" },
+];
+
+type PerfilFilterDropdownProps = {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+};
+
+function PerfilFilterDropdown({ id, label, value, onChange }: PerfilFilterDropdownProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  const selectedOption = useMemo(
+    () => perfilFilterOptions.find(option => option.value === value) ?? perfilFilterOptions[0],
+    [value],
+  );
+  const isPlaceholder = value === "";
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(target) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(target)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen]);
+
+  const handleToggle = () => {
+    setIsOpen(prev => !prev);
+  };
+
+  const handleSelect = (nextValue: string) => {
+    onChange(nextValue);
+    setIsOpen(false);
+  };
+
+  return (
+    <div className="relative flex flex-col gap-2 text-left">
+      <label htmlFor={id} className={filterLabelClasses}>
+        {label}
+      </label>
+      <button
+        type="button"
+        id={id}
+        ref={buttonRef}
+        onClick={handleToggle}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        className={`${perfilDropdownButtonBaseClasses} ${
+          isPlaceholder ? "text-slate-500" : perfilDropdownButtonActiveClasses
+        }`}
+      >
+        <span className="truncate">{selectedOption.label}</span>
+        <ChevronDown className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+      </button>
+      {isOpen && (
+        <div
+          ref={menuRef}
+          className={perfilDropdownListClasses}
+          role="listbox"
+          aria-labelledby={id}
+        >
+          <div className="max-h-60 overflow-y-auto">
+            {perfilFilterOptions.map(option => {
+              const isSelected = option.value === value;
+              return (
+                <button
+                  key={option.value || "placeholder"}
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  onClick={() => handleSelect(option.value)}
+                  className={`${perfilDropdownOptionClasses} ${
+                    isSelected ? "bg-indigo-50 text-indigo-600" : ""
+                  }`}
+                >
+                  <span className="truncate">{option.label}</span>
+                  {isSelected && <Check className="h-4 w-4 flex-shrink-0" aria-hidden="true" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Usuarios() {
   const toast = useToast();
@@ -357,14 +499,10 @@ export default function Usuarios() {
     <div className="space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Usuários</h1>
-          <p className="text-sm text-gray-600">Gerencie o acesso dos colaboradores e administradores da plataforma.</p>
+          <h1 className="text-3xl font-bold">Usuários</h1>
         </div>
-        <button
-          type="button"
-          onClick={handleOpenCreatePanel}
-          className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2"
-        >
+        <button type="button" onClick={handleOpenCreatePanel} className={primaryActionButtonClasses}>
+          <Plus className="h-4 w-4" aria-hidden="true" />
           Adicionar usuário
         </button>
       </div>
@@ -508,21 +646,23 @@ export default function Usuarios() {
             <button
               type="submit"
               disabled={creating || !selectedSuggestion || newCpfHasError}
-              className="inline-flex items-center rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-gray-300"
+              className={primaryActionButtonClasses}
             >
-              {creating ? "Salvando..." : "Adicionar usuário"}
+              {creating ? (
+                "Salvando..."
+              ) : (
+                <>
+                  Adicionar usuário
+                </>
+              )}
             </button>
           </div>
         </form>
         </section>
       )}
 
-      <section className="space-y-5 rounded-2xl border border-indigo-100 bg-white p-5 shadow-sm">
+      <section className="rounded-2xl border border-indigo-100 bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-left">
-            <h2 className="text-base font-semibold text-gray-900">Filtrar usuários cadastrados</h2>
-            <p className="text-sm text-gray-500">Refine a listagem utilizando os filtros abaixo.</p>
-          </div>
           {hasUserFilters && (
             <button type="button" onClick={handleClearUserFilters} className={clearFiltersButtonClasses}>
               Limpar filtros
@@ -560,36 +700,23 @@ export default function Usuarios() {
             />
           </div>
 
-          <div className="flex flex-col gap-2 text-left">
-            <label htmlFor="usuarios-filtro-perfil" className={filterLabelClasses}>
-              Perfil
-            </label>
-            <select
-              id="usuarios-filtro-perfil"
-              value={filterPerfil}
-              onChange={(event) => setFilterPerfil(event.target.value)}
-              className={filterInputClasses}
-            >
-              <option value="">Todos os perfis</option>
-              <option value="Admin">Administrador</option>
-              <option value="Colaborador">Colaborador</option>
-            </select>
-          </div>
+          <PerfilFilterDropdown
+            id="usuarios-filtro-perfil"
+            label="Perfil"
+            value={filterPerfil}
+            onChange={setFilterPerfil}
+          />
         </div>
       </section>
 
       <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">Usuários cadastrados</h2>
-            <p className="text-sm text-gray-600">Gerencie os perfis atribuídos dentro da aplicação.</p>
-          </div>
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={fetchUsuarios}
               disabled={reloading || syncing}
-              className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-full border border-gray-200 px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {reloading ? "Recarregando..." : "Recarregar"}
             </button>
@@ -597,9 +724,16 @@ export default function Usuarios() {
               type="button"
               onClick={handleSyncUsuarios}
               disabled={syncing}
-              className="inline-flex items-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-gray-300"
+              className={primaryActionButtonClasses}
             >
-              {syncing ? "Sincronizando..." : "Sincronizar usuários"}
+              {syncing ? (
+                "Sincronizando..."
+              ) : (
+                <>
+                  <RefreshCcw className="h-4 w-4" aria-hidden="true" />
+                  Sincronizar usuários
+                </>
+              )}
             </button>
           </div>
         </div>
