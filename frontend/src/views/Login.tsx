@@ -1,6 +1,22 @@
 import { useMsal, useIsAuthenticated } from "@azure/msal-react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type SVGProps } from "react";
+import premierPetLogo from "../assets/images/premierpet-logo.png";
+
+const PREMIERPET_LOGO_SRC =
+  typeof import.meta.env.VITE_PREMIERPET_LOGO_URL === "string" &&
+  import.meta.env.VITE_PREMIERPET_LOGO_URL.trim().length > 0
+    ? import.meta.env.VITE_PREMIERPET_LOGO_URL
+    : premierPetLogo;
+
+const MicrosoftIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" {...props}>
+    <rect x="1" y="1" width="10" height="10" fill="#F35325" />
+    <rect x="13" y="1" width="10" height="10" fill="#81BC06" />
+    <rect x="1" y="13" width="10" height="10" fill="#05A6F0" />
+    <rect x="13" y="13" width="10" height="10" fill="#FFBA08" />
+  </svg>
+);
 
 type LocState = { returnTo?: string } | null;
 
@@ -73,27 +89,43 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen grid place-items-center bg-gradient-to-br from-gray-50 to-gray-100">
-      <div className="w-full max-w-md bg-white shadow-xl rounded-2xl p-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold">Bem-vindo</h1>
-          <p className="text-gray-600">Acesse com sua conta Microsoft</p>
-        </div>
+    <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4 py-12">
+      <div className="w-full max-w-3xl rounded-[32px] border border-gray-100 bg-white px-8 py-10 shadow-[0_24px_60px_rgba(15,23,42,0.12)] sm:px-12 sm:py-14">
+        <div className="mx-auto flex w-full max-w-md flex-col items-center text-center">
+          <img src={PREMIERPET_LOGO_SRC} alt="PremieRpet" className="h-14 w-auto" />
 
-        {err && (
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            {err}
+          <div className="mt-10 space-y-3">
+            <h1 className="text-3xl font-semibold text-slate-900">Bem-vindo ao portal de pediso internos da PremieRpet®</h1>
+            <p className="text-base text-slate-500">
+              Utilize sua conta Microsoft corporativa para acessar o sistema.
+            </p>
           </div>
-        )}
 
-        <button
-          onClick={doLogin}
-          disabled={loading}
-          className="w-full rounded-xl border px-4 py-2 text-center font-medium hover:bg-gray-50 disabled:opacity-60"
-        >
-          {loading ? "Entrando..." : "Entrar com Microsoft"}
-        </button>
+          {err && (
+            <div className="mt-6 w-full rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {err}
+            </div>
+          )}
 
+          <button
+            onClick={doLogin}
+            disabled={loading}
+            className="mt-8 flex w-full items-center justify-center gap-3 rounded-full bg-[#FF6900] px-6 py-3 text-base font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-[#e65f00] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6900]/40 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loading ? (
+              <span>Entrando...</span>
+            ) : (
+              <>
+                <MicrosoftIcon className="h-5 w-5" />
+                <span>Entrar com Microsoft</span>
+              </>
+            )}
+          </button>
+
+          <p className="mt-6 text-sm text-slate-400">
+            Ao acessar, você concorda com os <a href="https://premierpet.com.br/privacidade/"  target="_blank">termos de uso</a> e <a href="https://premierpet.com.br/privacidade/" target="_blank">política de privacidade</a> do portal PremieRpet.
+          </p>
+        </div>
       </div>
     </div>
   );
