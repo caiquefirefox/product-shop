@@ -214,7 +214,8 @@ public sealed class ShopDbContext : DbContext
 
             e.HasData(
                 new ProdutoEspecieOpcao { Id = Guid.Parse("729ab7c1-d382-41d7-9324-8f9c4da49a98"), Nome = "Cães" },
-                new ProdutoEspecieOpcao { Id = Guid.Parse("1582b871-a8ab-404b-9745-b5d2d7b028d1"), Nome = "Gato" }
+                new ProdutoEspecieOpcao { Id = Guid.Parse("1582b871-a8ab-404b-9745-b5d2d7b028d1"), Nome = "Gato" },
+                new ProdutoEspecieOpcao { Id = Guid.Parse("4e45286c-5cf4-4b86-9a3e-6a620fc7b3f9"), Nome = "Ambos" }
             );
         });
 
