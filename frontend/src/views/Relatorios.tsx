@@ -222,8 +222,11 @@ export default function Relatorios() {
         {grupos.map((g) => {
           const cpfFormatado = g.usuarioCpf ? formatCpf(g.usuarioCpf) : "Não informado";
           return (
-            <div key={g.usuarioId} className="overflow-hidden rounded-2xl bg-[#E9E9E9] shadow-sm">
-              <div className="border-b border-[#d7d7d7] bg-[#E9E9E9] px-5 py-4">
+            <div
+              key={g.usuarioId}
+              className="overflow-hidden rounded-2xl border border-[#E9E9E9] bg-[#E9E9E9] shadow-sm"
+            >
+              <div className="border-b border-[#E9E9E9] bg-[#E9E9E9] px-5 py-4">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <div className="space-y-1">
                     <div className="text-base font-semibold text-gray-900">
@@ -231,13 +234,13 @@ export default function Relatorios() {
                     </div>
                     <div className="text-sm text-gray-500">ID: {g.usuarioId}</div>
                   </div>
-                  <div className="flex flex-col items-end gap-1 text-right">
-                    <div className="grid grid-cols-3 gap-6 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                  <div className="flex flex-col items-end gap-1">
+                    <div className="grid grid-cols-3 gap-8 justify-items-start text-left text-[11px] font-semibold uppercase tracking-wide text-gray-500">
                       <span>PEDIDOS</span>
                       <span>TOTAL</span>
                       <span>PESO</span>
                     </div>
-                    <div className="grid grid-cols-3 gap-6 text-sm font-semibold text-gray-900">
+                    <div className="grid grid-cols-3 gap-8 justify-items-start text-left text-sm font-semibold text-gray-900">
                       <span className="tabular-nums">{g.totalPedidos}</span>
                       <span className="tabular-nums">{formatCurrencyBRL(g.totalValor)}</span>
                       <span className="tabular-nums">{formatPeso(g.totalPeso, "kg", { unit: "kg" })}</span>
