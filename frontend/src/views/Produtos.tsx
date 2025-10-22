@@ -193,14 +193,6 @@ const minimumBadgeClasses = classNames(
   "inline-flex items-center justify-center rounded-full bg-[#EDECE5] px-3 py-1 text-sm font-semibold text-[#585858]",
 );
 
-const labelRowClasses = classNames(
-  "grid grid-cols-5 items-center gap-4 text-xs font-semibold uppercase tracking-wide text-[#878787]",
-);
-
-const valueRowClasses = classNames(
-  "grid grid-cols-5 items-center gap-4 text-sm text-[#585858]",
-);
-
 const emptyStateClasses = classNames(
   "rounded-2xl border border-dashed border-gray-200 bg-white/60 p-8 text-center",
   "text-sm text-gray-500",
@@ -1080,27 +1072,30 @@ export default function Produtos() {
                           <div className="h-px w-full rounded-full bg-[#EDECE5]" />
                         </div>
 
-                        <div className="flex flex-col gap-2">
-                          <div className={labelRowClasses}>
-                            <span>Espécie</span>
-                            <span>Idade</span>
-                            <span className="truncate">Portes atendidos</span>
-                            <span>Mínimo de compra</span>
-                            <span className="text-right">Preço</span>
+                        <div className="grid grid-cols-[repeat(5,minmax(0,1fr))] items-start gap-x-4 gap-y-2">
+                          <span className="text-xs font-semibold uppercase tracking-wide text-[#878787]">
+                            Espécie
+                          </span>
+                          <span className="text-xs font-semibold uppercase tracking-wide text-[#878787]">
+                            Idade
+                          </span>
+                          <span className="truncate text-xs font-semibold uppercase tracking-wide text-[#878787]">
+                            Portes atendidos
+                          </span>
+                          <div className="row-span-2 col-start-4 row-start-1 flex items-center justify-center">
+                            <span className={minimumBadgeClasses}>Mínimo {minimo} un.</span>
                           </div>
-                          <div className={valueRowClasses}>
-                            <span className="font-medium text-[#585858]">{p.especieNome}</span>
-                            <span className="font-medium text-[#585858]">{p.faixaEtariaNome}</span>
-                            <span className="font-medium text-[#585858]">
-                              {formattedPortes || "Sem porte definido"}
-                            </span>
-                            <div className="flex items-center">
-                              <span className={minimumBadgeClasses}>Mínimo {minimo} un.</span>
-                            </div>
-                            <span className="text-right text-xl font-bold text-slate-900">
-                              {currencyFormatter.format(p.preco)}
-                            </span>
-                          </div>
+                          <span className="text-right text-xs font-semibold uppercase tracking-wide text-[#878787]">
+                            Preço
+                          </span>
+                          <span className="font-medium text-sm text-[#585858]">{p.especieNome}</span>
+                          <span className="font-medium text-sm text-[#585858]">{p.faixaEtariaNome}</span>
+                          <span className="font-medium text-sm text-[#585858]">
+                            {formattedPortes || "Sem porte definido"}
+                          </span>
+                          <span className="col-start-5 row-start-2 text-right text-xl font-bold text-slate-900">
+                            {currencyFormatter.format(p.preco)}
+                          </span>
                         </div>
                       </div>
                     </div>
