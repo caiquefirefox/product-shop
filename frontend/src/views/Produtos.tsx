@@ -175,8 +175,8 @@ const productCardClasses = classNames(
 );
 
 const productTypeBadgeClasses = classNames(
-  "inline-flex items-center rounded-full bg-indigo-600/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide",
-  "text-indigo-700",
+  "inline-flex h-[13px] items-center rounded-full bg-indigo-600/10 px-2.5 py-0 text-[10px] font-bold uppercase tracking-wide",
+  "leading-[13px] text-indigo-700",
 );
 
 const editButtonClasses = classNames(
@@ -1042,7 +1042,7 @@ export default function Produtos() {
                         </div>
                       )}
                       <div className="flex min-w-0 flex-1 flex-col gap-4">
-                        <div className="flex flex-col gap-2">
+                        <div className="flex flex-col gap-1">
                           <div className="flex flex-wrap items-center gap-2 text-base font-semibold text-[#878787]">
                             <span>{p.codigo}</span>
                             <span className={productTypeBadgeClasses}>{p.tipoProdutoNome}</span>
