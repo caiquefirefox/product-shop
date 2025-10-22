@@ -303,18 +303,18 @@ export function DateUserFilters({
       </div>
 
       {(onApply || children) && (
-        <div className="ml-auto flex items-center gap-3 self-end">
+        <div className="ml-auto flex flex-wrap items-center gap-3 self-end whitespace-nowrap sm:flex-nowrap">
           {onApply && (
             <button
               type="button"
-              className="rounded-full bg-[#FF6900] px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#FF6900]/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6900]/40 disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex-shrink-0 rounded-full bg-[#FF6900] px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#FF6900]/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6900]/40 disabled:cursor-not-allowed disabled:opacity-60"
               onClick={onApply}
               disabled={disabled}
             >
               {applyLabel}
             </button>
           )}
-          {children}
+          {children ? <div className="flex-shrink-0">{children}</div> : null}
         </div>
       )}
     </div>
