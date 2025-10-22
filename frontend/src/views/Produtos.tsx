@@ -175,8 +175,8 @@ const productCardClasses = classNames(
 );
 
 const productTypeBadgeClasses = classNames(
-  "inline-flex h-[13px] items-center rounded-full bg-indigo-600/10 px-2.5 py-0 text-[10px] font-bold uppercase tracking-wide",
-  "leading-[13px] text-indigo-700",
+  "inline-flex h-[23px] items-center rounded-full bg-indigo-600/10 px-2.5 py-0 text-[10px] font-bold uppercase tracking-wide",
+  "leading-[23px] text-indigo-700",
 );
 
 const editButtonClasses = classNames(
@@ -1050,7 +1050,7 @@ export default function Produtos() {
                           <div className="flex flex-wrap items-center justify-between gap-3">
                             <p className="text-xl font-bold text-slate-900">
                               {p.descricao}
-                              <span className="text-xl font-bold text-slate-500">{` | ${pesoComUnidade}`}</span>
+                              <span className="text-xl font-bold">{` | ${pesoComUnidade}`}</span>
                             </p>
                             <div className="flex items-center gap-2">
                               <button onClick={() => iniciarEdicao(p)} className={editButtonClasses}>
