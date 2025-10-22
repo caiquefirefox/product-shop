@@ -389,6 +389,13 @@ const productCardClasses = classNames(
   "transition hover:shadow-md",
 );
 
+const productImageWrapperBaseClasses = classNames(
+  "flex aspect-square w-full max-w-[132px] flex-none items-center justify-center overflow-hidden rounded-xl bg-white",
+  "md:w-[132px] md:self-stretch",
+);
+
+const productImagePlaceholderClasses = "border border-slate-200";
+
 const productTypeBadgeClasses = classNames(
   "inline-flex h-[23px] items-center rounded-full bg-indigo-600/10 px-2.5 py-0 text-[10px] font-bold uppercase tracking-wide",
   "leading-[23px] text-indigo-700",
@@ -1369,11 +1376,14 @@ export default function Produtos() {
                   .filter(Boolean);
                 const formattedPortes = portesList.join(", ");
                 const formattedSabores = saboresList.join(", ");
+                const imageWrapperClasses = p.imagemUrl
+                  ? productImageWrapperBaseClasses
+                  : classNames(productImageWrapperBaseClasses, productImagePlaceholderClasses);
 
                 return (
                   <div key={p.codigo} className={productCardClasses}>
                     <div className="flex flex-col gap-5 md:grid md:grid-cols-[auto,1fr] md:items-start md:gap-6">
-                      <div className="flex aspect-square w-full max-w-[132px] flex-none items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white md:w-[132px] md:self-stretch">
+                      <div className={imageWrapperClasses}>
                         {p.imagemUrl ? (
                           <img
                             src={p.imagemUrl}
