@@ -222,13 +222,12 @@ export default function Relatorios() {
         {grupos.map((g) => {
           const cpfFormatado = g.usuarioCpf ? formatCpf(g.usuarioCpf) : "Não informado";
           return (
-            <div key={g.usuarioId} className="overflow-hidden rounded-xl bg-white shadow">
-              <div className="border-b border-gray-100 bg-gray-50 px-5 py-4">
+            <div key={g.usuarioId} className="overflow-hidden rounded-2xl bg-[#E9E9E9] shadow-sm">
+              <div className="border-b border-[#d7d7d7] bg-[#E9E9E9] px-5 py-4">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <div className="space-y-1">
                     <div className="text-base font-semibold text-gray-900">
-                      {g.usuarioNome}
-                      <span className="font-semibold">{` | CPF: ${cpfFormatado}`}</span>
+                      {`${g.usuarioNome} | CPF: ${cpfFormatado}`}
                     </div>
                     <div className="text-sm text-gray-500">ID: {g.usuarioId}</div>
                   </div>
@@ -248,8 +247,8 @@ export default function Relatorios() {
               </div>
 
               {/* Tabela de pedidos do usuário */}
-              <div className="overflow-auto">
-                <table className="min-w-[900px] w-full">
+              <div className="overflow-auto bg-white">
+                <table className="min-w-[900px] w-full bg-white">
                   <tbody className="divide-y divide-gray-100">
                     {g.lista.map((p) => {
                       const itensCount = p.itens.length;
@@ -290,10 +289,9 @@ export default function Relatorios() {
                             </td>
                           </tr>
                           {expand[p.id] && (
-                            <tr id={`itens-${p.id}`} className="bg-gray-50">
+                            <tr id={`itens-${p.id}`} className="bg-white">
                               <td colSpan={7} className="px-0">
-                                <div className="px-5 py-4">
-                                  <div className="mb-3 text-sm font-semibold text-gray-900">Itens do pedido</div>
+                                <div className="bg-white px-5 py-4">
                                   <table className="min-w-[860px] w-full text-sm">
                                     <thead>
                                       <tr className="text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
@@ -309,21 +307,21 @@ export default function Relatorios() {
                                     <tbody>
                                       {p.itens.map((it, idx) => (
                                         <tr key={`${p.id}-${it.produtoCodigo}-${idx}`} className="border-t border-gray-200">
-                                          <td className="whitespace-nowrap px-3 py-2 text-sm font-medium text-gray-700">
+                                          <td className="whitespace-nowrap px-3 py-2 text-sm text-gray-700">
                                             {it.produtoCodigo}
                                           </td>
                                           <td className="px-3 py-2 text-sm text-gray-700">{it.descricao}</td>
-                                          <td className="px-3 py-2 text-sm font-semibold text-gray-900">{it.quantidade}</td>
-                                          <td className="px-3 py-2 text-sm font-semibold text-gray-900">
+                                          <td className="px-3 py-2 text-sm text-gray-700">{it.quantidade}</td>
+                                          <td className="px-3 py-2 text-sm text-gray-700">
                                             {formatPeso(it.pesoKg, "kg", { unit: "kg", unitSuffix: false })}
                                           </td>
-                                          <td className="px-3 py-2 text-sm font-semibold text-gray-900">
+                                          <td className="px-3 py-2 text-sm text-gray-700">
                                             {formatPeso(it.pesoTotalKg, "kg", { unit: "kg", unitSuffix: false })}
                                           </td>
-                                          <td className="px-3 py-2 text-sm font-semibold text-gray-900">
+                                          <td className="px-3 py-2 text-sm text-gray-700">
                                             {formatCurrencyBRL(it.preco)}
                                           </td>
-                                          <td className="px-3 py-2 text-sm font-semibold text-gray-900">
+                                          <td className="px-3 py-2 text-sm text-gray-700">
                                             {formatCurrencyBRL(it.subtotal)}
                                           </td>
                                         </tr>

@@ -303,7 +303,7 @@ export function DateUserFilters({
       </div>
 
       {(onApply || children) && (
-        <div className="ml-auto flex flex-wrap items-center gap-3 self-end whitespace-nowrap sm:flex-nowrap">
+        <div className="ml-auto flex items-center gap-3 self-end whitespace-nowrap">
           {onApply && (
             <button
               type="button"
