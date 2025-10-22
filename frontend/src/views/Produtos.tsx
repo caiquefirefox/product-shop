@@ -450,6 +450,7 @@ export default function Produtos() {
   const [imagemPreview, setImagemPreview] = useState<string | null>(null);
   const [imagemSelecionada, setImagemSelecionada] = useState<File | null>(null);
   const [removerImagem, setRemoverImagem] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const produtosRequestIdRef = useRef(0);
   const formContainerRef = useRef<HTMLDivElement | null>(null);
   const shouldScrollToFormRef = useRef(false);
@@ -671,6 +672,7 @@ export default function Produtos() {
     setFaixaEtariaId("");
     setPreco("0");
     setQuantidadeMinimaDeCompra("1");
+    setFormError(null);
     resetImagemCampos();
   };
 
@@ -717,6 +719,7 @@ export default function Produtos() {
   };
 
   const iniciarEdicao = (produto: Produto) => {
+    setFormError(null);
     setProdutoEmEdicao(produto);
     setCodigo(produto.codigo);
     setDescricao(produto.descricao);
@@ -926,13 +929,41 @@ export default function Produtos() {
   };
 
   const salvar = async () => {
-    const especieSelecionada = especieId || especies[0]?.id || "";
-    const tipoSelecionado = tipoProdutoId || tiposProduto[0]?.id || "";
-    const faixaSelecionada = faixaEtariaId || faixasEtarias[0]?.id || "";
-    if (!especieSelecionada || !tipoSelecionado || !faixaSelecionada) return;
+    const especieSelecionada = (especieId ?? "").trim();
+    const tipoSelecionado = (tipoProdutoId ?? "").trim();
+    const faixaSelecionada = (faixaEtariaId ?? "").trim();
+    const codigoNormalizado = codigo.trim();
 
-    const codigoParaSalvar = editando ? produtoEmEdicao!.codigo : codigo.trim();
-    if (!codigoParaSalvar) return;
+    const camposObrigatoriosFaltando: string[] = [];
+
+    if (!editando && !codigoNormalizado) {
+      camposObrigatoriosFaltando.push("Código");
+    }
+    if (!especieSelecionada) {
+      camposObrigatoriosFaltando.push("Espécie");
+    }
+    if (!tipoSelecionado) {
+      camposObrigatoriosFaltando.push("Tipo do Produto");
+    }
+    if (!faixaSelecionada) {
+      camposObrigatoriosFaltando.push("Faixa etária");
+    }
+
+    if (camposObrigatoriosFaltando.length > 0) {
+      setFormError(
+        `Preencha os campos obrigatórios: ${camposObrigatoriosFaltando.join(", ")}.`,
+      );
+      return;
+    }
+
+    const codigoParaSalvar = editando ? produtoEmEdicao!.codigo : codigoNormalizado;
+
+    if (!codigoParaSalvar) {
+      setFormError("Preencha os campos obrigatórios marcados com *.");
+      return;
+    }
+
+    setFormError(null);
 
     const precoNormalizado = parseDecimalInput(preco);
     const pesoNormalizado = parseDecimalInput(peso);
@@ -1011,7 +1042,16 @@ export default function Produtos() {
                 ? `Atualize os dados do produto ${produtoEmEdicao?.codigo} e salve as alterações.`
                 : "Preencha os campos abaixo para cadastrar um novo item em seu catálogo."}
             </p>
+            <p className="text-xs text-gray-500">
+              <span className="text-red-500">*</span> Campos obrigatórios.
+            </p>
           </div>
+
+          {formError && (
+            <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              {formError}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-[368px_minmax(0,1fr)] xl:grid-cols-[368px_minmax(0,1fr)]">
             <div className="flex flex-col gap-3">
@@ -1051,7 +1091,10 @@ export default function Produtos() {
 
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
               <div className="flex flex-col gap-2">
-                <label htmlFor="codigo" className="text-sm font-medium text-gray-700">Código</label>
+                <label htmlFor="codigo" className="text-sm font-medium text-gray-700">
+                  Código
+                  <span className="ml-1 text-red-500">*</span>
+                </label>
                 <input
                   id="codigo"
                   placeholder="Ex: R128"
@@ -1126,7 +1169,10 @@ export default function Produtos() {
               </div>
 
               <div className="flex flex-col gap-2">
-                <label htmlFor="especie" className="text-sm font-medium text-gray-700">Espécie</label>
+                <label htmlFor="especie" className="text-sm font-medium text-gray-700">
+                  Espécie
+                  <span className="ml-1 text-red-500">*</span>
+                </label>
                 <FormDropdown
                   id="especie"
                   value={especieId}
@@ -1146,7 +1192,10 @@ export default function Produtos() {
               </div>
 
               <div className="flex flex-col gap-2 md:col-span-2 xl:col-span-2">
-                <label htmlFor="tipoProduto" className="text-sm font-medium text-gray-700">Tipo do Produto</label>
+                <label htmlFor="tipoProduto" className="text-sm font-medium text-gray-700">
+                  Tipo do Produto
+                  <span className="ml-1 text-red-500">*</span>
+                </label>
                 <FormDropdown
                   id="tipoProduto"
                   value={tipoProdutoId}
@@ -1166,7 +1215,10 @@ export default function Produtos() {
               </div>
 
               <div className="flex flex-col gap-2">
-                <label htmlFor="faixaEtaria" className="text-sm font-medium text-gray-700">Faixa etária</label>
+                <label htmlFor="faixaEtaria" className="text-sm font-medium text-gray-700">
+                  Faixa etária
+                  <span className="ml-1 text-red-500">*</span>
+                </label>
                 <FormDropdown
                   id="faixaEtaria"
                   value={faixaEtariaId}
