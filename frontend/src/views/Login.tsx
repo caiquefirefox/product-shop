@@ -95,9 +95,9 @@ export default function Login() {
           <img src={PREMIERPET_LOGO_SRC} alt="PremieRpet" className="h-14 w-auto" />
 
           <div className="mt-10 space-y-3">
-            <h1 className="text-3xl font-semibold text-slate-900">Bem-vindo ao portal PremieRpet</h1>
+            <h1 className="text-3xl font-semibold text-slate-900">Bem-vindo ao portal de pediso internos da PremieRpet®</h1>
             <p className="text-base text-slate-500">
-              Utilize sua conta Microsoft corporativa para acessar seu painel de trabalho.
+              Utilize sua conta Microsoft corporativa para acessar o sistema.
             </p>
           </div>
 
@@ -123,7 +123,7 @@ export default function Login() {
           </button>
 
           <p className="mt-6 text-sm text-slate-400">
-            Ao acessar, você concorda com os termos de uso e política de privacidade do portal PremieRpet.
+            Ao acessar, você concorda com os <a href="https://premierpet.com.br/privacidade/"  target="_blank">termos de uso</a> e <a href="https://premierpet.com.br/privacidade/" target="_blank">política de privacidade</a> do portal PremieRpet.
           </p>
         </div>
       </div>
