@@ -1373,15 +1373,19 @@ export default function Produtos() {
                 return (
                   <div key={p.codigo} className={productCardClasses}>
                     <div className="flex flex-col gap-5 md:grid md:grid-cols-[auto,1fr] md:items-start md:gap-6">
-                      {p.imagemUrl && (
-                        <div className="flex aspect-square w-full max-w-[132px] flex-none items-center justify-center overflow-hidden md:w-[132px] md:self-stretch">
+                      <div className="flex aspect-square w-full max-w-[132px] flex-none items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white md:w-[132px] md:self-stretch">
+                        {p.imagemUrl ? (
                           <img
                             src={p.imagemUrl}
                             alt={`Imagem do produto ${p.descricao}`}
                             className="h-full w-full object-contain"
                           />
-                        </div>
-                      )}
+                        ) : (
+                          <span className="px-3 text-center text-xs font-medium uppercase tracking-wide text-slate-400">
+                            Sem imagem
+                          </span>
+                        )}
+                      </div>
                       <div className="flex min-w-0 flex-1 flex-col gap-4">
                         <div className="flex flex-col gap-1">
                           <div className="flex flex-wrap items-center gap-2 text-base font-semibold text-[#878787]">
