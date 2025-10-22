@@ -1082,7 +1082,7 @@ export default function Produtos() {
                           <span className="truncate text-xs font-semibold uppercase tracking-wide text-[#878787]">
                             Portes atendidos
                           </span>
-                          <div className="row-span-2 col-start-4 row-start-1 flex items-center justify-center">
+                          <div className="row-span-2 col-start-4 row-start-1 flex items-center justify-center self-stretch">
                             <span className={minimumBadgeClasses}>Mínimo {minimo} un.</span>
                           </div>
                           <span className="text-right text-xs font-semibold uppercase tracking-wide text-[#878787]">
