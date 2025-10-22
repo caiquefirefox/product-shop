@@ -1343,8 +1343,8 @@ export default function Produtos() {
         <div className="space-y-5 rounded-2xl border border-indigo-100 bg-white/80 p-5 shadow-sm">
           <ProductFilters
             idPrefix="produtos-filtro"
-            title="Filtrar produtos cadastrados"
-            description="Refine a listagem utilizando os filtros abaixo."
+            title=""
+            description=""
             values={filtroValores}
             options={filtroOpcoes}
             hasFilters={hasFiltros}
