@@ -235,15 +235,13 @@ export default function Relatorios() {
                     <div className="text-sm text-gray-500">ID: {g.usuarioId}</div>
                   </div>
                   <div className="flex flex-col items-end gap-1">
-                    <div className="grid grid-cols-3 gap-8 justify-items-start text-left text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-                      <span>PEDIDOS</span>
-                      <span>TOTAL</span>
-                      <span>PESO</span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-8 justify-items-start text-left text-sm font-semibold text-gray-900">
-                      <span className="tabular-nums">{g.totalPedidos}</span>
-                      <span className="tabular-nums">{formatCurrencyBRL(g.totalValor)}</span>
-                      <span className="tabular-nums">{formatPeso(g.totalPeso, "kg", { unit: "kg" })}</span>
+                    <div className="grid grid-cols-3 gap-x-10 gap-y-1 text-left">
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">PEDIDOS</span>
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">TOTAL</span>
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">PESO</span>
+                      <span className="tabular-nums text-sm font-semibold text-gray-900">{g.totalPedidos}</span>
+                      <span className="tabular-nums text-sm font-semibold text-gray-900">{formatCurrencyBRL(g.totalValor)}</span>
+                      <span className="tabular-nums text-sm font-semibold text-gray-900">{formatPeso(g.totalPeso, "kg", { unit: "kg" })}</span>
                     </div>
                   </div>
                 </div>
