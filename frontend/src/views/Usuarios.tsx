@@ -500,9 +500,9 @@ export default function Usuarios() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Usuários</h1>
-          <p className="text-sm text-gray-600">Gerencie o acesso dos colaboradores e administradores da plataforma.</p>
         </div>
         <button type="button" onClick={handleOpenCreatePanel} className={primaryActionButtonClasses}>
+          <Plus className="h-4 w-4" aria-hidden="true" />
           Adicionar usuário
         </button>
       </div>
@@ -652,7 +652,6 @@ export default function Usuarios() {
                 "Salvando..."
               ) : (
                 <>
-                  <Plus className="h-4 w-4" aria-hidden="true" />
                   Adicionar usuário
                 </>
               )}
@@ -662,12 +661,8 @@ export default function Usuarios() {
         </section>
       )}
 
-      <section className="space-y-5 rounded-2xl border border-indigo-100 bg-white p-5 shadow-sm">
+      <section className="rounded-2xl border border-indigo-100 bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-left">
-            <h2 className="text-base font-semibold text-gray-900">Filtrar usuários cadastrados</h2>
-            <p className="text-sm text-gray-500">Refine a listagem utilizando os filtros abaixo.</p>
-          </div>
           {hasUserFilters && (
             <button type="button" onClick={handleClearUserFilters} className={clearFiltersButtonClasses}>
               Limpar filtros
@@ -716,16 +711,12 @@ export default function Usuarios() {
 
       <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">Usuários cadastrados</h2>
-            <p className="text-sm text-gray-600">Gerencie os perfis atribuídos dentro da aplicação.</p>
-          </div>
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={fetchUsuarios}
               disabled={reloading || syncing}
-              className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-full border border-gray-200 px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {reloading ? "Recarregando..." : "Recarregar"}
             </button>
