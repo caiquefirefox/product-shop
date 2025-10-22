@@ -389,6 +389,13 @@ const productCardClasses = classNames(
   "transition hover:shadow-md",
 );
 
+const productImageWrapperBaseClasses = classNames(
+  "flex aspect-square w-full max-w-[132px] flex-none items-center justify-center overflow-hidden rounded-xl bg-white",
+  "md:w-[132px] md:self-stretch",
+);
+
+const productImagePlaceholderClasses = "border border-slate-200";
+
 const productTypeBadgeClasses = classNames(
   "inline-flex h-[23px] items-center rounded-full bg-indigo-600/10 px-2.5 py-0 text-[10px] font-bold uppercase tracking-wide",
   "leading-[23px] text-indigo-700",
@@ -1369,31 +1376,38 @@ export default function Produtos() {
                   .filter(Boolean);
                 const formattedPortes = portesList.join(", ");
                 const formattedSabores = saboresList.join(", ");
+                const imageWrapperClasses = p.imagemUrl
+                  ? productImageWrapperBaseClasses
+                  : classNames(productImageWrapperBaseClasses, productImagePlaceholderClasses);
 
                 return (
                   <div key={p.codigo} className={productCardClasses}>
                     <div className="flex flex-col gap-5 md:grid md:grid-cols-[auto,1fr] md:items-start md:gap-6">
-                      {p.imagemUrl && (
-                        <div className="flex aspect-square w-full max-w-[132px] flex-none items-center justify-center overflow-hidden md:w-[132px] md:self-stretch">
+                      <div className={imageWrapperClasses}>
+                        {p.imagemUrl ? (
                           <img
                             src={p.imagemUrl}
                             alt={`Imagem do produto ${p.descricao}`}
                             className="h-full w-full object-contain"
                           />
-                        </div>
-                      )}
+                        ) : (
+                          <span className="px-3 text-center text-xs font-medium uppercase tracking-wide text-slate-400">
+                            Sem imagem
+                          </span>
+                        )}
+                      </div>
                       <div className="flex min-w-0 flex-1 flex-col gap-4">
                         <div className="flex flex-col gap-1">
                           <div className="flex flex-wrap items-center gap-2 text-base font-semibold text-[#878787]">
                             <span>{p.codigo}</span>
                             <span className={productTypeBadgeClasses}>{p.tipoProdutoNome}</span>
                           </div>
-                          <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                             <p className="text-xl font-bold text-slate-900">
                               {p.descricao}
                               <span className="text-xl font-bold">{` | ${pesoComUnidade}`}</span>
                             </p>
-                            <div className="flex items-center gap-2">
+                            <div className="hidden items-center gap-2 md:flex">
                               <button onClick={() => iniciarEdicao(p)} className={editButtonClasses}>
                                 <FilePenLine className="h-4 w-4" aria-hidden="true" />
                                 Editar
@@ -1413,30 +1427,44 @@ export default function Produtos() {
                           <div className="h-px w-full rounded-full bg-[#EDECE5]" />
                         </div>
 
-                        <div className="grid grid-cols-[repeat(5,minmax(0,1fr))] items-start gap-x-4 gap-y-2">
-                          <span className="text-xs font-semibold uppercase tracking-wide text-[#878787]">
-                            Espécie
-                          </span>
-                          <span className="text-xs font-semibold uppercase tracking-wide text-[#878787]">
-                            Idade
-                          </span>
-                          <span className="truncate text-xs font-semibold uppercase tracking-wide text-[#878787]">
-                            Portes atendidos
-                          </span>
-                          <div className="row-span-2 col-start-4 row-start-1 flex items-center justify-center self-stretch">
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-[repeat(5,minmax(0,1fr))] md:items-start md:gap-x-4 md:gap-y-2">
+                          <div className="flex flex-col gap-1 md:gap-2">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-[#878787]">Espécie</span>
+                            <span className="text-sm font-medium text-[#585858]">{p.especieNome}</span>
+                          </div>
+                          <div className="flex flex-col gap-1 md:gap-2">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-[#878787]">Idade</span>
+                            <span className="text-sm font-medium text-[#585858]">{p.faixaEtariaNome}</span>
+                          </div>
+                          <div className="flex flex-col gap-1 md:gap-2">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-[#878787]">Portes atendidos</span>
+                            <span className="text-sm font-medium text-[#585858]">
+                              {formattedPortes || "Sem porte definido"}
+                            </span>
+                          </div>
+                          <div className="flex flex-col gap-1 md:h-full md:items-center md:justify-center md:gap-2">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-[#878787]">Mínimo de unidades</span>
                             <span className={minimumBadgeClasses}>Mínimo {minimo} un.</span>
                           </div>
-                          <span className="text-right text-xs font-semibold uppercase tracking-wide text-[#878787]">
-                            Preço
-                          </span>
-                          <span className="font-medium text-sm text-[#585858]">{p.especieNome}</span>
-                          <span className="font-medium text-sm text-[#585858]">{p.faixaEtariaNome}</span>
-                          <span className="font-medium text-sm text-[#585858]">
-                            {formattedPortes || "Sem porte definido"}
-                          </span>
-                          <span className="col-start-5 row-start-2 text-right text-xl font-bold text-slate-900">
-                            {currencyFormatter.format(p.preco)}
-                          </span>
+                          <div className="flex flex-col gap-1 md:items-end md:gap-2">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-[#878787] md:text-right">
+                              Preço
+                            </span>
+                            <span className="text-xl font-bold text-slate-900 md:text-right">
+                              {currencyFormatter.format(p.preco)}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 md:hidden">
+                          <button onClick={() => iniciarEdicao(p)} className={editButtonClasses}>
+                            <FilePenLine className="h-4 w-4" aria-hidden="true" />
+                            Editar
+                          </button>
+                          <button onClick={() => remover(p.codigo)} className={deleteButtonClasses}>
+                            <Trash2 className="h-4 w-4" aria-hidden="true" />
+                            Excluir
+                          </button>
                         </div>
                       </div>
                     </div>
