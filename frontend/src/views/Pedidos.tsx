@@ -8,15 +8,7 @@ import type { Produto } from "../cart/types";
 import { minQtyFor, normalizeQuantityToMultiple, resolveMinQty, toKg } from "../cart/calc";
 import { ENV } from "../config/env";
 import { usePedidosConfig } from "../hooks/usePedidosConfig";
-const STATUS_SOLICITADO = 1;
-const STATUS_APROVADO = 2;
-const STATUS_CANCELADO = 3;
-
-const STATUS_BADGE_STYLES: Record<number, { background: string; color: string }> = {
-  [STATUS_SOLICITADO]: { background: "#D9F1C1", color: "#00851F" },
-  [STATUS_APROVADO]: { background: "#D6EEFF", color: "#04409A" },
-  [STATUS_CANCELADO]: { background: "#FFD6D6", color: "#FF0000" },
-};
+import { STATUS_APROVADO, STATUS_BADGE_STYLES, STATUS_CANCELADO, STATUS_SOLICITADO } from "../pedidos/statusStyles";
 const EDIT_WINDOW_OPENING_DAY = ENV.PEDIDOS_EDIT_WINDOW_OPENING_DAY;
 const EDIT_WINDOW_CLOSING_DAY = ENV.PEDIDOS_EDIT_WINDOW_CLOSING_DAY;
 
