@@ -504,6 +504,11 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                         {
                             Id = new Guid("1582b871-a8ab-404b-9745-b5d2d7b028d1"),
                             Nome = "Gato"
+                        },
+                        new
+                        {
+                            Id = new Guid("4e45286c-5cf4-4b86-9a3e-6a620fc7b3f9"),
+                            Nome = "Ambos"
                         });
                 });
 
