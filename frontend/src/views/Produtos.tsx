@@ -1,4 +1,5 @@
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FilePenLine, Plus, Trash2 } from "lucide-react";
 import Select, { MultiValue, StylesConfig } from "react-select";
 import api from "../lib/api";
 import ProductFilters, {
@@ -144,6 +145,12 @@ const saveButtonClasses = classNames(
   "focus:outline-none focus:ring-4 focus:ring-indigo-200 focus:ring-offset-1 focus:ring-offset-white",
 );
 
+const addProductButtonClasses = classNames(
+  "inline-flex items-center justify-center gap-2 rounded-full bg-[#FF6900] px-5 py-3 text-sm font-semibold text-white",
+  "shadow-sm transition-colors duration-200 hover:bg-[#FF6900]/90",
+  "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6900]/40",
+);
+
 const uploadButtonClasses = classNames(
   "inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white",
   "shadow-sm transition hover:bg-indigo-500",
@@ -163,28 +170,35 @@ const cancelButtonClasses = classNames(
 );
 
 const productCardClasses = classNames(
-  "flex flex-col gap-4 rounded-xl border border-gray-200 bg-white/80 p-4 shadow-sm transition",
-  "hover:border-indigo-200 hover:shadow",
+  "flex flex-col gap-5 rounded-3xl border border-[#EDECE5] bg-white px-5 py-6 shadow-sm",
+  "transition hover:shadow-md",
 );
 
-const codeBadgeClasses = classNames(
-  "inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-600",
-);
-
-const infoBadgeClasses = classNames(
-  "inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600",
-);
-
-const deleteButtonClasses = classNames(
-  "inline-flex items-center justify-center rounded-lg border border-transparent",
-  "bg-red-50 px-3 py-1.5 text-xs font-semibold",
-  "text-red-600 transition hover:bg-red-100 focus:outline-none focus:ring-4 focus:ring-red-100",
+const productTypeBadgeClasses = classNames(
+  "inline-flex items-center rounded-full bg-[#EDECE5] px-3 py-1 text-[11px] font-semibold uppercase tracking-wide",
+  "text-[#585858]",
 );
 
 const editButtonClasses = classNames(
-  "inline-flex items-center justify-center rounded-lg border border-transparent",
-  "bg-indigo-50 px-3 py-1.5 text-xs font-semibold",
-  "text-indigo-600 transition hover:bg-indigo-100 focus:outline-none focus:ring-4 focus:ring-indigo-100",
+  "inline-flex items-center gap-1.5 rounded-full border border-[#EDECE5] px-3 py-1.5 text-sm font-semibold text-[#FF6900]",
+  "bg-white transition hover:bg-[#FFF2E8] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6900]/20",
+);
+
+const deleteButtonClasses = classNames(
+  "inline-flex items-center gap-1.5 rounded-full border border-[#EDECE5] px-3 py-1.5 text-sm font-semibold text-[#DC2626]",
+  "bg-white transition hover:bg-[#FDECEC] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#DC2626]/20",
+);
+
+const minimumBadgeClasses = classNames(
+  "inline-flex items-center justify-center rounded-full bg-[#EDECE5] px-3 py-1 text-sm font-semibold text-[#585858]",
+);
+
+const labelRowClasses = classNames(
+  "grid grid-cols-5 items-center gap-4 text-xs font-semibold uppercase tracking-wide text-[#878787]",
+);
+
+const valueRowClasses = classNames(
+  "grid grid-cols-5 items-center gap-4 text-sm text-[#585858]",
 );
 
 const emptyStateClasses = classNames(
@@ -192,33 +206,7 @@ const emptyStateClasses = classNames(
   "text-sm text-gray-500",
 );
 
-const headerMetaClasses = classNames(
-  "mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500",
-);
-
-const detailsGridClasses = classNames(
-  "grid gap-x-4 gap-y-2 text-xs text-slate-500",
-  "sm:grid-cols-2 lg:grid-cols-5",
-);
-
-const detailLabelClasses = "font-semibold uppercase tracking-wide text-slate-400";
-const detailValueClasses = "text-sm font-medium text-slate-700";
-const detailEmptyClasses = "text-sm font-medium text-slate-400";
-
 const DEFAULT_PAGE_SIZE = 10;
-
-type DetailItemProps = {
-  label: string;
-  value: string;
-  muted?: boolean;
-};
-
-const DetailItem = ({ label, value, muted = false }: DetailItemProps) => (
-  <div className="flex flex-col gap-1">
-    <dt className={detailLabelClasses}>{label}</dt>
-    <dd className={muted ? detailEmptyClasses : detailValueClasses}>{value}</dd>
-  </div>
-);
 
 export default function Produtos() {
   const [especies, setEspecies] = useState<ProdutoOpcao[]>([]);
@@ -780,13 +768,9 @@ export default function Produtos() {
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Produtos</h1>
-          <p className="text-sm text-gray-600">
-            Acompanhe os itens cadastrados e utilize o botão "Adicionar produto" para incluir novos produtos.
-          </p>
-        </div>
-        <button onClick={iniciarNovoProduto} className={saveButtonClasses}>
+        <h1 className="text-3xl font-bold">Produtos</h1>
+        <button onClick={iniciarNovoProduto} className={addProductButtonClasses}>
+          <Plus className="h-4 w-4" aria-hidden="true" />
           Adicionar produto
         </button>
       </div>
@@ -1043,7 +1027,6 @@ export default function Produtos() {
             <div className="grid gap-3">
               {produtos.map(p => {
                 const minimo = Math.max(1, p.quantidadeMinimaDeCompra);
-                const tipoPesoLabel = p.tipoPeso === 0 ? "Gramas" : "Quilos";
                 const tipoPesoAbreviacao = p.tipoPeso === 0 ? "g" : "kg";
                 const pesoComUnidade = `${pesoFormatter.format(p.peso)} ${tipoPesoAbreviacao}`;
                 const portesList = p.porteNomes.map(nome => nome.trim()).filter(Boolean);
@@ -1056,9 +1039,9 @@ export default function Produtos() {
 
                 return (
                   <div key={p.codigo} className={productCardClasses}>
-                    <div className="flex flex-col gap-4 md:grid md:grid-cols-[auto,1fr] md:items-start md:gap-6">
+                    <div className="flex flex-col gap-5 md:grid md:grid-cols-[auto,1fr] md:items-start md:gap-6">
                       {p.imagemUrl && (
-                        <div className="flex aspect-square w-full max-w-[132px] flex-none items-center justify-center overflow-hidden rounded-2xl border border-gray-100 bg-white/80 p-3 shadow-inner md:w-[132px] md:self-stretch">
+                        <div className="flex aspect-square w-full max-w-[132px] flex-none items-center justify-center overflow-hidden md:w-[132px] md:self-stretch">
                           <img
                             src={p.imagemUrl}
                             alt={`Imagem do produto ${p.descricao}`}
@@ -1066,55 +1049,59 @@ export default function Produtos() {
                           />
                         </div>
                       )}
-                      <div className="flex min-w-0 flex-1 flex-col gap-4">
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h3 className="truncate text-base font-semibold text-gray-900">{p.codigo} - {p.descricao}</h3>
-                              <span className={codeBadgeClasses}>Preço: {currencyFormatter.format(p.preco)}</span>
-                              <span className={infoBadgeClasses}>Mínimo {minimo} un.</span>
-                            </div>
-                            <div className={headerMetaClasses}>
-                              <span>
-                                Peso:
-                                <span className="ml-1 font-medium text-gray-600">{pesoComUnidade}</span>
-                              </span>
-                              <span className="hidden sm:inline text-slate-300">•</span>
-                              <span>
-                                Unidade:
-                                <span className="ml-1 font-medium text-gray-600">{tipoPesoLabel}</span>
-                              </span>
-                              <span className="hidden sm:inline text-slate-300">•</span>
-                              <span>
-                                Tipo:
-                                <span className="ml-1 font-medium text-gray-600">{p.tipoProdutoNome}</span>
-                              </span>
+                      <div className="flex min-w-0 flex-1 flex-col gap-5">
+                        <div className="flex flex-col gap-3">
+                          <div className="flex flex-wrap items-center gap-3 text-base font-semibold text-[#878787]">
+                            <span>{p.codigo}</span>
+                            <span className={productTypeBadgeClasses}>{p.tipoProdutoNome}</span>
+                          </div>
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <p className="text-xl font-bold text-slate-900">
+                              {p.descricao}
+                              <span className="text-xl font-bold text-slate-500">{` | ${pesoComUnidade}`}</span>
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <button onClick={() => iniciarEdicao(p)} className={editButtonClasses}>
+                                <FilePenLine className="h-4 w-4" aria-hidden="true" />
+                                Editar
+                              </button>
+                              <button onClick={() => remover(p.codigo)} className={deleteButtonClasses}>
+                                <Trash2 className="h-4 w-4" aria-hidden="true" />
+                                Excluir
+                              </button>
                             </div>
                           </div>
-                          <div className="flex flex-wrap items-center gap-3 text-sm">
-                            <button onClick={() => iniciarEdicao(p)} className={editButtonClasses}>
-                              Editar
-                            </button>
-                            <button onClick={() => remover(p.codigo)} className={deleteButtonClasses}>
-                              Excluir
-                            </button>
-                          </div>
+                          <p className="text-sm text-[#878787]">
+                            {formattedSabores || "Nenhum sabor informado"}
+                          </p>
                         </div>
 
-                        <dl className={detailsGridClasses}>
-                          <DetailItem label="Espécie" value={p.especieNome} />
-                          <DetailItem label="Faixa etária" value={p.faixaEtariaNome} />
-                          <DetailItem
-                            label="Portes atendidos"
-                            value={formattedPortes || "Sem porte definido"}
-                            muted={!portesList.length}
-                          />
-                          <DetailItem
-                            label="Sabores"
-                            value={formattedSabores || "Nenhum sabor informado"}
-                            muted={!saboresList.length}
-                          />
-                        </dl>
+                        <div className="px-1">
+                          <div className="h-px w-full rounded-full bg-[#EDECE5]" />
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                          <div className={labelRowClasses}>
+                            <span>Espécie</span>
+                            <span>Idade</span>
+                            <span className="truncate">Portes atendidos</span>
+                            <span>Mínimo de compra</span>
+                            <span className="text-right">Preço</span>
+                          </div>
+                          <div className={valueRowClasses}>
+                            <span className="font-medium text-[#585858]">{p.especieNome}</span>
+                            <span className="font-medium text-[#585858]">{p.faixaEtariaNome}</span>
+                            <span className="font-medium text-[#585858]">
+                              {formattedPortes || "Sem porte definido"}
+                            </span>
+                            <div className="flex items-center">
+                              <span className={minimumBadgeClasses}>Mínimo {minimo} un.</span>
+                            </div>
+                            <span className="text-right text-xl font-bold text-slate-900">
+                              {currencyFormatter.format(p.preco)}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
