@@ -212,16 +212,19 @@ export function DateUserFilters({
     setter(formatDateFromInput(value));
   };
 
-  const containerClasses =
-    className ||
-    "flex flex-wrap items-end gap-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-100";
+  const containerClasses = [
+    "flex flex-col gap-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-100 lg:flex-row lg:items-end lg:gap-6",
+    className,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
-  const showStatus = statusOptions && statusOptions.length > 0 && onChangeStatusId;
+  const showStatus = Boolean(statusOptions?.length && onChangeStatusId);
 
-  return (
-    <div className={containerClasses}>
+  const filters = (
+    <>
       {showUsuario && onChangeUsuario && (
-        <div className="flex min-w-[260px] flex-1 flex-col gap-2">
+        <div className="flex min-w-[220px] flex-1 flex-col gap-2">
           <label className={filterLabelClasses} htmlFor="filtro-usuario">
             Buscar
           </label>
@@ -243,18 +246,18 @@ export function DateUserFilters({
         </div>
       )}
 
-      {showStatus && (
+      {showStatus && statusOptions && onChangeStatusId ? (
         <StatusDropdown
           id="filtro-status"
           label="Status"
-          options={statusOptions!}
+          options={statusOptions}
           value={statusId}
-          onChange={onChangeStatusId!}
+          onChange={onChangeStatusId}
           disabled={disabled}
         />
-      )}
+      ) : null}
 
-      <div className="flex min-w-[160px] flex-1 flex-col gap-2">
+      <div className="flex min-w-[150px] flex-1 flex-col gap-2">
         <label className={filterLabelClasses} htmlFor="filtro-de">
           De
         </label>
@@ -278,7 +281,7 @@ export function DateUserFilters({
         </div>
       </div>
 
-      <div className="flex min-w-[160px] flex-1 flex-col gap-2">
+      <div className="flex min-w-[150px] flex-1 flex-col gap-2">
         <label className={filterLabelClasses} htmlFor="filtro-ate">
           Até
         </label>
@@ -301,13 +304,19 @@ export function DateUserFilters({
           </div>
         </div>
       </div>
+    </>
+  );
+
+  return (
+    <div className={containerClasses}>
+      <div className="flex min-w-0 flex-1 flex-wrap items-end gap-4">{filters}</div>
 
       {(onApply || children) && (
-        <div className="ml-auto flex items-center gap-3 self-end whitespace-nowrap">
+        <div className="flex shrink-0 items-center gap-3 self-end whitespace-nowrap lg:self-auto">
           {onApply && (
             <button
               type="button"
-              className="flex-shrink-0 rounded-full bg-[#FF6900] px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#FF6900]/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6900]/40 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-full bg-[#FF6900] px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#FF6900]/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6900]/40 disabled:cursor-not-allowed disabled:opacity-60"
               onClick={onApply}
               disabled={disabled}
             >
