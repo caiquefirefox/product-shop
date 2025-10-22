@@ -933,11 +933,43 @@ export default function Produtos() {
     const tipoSelecionado = (tipoProdutoId ?? "").trim();
     const faixaSelecionada = (faixaEtariaId ?? "").trim();
     const codigoNormalizado = codigo.trim();
+    const descricaoNormalizada = descricao.trim();
+    const pesoNormalizadoTexto = peso.trim();
+    const saboresNormalizados = sabores.trim();
+    const precoNormalizadoTexto = preco.trim();
+    const quantidadeMinimaTexto = quantidadeMinimaDeCompra.trim();
+    const tipoPesoValido = tipoPesoDropdownOptions.some(
+      option => Number.parseInt(option.value, 10) === tipoPeso,
+    );
+    const precoNormalizadoNumero = parseDecimalInput(preco);
+    const pesoNormalizadoNumero = parseDecimalInput(peso);
+    const quantidadeNormalizadaNumero = parseIntegerInput(quantidadeMinimaDeCompra);
 
     const camposObrigatoriosFaltando: string[] = [];
 
     if (!editando && !codigoNormalizado) {
       camposObrigatoriosFaltando.push("Código");
+    }
+    if (!descricaoNormalizada) {
+      camposObrigatoriosFaltando.push("Descrição");
+    }
+    if (!pesoNormalizadoTexto || pesoNormalizadoNumero <= 0) {
+      camposObrigatoriosFaltando.push("Peso");
+    }
+    if (!tipoPesoValido) {
+      camposObrigatoriosFaltando.push("Tipo de peso");
+    }
+    if (!quantidadeMinimaTexto || quantidadeNormalizadaNumero <= 0) {
+      camposObrigatoriosFaltando.push("Qtd mínima (unidades)");
+    }
+    if (!saboresNormalizados) {
+      camposObrigatoriosFaltando.push("Sabores");
+    }
+    if (porteIds.length === 0) {
+      camposObrigatoriosFaltando.push("Porte");
+    }
+    if (!precoNormalizadoTexto || precoNormalizadoNumero <= 0) {
+      camposObrigatoriosFaltando.push("Preço (R$)");
     }
     if (!especieSelecionada) {
       camposObrigatoriosFaltando.push("Espécie");
@@ -965,20 +997,18 @@ export default function Produtos() {
 
     setFormError(null);
 
-    const precoNormalizado = parseDecimalInput(preco);
-    const pesoNormalizado = parseDecimalInput(peso);
-    const quantidadeNormalizada = Math.max(1, parseIntegerInput(quantidadeMinimaDeCompra));
+    const quantidadeNormalizada = Math.max(1, quantidadeNormalizadaNumero);
 
     const formData = new FormData();
-    formData.append("Descricao", descricao);
-    formData.append("Peso", formatDecimalForSubmission(pesoNormalizado, 0, 3));
+    formData.append("Descricao", descricaoNormalizada);
+    formData.append("Peso", formatDecimalForSubmission(pesoNormalizadoNumero, 0, 3));
     formData.append("TipoPeso", tipoPeso.toString());
-    formData.append("Sabores", sabores);
+    formData.append("Sabores", saboresNormalizados);
     formData.append("EspecieOpcaoId", especieSelecionada);
     porteIds.forEach(id => formData.append("PorteOpcaoIds", id));
     formData.append("TipoProdutoOpcaoId", tipoSelecionado);
     formData.append("FaixaEtariaOpcaoId", faixaSelecionada);
-    formData.append("Preco", formatDecimalForSubmission(precoNormalizado, 2, 2));
+    formData.append("Preco", formatDecimalForSubmission(precoNormalizadoNumero, 2, 2));
     formData.append("QuantidadeMinimaDeCompra", quantidadeNormalizada.toString());
     formData.append("ImagemUrl", imagemOriginalUrl ?? "");
     formData.append("RemoverImagem", removerImagem ? "true" : "false");
@@ -1106,7 +1136,10 @@ export default function Produtos() {
               </div>
 
               <div className="flex flex-col gap-2 md:col-span-2 xl:col-span-2">
-                <label htmlFor="descricao" className="text-sm font-medium text-gray-700">Descrição</label>
+                <label htmlFor="descricao" className="text-sm font-medium text-gray-700">
+                  Descrição
+                  <span className="ml-1 text-red-500">*</span>
+                </label>
                 <input
                   id="descricao"
                   placeholder="Nome do produto"
@@ -1117,7 +1150,10 @@ export default function Produtos() {
               </div>
 
               <div className="flex flex-col gap-2">
-                <label htmlFor="peso" className="text-sm font-medium text-gray-700">Peso</label>
+                <label htmlFor="peso" className="text-sm font-medium text-gray-700">
+                  Peso
+                  <span className="ml-1 text-red-500">*</span>
+                </label>
                 <input
                   id="peso"
                   type="text"
@@ -1130,7 +1166,10 @@ export default function Produtos() {
               </div>
 
               <div className="flex flex-col gap-2">
-                <label htmlFor="tipoPeso" className="text-sm font-medium text-gray-700">Tipo de peso</label>
+                <label htmlFor="tipoPeso" className="text-sm font-medium text-gray-700">
+                  Tipo de peso
+                  <span className="ml-1 text-red-500">*</span>
+                </label>
                 <FormDropdown
                   id="tipoPeso"
                   value={String(tipoPeso)}
@@ -1145,7 +1184,10 @@ export default function Produtos() {
               </div>
 
               <div className="flex flex-col gap-2">
-                <label htmlFor="qtdMin" className="text-sm font-medium text-gray-700">Qtd mínima (unidades)</label>
+                <label htmlFor="qtdMin" className="text-sm font-medium text-gray-700">
+                  Qtd mínima (unidades)
+                  <span className="ml-1 text-red-500">*</span>
+                </label>
                 <input
                   id="qtdMin"
                   type="text"
@@ -1158,7 +1200,10 @@ export default function Produtos() {
               </div>
 
               <div className="flex flex-col gap-2 md:col-span-2 xl:col-span-2">
-                <label htmlFor="sabores" className="text-sm font-medium text-gray-700">Sabores</label>
+                <label htmlFor="sabores" className="text-sm font-medium text-gray-700">
+                  Sabores
+                  <span className="ml-1 text-red-500">*</span>
+                </label>
                 <input
                   id="sabores"
                   placeholder="Informe os sabores separados por vírgula"
@@ -1238,7 +1283,10 @@ export default function Produtos() {
               </div>
 
               <div className="flex flex-col gap-2 md:col-span-2 xl:col-span-2">
-                <label htmlFor="portes" className="text-sm font-medium text-gray-700">Porte</label>
+                <label htmlFor="portes" className="text-sm font-medium text-gray-700">
+                  Porte
+                  <span className="ml-1 text-red-500">*</span>
+                </label>
                 <Select
                   inputId="portes"
                   isMulti
@@ -1259,7 +1307,10 @@ export default function Produtos() {
               </div>
 
               <div className="flex flex-col gap-2">
-                <label htmlFor="preco" className="text-sm font-medium text-gray-700">Preço (R$)</label>
+                <label htmlFor="preco" className="text-sm font-medium text-gray-700">
+                  Preço (R$)
+                  <span className="ml-1 text-red-500">*</span>
+                </label>
                 <input
                   id="preco"
                   type="text"
