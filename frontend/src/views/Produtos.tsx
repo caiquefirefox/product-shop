@@ -1,5 +1,5 @@
-import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
-import { FilePenLine, Plus, Trash2 } from "lucide-react";
+import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Check, ChevronDown, FilePenLine, Plus, Trash2 } from "lucide-react";
 import Select, { MultiValue, StylesConfig } from "react-select";
 import api from "../lib/api";
 import ProductFilters, {
@@ -140,9 +140,9 @@ const baseInputClasses = classNames(
 );
 
 const saveButtonClasses = classNames(
-  "inline-flex items-center justify-center rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white",
-  "shadow-lg shadow-indigo-200 transition hover:bg-indigo-500",
-  "focus:outline-none focus:ring-4 focus:ring-indigo-200 focus:ring-offset-1 focus:ring-offset-white",
+  "inline-flex items-center justify-center gap-2 rounded-full bg-[#FF6900] px-5 py-3 text-sm font-semibold text-white",
+  "shadow-sm transition-colors duration-200 hover:bg-[#FF6900]/90",
+  "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6900]/40",
 );
 
 const addProductButtonClasses = classNames(
@@ -152,9 +152,9 @@ const addProductButtonClasses = classNames(
 );
 
 const uploadButtonClasses = classNames(
-  "inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white",
-  "shadow-sm transition hover:bg-indigo-500",
-  "focus:outline-none focus:ring-4 focus:ring-indigo-200 focus:ring-offset-1 focus:ring-offset-white",
+  "inline-flex items-center justify-center rounded-full bg-[#FF6900] px-5 py-3 text-sm font-semibold text-white",
+  "shadow-sm transition-colors duration-200 hover:bg-[#FF6900]/90",
+  "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6900]/40",
 );
 
 const removeImageButtonClasses = classNames(
@@ -168,6 +168,221 @@ const cancelButtonClasses = classNames(
   "bg-white transition hover:bg-gray-100",
   "focus:outline-none focus:ring-4 focus:ring-gray-200 focus:ring-offset-1 focus:ring-offset-white",
 );
+
+const formDropdownButtonBaseClasses = classNames(
+  "inline-flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700",
+  "shadow-sm transition hover:border-indigo-200 hover:text-indigo-600",
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2",
+  "disabled:cursor-not-allowed disabled:opacity-60",
+);
+
+const formDropdownButtonActiveClasses = "border-indigo-300 bg-indigo-50 text-indigo-600";
+
+const formDropdownListClasses = classNames(
+  "absolute left-0 top-full z-20 mt-2 w-full min-w-[200px] origin-top-left rounded-xl border border-slate-200 bg-white p-2",
+  "shadow-xl",
+);
+
+const formDropdownOptionClasses = classNames(
+  "flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-slate-700",
+  "transition hover:bg-indigo-50 hover:text-indigo-600",
+);
+
+type FormDropdownOption = {
+  value: string;
+  label: string;
+};
+
+const tipoPesoDropdownOptions: FormDropdownOption[] = [
+  { value: "0", label: "Grama" },
+  { value: "1", label: "Quilo" },
+];
+
+type FormDropdownProps = {
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: FormDropdownOption[];
+  placeholder?: string;
+  disabled?: boolean;
+  loading?: boolean;
+  emptyMessage?: string;
+  showPlaceholderOption?: boolean;
+};
+
+function FormDropdown({
+  id,
+  value,
+  onChange,
+  options,
+  placeholder = "Selecione uma opção",
+  disabled = false,
+  loading = false,
+  emptyMessage = "Nenhuma opção disponível",
+  showPlaceholderOption = true,
+}: FormDropdownProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  const sanitizedOptions = useMemo(
+    () =>
+      options.map(option => {
+        const value = option.value ?? "";
+        const rawLabel = option.label?.trim() ?? "";
+        return {
+          value,
+          label: rawLabel || value,
+        };
+      }),
+    [options],
+  );
+
+  const optionsWithPlaceholder = useMemo(() => {
+    if (!showPlaceholderOption) {
+      return sanitizedOptions;
+    }
+
+    const hasPlaceholder = sanitizedOptions.some(option => option.value === "");
+    if (hasPlaceholder) {
+      return sanitizedOptions.map(option =>
+        option.value === ""
+          ? {
+              ...option,
+              label: option.label || placeholder,
+            }
+          : option,
+      );
+    }
+
+    return [
+      {
+        value: "",
+        label: placeholder,
+      },
+      ...sanitizedOptions,
+    ];
+  }, [placeholder, sanitizedOptions, showPlaceholderOption]);
+
+  const selectedOption = useMemo(
+    () => optionsWithPlaceholder.find(option => option.value === value) ?? null,
+    [optionsWithPlaceholder, value],
+  );
+
+  const displayLabel = loading ? "Carregando..." : selectedOption?.label ?? placeholder;
+  const hasSelection = !!selectedOption && selectedOption.value !== "";
+  const isDisabled = disabled || loading;
+
+  const closeMenu = useCallback(() => setIsOpen(false), []);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(target) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(target)
+      ) {
+        closeMenu();
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closeMenu();
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [closeMenu, isOpen]);
+
+  useEffect(() => {
+    if (isDisabled) {
+      setIsOpen(false);
+    }
+  }, [isDisabled]);
+
+  const handleToggle = () => {
+    if (isDisabled) {
+      return;
+    }
+    setIsOpen(previous => !previous);
+  };
+
+  const handleSelect = (nextValue: string) => {
+    onChange(nextValue);
+    closeMenu();
+  };
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        id={id}
+        ref={buttonRef}
+        onClick={handleToggle}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        aria-controls={`${id}-options`}
+        disabled={isDisabled}
+        className={classNames(
+          formDropdownButtonBaseClasses,
+          hasSelection ? formDropdownButtonActiveClasses : "",
+        )}
+      >
+        <span className="truncate">{displayLabel}</span>
+        <ChevronDown className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+      </button>
+      {isOpen && (
+        <div
+          ref={menuRef}
+          id={`${id}-options`}
+          className={formDropdownListClasses}
+          role="listbox"
+          aria-activedescendant={selectedOption?.value ?? ""}
+        >
+          <div className="max-h-64 overflow-y-auto">
+            {optionsWithPlaceholder.length ? (
+              optionsWithPlaceholder.map((option, index) => {
+                const optionKey = option.value || `placeholder-${index}`;
+                const isSelected = option.value === value;
+                return (
+                  <button
+                    key={optionKey}
+                    type="button"
+                    role="option"
+                    aria-selected={isSelected}
+                    onClick={() => handleSelect(option.value)}
+                    className={classNames(
+                      formDropdownOptionClasses,
+                      isSelected ? "bg-indigo-50 text-indigo-600" : "",
+                    )}
+                  >
+                    <span className="truncate">{option.label}</span>
+                    {isSelected && <Check className="h-4 w-4 flex-shrink-0" aria-hidden="true" />}
+                  </button>
+                );
+              })
+            ) : (
+              <div className="px-3 py-2 text-sm text-slate-500">{emptyMessage}</div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const productCardClasses = classNames(
   "flex flex-col gap-5 rounded-3xl border border-[#EDECE5] bg-white px-5 py-6 shadow-sm",
@@ -257,6 +472,21 @@ export default function Produtos() {
         currency: "BRL",
       }),
     [],
+  );
+
+  const especieSelectOptions = useMemo(
+    () => especies.map(opcao => ({ value: opcao.id, label: opcao.nome })),
+    [especies],
+  );
+
+  const tipoProdutoSelectOptions = useMemo(
+    () => tiposProduto.map(opcao => ({ value: opcao.id, label: opcao.nome })),
+    [tiposProduto],
+  );
+
+  const faixaEtariaSelectOptions = useMemo(
+    () => faixasEtarias.map(opcao => ({ value: opcao.id, label: opcao.nome })),
+    [faixasEtarias],
   );
 
   const parseDecimalInput = (value: string) => {
@@ -855,15 +1085,17 @@ export default function Produtos() {
 
               <div className="flex flex-col gap-2">
                 <label htmlFor="tipoPeso" className="text-sm font-medium text-gray-700">Tipo de peso</label>
-                <select
+                <FormDropdown
                   id="tipoPeso"
-                  value={tipoPeso}
-                  onChange={e => setTipoPeso(parseInt(e.target.value, 10))}
-                  className={baseInputClasses}
-                >
-                  <option value={0}>Grama</option>
-                  <option value={1}>Quilo</option>
-                </select>
+                  value={String(tipoPeso)}
+                  onChange={nextValue => {
+                    const parsed = Number.parseInt(nextValue, 10);
+                    setTipoPeso(Number.isNaN(parsed) ? tipoPeso : parsed);
+                  }}
+                  options={tipoPesoDropdownOptions}
+                  placeholder="Selecione o tipo de peso"
+                  showPlaceholderOption={false}
+                />
               </div>
 
               <div className="flex flex-col gap-2">
@@ -892,59 +1124,62 @@ export default function Produtos() {
 
               <div className="flex flex-col gap-2">
                 <label htmlFor="especie" className="text-sm font-medium text-gray-700">Espécie</label>
-                <select
+                <FormDropdown
                   id="especie"
                   value={especieId}
-                  onChange={e => setEspecieId(e.target.value)}
-                  className={baseInputClasses}
-                  disabled={!especies.length}
-                >
-                  {especies.length === 0 ? (
-                    <option value="" disabled>Carregando...</option>
-                  ) : (
-                    especies.map(opcao => (
-                      <option key={opcao.id} value={opcao.id}>{opcao.nome}</option>
-                    ))
-                  )}
-                </select>
+                  onChange={setEspecieId}
+                  options={especieSelectOptions}
+                  placeholder={
+                    opcoesCarregando && !especieSelectOptions.length
+                      ? "Carregando..."
+                      : "Selecione a espécie"
+                  }
+                  disabled={!especieSelectOptions.length}
+                  loading={opcoesCarregando && !especieSelectOptions.length}
+                  emptyMessage={
+                    opcoesCarregando ? "Carregando..." : "Nenhuma espécie disponível"
+                  }
+                />
               </div>
 
               <div className="flex flex-col gap-2 md:col-span-2 xl:col-span-2">
                 <label htmlFor="tipoProduto" className="text-sm font-medium text-gray-700">Tipo do Produto</label>
-                <select
+                <FormDropdown
                   id="tipoProduto"
                   value={tipoProdutoId}
-                  onChange={e => setTipoProdutoId(e.target.value)}
-                  className={baseInputClasses}
-                  disabled={!tiposProduto.length}
-                >
-                  {tiposProduto.length === 0 ? (
-                    <option value="" disabled>Carregando...</option>
-                  ) : (
-                    tiposProduto.map(opcao => (
-                      <option key={opcao.id} value={opcao.id}>{opcao.nome}</option>
-                    ))
-                  )}
-                </select>
+                  onChange={setTipoProdutoId}
+                  options={tipoProdutoSelectOptions}
+                  placeholder={
+                    opcoesCarregando && !tipoProdutoSelectOptions.length
+                      ? "Carregando..."
+                      : "Selecione o tipo do produto"
+                  }
+                  disabled={!tipoProdutoSelectOptions.length}
+                  loading={opcoesCarregando && !tipoProdutoSelectOptions.length}
+                  emptyMessage={
+                    opcoesCarregando ? "Carregando..." : "Nenhum tipo de produto disponível"
+                  }
+                />
               </div>
 
               <div className="flex flex-col gap-2">
                 <label htmlFor="faixaEtaria" className="text-sm font-medium text-gray-700">Faixa etária</label>
-                <select
+                <FormDropdown
                   id="faixaEtaria"
                   value={faixaEtariaId}
-                  onChange={e => setFaixaEtariaId(e.target.value)}
-                  className={baseInputClasses}
-                  disabled={!faixasEtarias.length}
-                >
-                  {faixasEtarias.length === 0 ? (
-                    <option value="" disabled>Carregando...</option>
-                  ) : (
-                    faixasEtarias.map(opcao => (
-                      <option key={opcao.id} value={opcao.id}>{opcao.nome}</option>
-                    ))
-                  )}
-                </select>
+                  onChange={setFaixaEtariaId}
+                  options={faixaEtariaSelectOptions}
+                  placeholder={
+                    opcoesCarregando && !faixaEtariaSelectOptions.length
+                      ? "Carregando..."
+                      : "Selecione a faixa etária"
+                  }
+                  disabled={!faixaEtariaSelectOptions.length}
+                  loading={opcoesCarregando && !faixaEtariaSelectOptions.length}
+                  emptyMessage={
+                    opcoesCarregando ? "Carregando..." : "Nenhuma faixa etária disponível"
+                  }
+                />
               </div>
 
               <div className="flex flex-col gap-2 md:col-span-2 xl:col-span-2">
