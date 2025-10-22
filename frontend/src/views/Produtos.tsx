@@ -1,5 +1,5 @@
-import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
-import { FilePenLine, Plus, Trash2 } from "lucide-react";
+import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Check, ChevronDown, FilePenLine, Plus, Trash2 } from "lucide-react";
 import Select, { MultiValue, StylesConfig } from "react-select";
 import api from "../lib/api";
 import ProductFilters, {
@@ -140,9 +140,9 @@ const baseInputClasses = classNames(
 );
 
 const saveButtonClasses = classNames(
-  "inline-flex items-center justify-center rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white",
-  "shadow-lg shadow-indigo-200 transition hover:bg-indigo-500",
-  "focus:outline-none focus:ring-4 focus:ring-indigo-200 focus:ring-offset-1 focus:ring-offset-white",
+  "inline-flex items-center justify-center gap-2 rounded-full bg-[#FF6900] px-5 py-3 text-sm font-semibold text-white",
+  "shadow-sm transition-colors duration-200 hover:bg-[#FF6900]/90",
+  "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6900]/40",
 );
 
 const addProductButtonClasses = classNames(
@@ -152,9 +152,9 @@ const addProductButtonClasses = classNames(
 );
 
 const uploadButtonClasses = classNames(
-  "inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white",
-  "shadow-sm transition hover:bg-indigo-500",
-  "focus:outline-none focus:ring-4 focus:ring-indigo-200 focus:ring-offset-1 focus:ring-offset-white",
+  "inline-flex items-center justify-center rounded-full bg-[#FF6900] px-5 py-3 text-sm font-semibold text-white",
+  "shadow-sm transition-colors duration-200 hover:bg-[#FF6900]/90",
+  "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6900]/40",
 );
 
 const removeImageButtonClasses = classNames(
@@ -168,6 +168,221 @@ const cancelButtonClasses = classNames(
   "bg-white transition hover:bg-gray-100",
   "focus:outline-none focus:ring-4 focus:ring-gray-200 focus:ring-offset-1 focus:ring-offset-white",
 );
+
+const formDropdownButtonBaseClasses = classNames(
+  "inline-flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700",
+  "shadow-sm transition hover:border-indigo-200 hover:text-indigo-600",
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2",
+  "disabled:cursor-not-allowed disabled:opacity-60",
+);
+
+const formDropdownButtonActiveClasses = "border-indigo-300 bg-indigo-50 text-indigo-600";
+
+const formDropdownListClasses = classNames(
+  "absolute left-0 top-full z-20 mt-2 w-full min-w-[200px] origin-top-left rounded-xl border border-slate-200 bg-white p-2",
+  "shadow-xl",
+);
+
+const formDropdownOptionClasses = classNames(
+  "flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-slate-700",
+  "transition hover:bg-indigo-50 hover:text-indigo-600",
+);
+
+type FormDropdownOption = {
+  value: string;
+  label: string;
+};
+
+const tipoPesoDropdownOptions: FormDropdownOption[] = [
+  { value: "0", label: "Grama" },
+  { value: "1", label: "Quilo" },
+];
+
+type FormDropdownProps = {
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: FormDropdownOption[];
+  placeholder?: string;
+  disabled?: boolean;
+  loading?: boolean;
+  emptyMessage?: string;
+  showPlaceholderOption?: boolean;
+};
+
+function FormDropdown({
+  id,
+  value,
+  onChange,
+  options,
+  placeholder = "Selecione uma opção",
+  disabled = false,
+  loading = false,
+  emptyMessage = "Nenhuma opção disponível",
+  showPlaceholderOption = true,
+}: FormDropdownProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  const sanitizedOptions = useMemo(
+    () =>
+      options.map(option => {
+        const value = option.value ?? "";
+        const rawLabel = option.label?.trim() ?? "";
+        return {
+          value,
+          label: rawLabel || value,
+        };
+      }),
+    [options],
+  );
+
+  const optionsWithPlaceholder = useMemo(() => {
+    if (!showPlaceholderOption) {
+      return sanitizedOptions;
+    }
+
+    const hasPlaceholder = sanitizedOptions.some(option => option.value === "");
+    if (hasPlaceholder) {
+      return sanitizedOptions.map(option =>
+        option.value === ""
+          ? {
+              ...option,
+              label: option.label || placeholder,
+            }
+          : option,
+      );
+    }
+
+    return [
+      {
+        value: "",
+        label: placeholder,
+      },
+      ...sanitizedOptions,
+    ];
+  }, [placeholder, sanitizedOptions, showPlaceholderOption]);
+
+  const selectedOption = useMemo(
+    () => optionsWithPlaceholder.find(option => option.value === value) ?? null,
+    [optionsWithPlaceholder, value],
+  );
+
+  const displayLabel = loading ? "Carregando..." : selectedOption?.label ?? placeholder;
+  const hasSelection = !!selectedOption && selectedOption.value !== "";
+  const isDisabled = disabled || loading;
+
+  const closeMenu = useCallback(() => setIsOpen(false), []);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(target) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(target)
+      ) {
+        closeMenu();
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closeMenu();
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [closeMenu, isOpen]);
+
+  useEffect(() => {
+    if (isDisabled) {
+      setIsOpen(false);
+    }
+  }, [isDisabled]);
+
+  const handleToggle = () => {
+    if (isDisabled) {
+      return;
+    }
+    setIsOpen(previous => !previous);
+  };
+
+  const handleSelect = (nextValue: string) => {
+    onChange(nextValue);
+    closeMenu();
+  };
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        id={id}
+        ref={buttonRef}
+        onClick={handleToggle}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        aria-controls={`${id}-options`}
+        disabled={isDisabled}
+        className={classNames(
+          formDropdownButtonBaseClasses,
+          hasSelection ? formDropdownButtonActiveClasses : "",
+        )}
+      >
+        <span className="truncate">{displayLabel}</span>
+        <ChevronDown className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+      </button>
+      {isOpen && (
+        <div
+          ref={menuRef}
+          id={`${id}-options`}
+          className={formDropdownListClasses}
+          role="listbox"
+          aria-activedescendant={selectedOption?.value ?? ""}
+        >
+          <div className="max-h-64 overflow-y-auto">
+            {optionsWithPlaceholder.length ? (
+              optionsWithPlaceholder.map((option, index) => {
+                const optionKey = option.value || `placeholder-${index}`;
+                const isSelected = option.value === value;
+                return (
+                  <button
+                    key={optionKey}
+                    type="button"
+                    role="option"
+                    aria-selected={isSelected}
+                    onClick={() => handleSelect(option.value)}
+                    className={classNames(
+                      formDropdownOptionClasses,
+                      isSelected ? "bg-indigo-50 text-indigo-600" : "",
+                    )}
+                  >
+                    <span className="truncate">{option.label}</span>
+                    {isSelected && <Check className="h-4 w-4 flex-shrink-0" aria-hidden="true" />}
+                  </button>
+                );
+              })
+            ) : (
+              <div className="px-3 py-2 text-sm text-slate-500">{emptyMessage}</div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const productCardClasses = classNames(
   "flex flex-col gap-5 rounded-3xl border border-[#EDECE5] bg-white px-5 py-6 shadow-sm",
@@ -235,6 +450,7 @@ export default function Produtos() {
   const [imagemPreview, setImagemPreview] = useState<string | null>(null);
   const [imagemSelecionada, setImagemSelecionada] = useState<File | null>(null);
   const [removerImagem, setRemoverImagem] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const produtosRequestIdRef = useRef(0);
   const formContainerRef = useRef<HTMLDivElement | null>(null);
   const shouldScrollToFormRef = useRef(false);
@@ -257,6 +473,21 @@ export default function Produtos() {
         currency: "BRL",
       }),
     [],
+  );
+
+  const especieSelectOptions = useMemo(
+    () => especies.map(opcao => ({ value: opcao.id, label: opcao.nome })),
+    [especies],
+  );
+
+  const tipoProdutoSelectOptions = useMemo(
+    () => tiposProduto.map(opcao => ({ value: opcao.id, label: opcao.nome })),
+    [tiposProduto],
+  );
+
+  const faixaEtariaSelectOptions = useMemo(
+    () => faixasEtarias.map(opcao => ({ value: opcao.id, label: opcao.nome })),
+    [faixasEtarias],
   );
 
   const parseDecimalInput = (value: string) => {
@@ -435,12 +666,13 @@ export default function Produtos() {
     setPeso("1");
     setTipoPeso(1);
     setSabores("");
-    setEspecieId(especies[0]?.id ?? "");
+    setEspecieId("");
     setPorteIds([]);
-    setTipoProdutoId(tiposProduto[0]?.id ?? "");
-    setFaixaEtariaId(faixasEtarias[0]?.id ?? "");
+    setTipoProdutoId("");
+    setFaixaEtariaId("");
     setPreco("0");
     setQuantidadeMinimaDeCompra("1");
+    setFormError(null);
     resetImagemCampos();
   };
 
@@ -487,6 +719,7 @@ export default function Produtos() {
   };
 
   const iniciarEdicao = (produto: Produto) => {
+    setFormError(null);
     setProdutoEmEdicao(produto);
     setCodigo(produto.codigo);
     setDescricao(produto.descricao);
@@ -619,21 +852,24 @@ export default function Produtos() {
   useEffect(() => {
     setEspecieId(prev => {
       if (!especies.length) return "";
-      return especies.some(opcao => opcao.id === prev) ? prev : especies[0].id;
+      if (!prev) return "";
+      return especies.some(opcao => opcao.id === prev) ? prev : "";
     });
   }, [especies]);
 
   useEffect(() => {
     setTipoProdutoId(prev => {
       if (!tiposProduto.length) return "";
-      return tiposProduto.some(opcao => opcao.id === prev) ? prev : tiposProduto[0].id;
+      if (!prev) return "";
+      return tiposProduto.some(opcao => opcao.id === prev) ? prev : "";
     });
   }, [tiposProduto]);
 
   useEffect(() => {
     setFaixaEtariaId(prev => {
       if (!faixasEtarias.length) return "";
-      return faixasEtarias.some(opcao => opcao.id === prev) ? prev : faixasEtarias[0].id;
+      if (!prev) return "";
+      return faixasEtarias.some(opcao => opcao.id === prev) ? prev : "";
     });
   }, [faixasEtarias]);
 
@@ -693,28 +929,86 @@ export default function Produtos() {
   };
 
   const salvar = async () => {
-    const especieSelecionada = especieId || especies[0]?.id || "";
-    const tipoSelecionado = tipoProdutoId || tiposProduto[0]?.id || "";
-    const faixaSelecionada = faixaEtariaId || faixasEtarias[0]?.id || "";
-    if (!especieSelecionada || !tipoSelecionado || !faixaSelecionada) return;
+    const especieSelecionada = (especieId ?? "").trim();
+    const tipoSelecionado = (tipoProdutoId ?? "").trim();
+    const faixaSelecionada = (faixaEtariaId ?? "").trim();
+    const codigoNormalizado = codigo.trim();
+    const descricaoNormalizada = descricao.trim();
+    const pesoNormalizadoTexto = peso.trim();
+    const saboresNormalizados = sabores.trim();
+    const precoNormalizadoTexto = preco.trim();
+    const quantidadeMinimaTexto = quantidadeMinimaDeCompra.trim();
+    const tipoPesoValido = tipoPesoDropdownOptions.some(
+      option => Number.parseInt(option.value, 10) === tipoPeso,
+    );
+    const precoNormalizadoNumero = parseDecimalInput(preco);
+    const pesoNormalizadoNumero = parseDecimalInput(peso);
+    const quantidadeNormalizadaNumero = parseIntegerInput(quantidadeMinimaDeCompra);
 
-    const codigoParaSalvar = editando ? produtoEmEdicao!.codigo : codigo.trim();
-    if (!codigoParaSalvar) return;
+    const camposObrigatoriosFaltando: string[] = [];
 
-    const precoNormalizado = parseDecimalInput(preco);
-    const pesoNormalizado = parseDecimalInput(peso);
-    const quantidadeNormalizada = Math.max(1, parseIntegerInput(quantidadeMinimaDeCompra));
+    if (!editando && !codigoNormalizado) {
+      camposObrigatoriosFaltando.push("Código");
+    }
+    if (!descricaoNormalizada) {
+      camposObrigatoriosFaltando.push("Descrição");
+    }
+    if (!pesoNormalizadoTexto || pesoNormalizadoNumero <= 0) {
+      camposObrigatoriosFaltando.push("Peso");
+    }
+    if (!tipoPesoValido) {
+      camposObrigatoriosFaltando.push("Tipo de peso");
+    }
+    if (!quantidadeMinimaTexto || quantidadeNormalizadaNumero <= 0) {
+      camposObrigatoriosFaltando.push("Qtd mínima (unidades)");
+    }
+    if (!saboresNormalizados) {
+      camposObrigatoriosFaltando.push("Sabores");
+    }
+    if (porteIds.length === 0) {
+      camposObrigatoriosFaltando.push("Porte");
+    }
+    if (!precoNormalizadoTexto || precoNormalizadoNumero <= 0) {
+      camposObrigatoriosFaltando.push("Preço (R$)");
+    }
+    if (!especieSelecionada) {
+      camposObrigatoriosFaltando.push("Espécie");
+    }
+    if (!tipoSelecionado) {
+      camposObrigatoriosFaltando.push("Tipo do Produto");
+    }
+    if (!faixaSelecionada) {
+      camposObrigatoriosFaltando.push("Faixa etária");
+    }
+
+    if (camposObrigatoriosFaltando.length > 0) {
+      setFormError(
+        `Preencha os campos obrigatórios: ${camposObrigatoriosFaltando.join(", ")}.`,
+      );
+      return;
+    }
+
+    const codigoParaSalvar = editando ? produtoEmEdicao!.codigo : codigoNormalizado;
+
+    if (!codigoParaSalvar) {
+      setFormError("Preencha os campos obrigatórios marcados com *.");
+      return;
+    }
+
+    setFormError(null);
+
+    const quantidadeNormalizada = Math.max(1, quantidadeNormalizadaNumero);
 
     const formData = new FormData();
-    formData.append("Descricao", descricao);
-    formData.append("Peso", formatDecimalForSubmission(pesoNormalizado, 0, 3));
+    formData.append("Descricao", descricaoNormalizada);
+    formData.append("Peso", formatDecimalForSubmission(pesoNormalizadoNumero, 0, 3));
     formData.append("TipoPeso", tipoPeso.toString());
-    formData.append("Sabores", sabores);
+    formData.append("Sabores", saboresNormalizados);
     formData.append("EspecieOpcaoId", especieSelecionada);
     porteIds.forEach(id => formData.append("PorteOpcaoIds", id));
     formData.append("TipoProdutoOpcaoId", tipoSelecionado);
     formData.append("FaixaEtariaOpcaoId", faixaSelecionada);
-    formData.append("Preco", formatDecimalForSubmission(precoNormalizado, 2, 2));
+    formData.append("Preco", formatDecimalForSubmission(precoNormalizadoNumero, 2, 2));
     formData.append("QuantidadeMinimaDeCompra", quantidadeNormalizada.toString());
     formData.append("ImagemUrl", imagemOriginalUrl ?? "");
     formData.append("RemoverImagem", removerImagem ? "true" : "false");
@@ -778,7 +1072,16 @@ export default function Produtos() {
                 ? `Atualize os dados do produto ${produtoEmEdicao?.codigo} e salve as alterações.`
                 : "Preencha os campos abaixo para cadastrar um novo item em seu catálogo."}
             </p>
+            <p className="text-xs text-gray-500">
+              <span className="text-red-500">*</span> Campos obrigatórios.
+            </p>
           </div>
+
+          {formError && (
+            <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              {formError}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-[368px_minmax(0,1fr)] xl:grid-cols-[368px_minmax(0,1fr)]">
             <div className="flex flex-col gap-3">
@@ -818,7 +1121,10 @@ export default function Produtos() {
 
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
               <div className="flex flex-col gap-2">
-                <label htmlFor="codigo" className="text-sm font-medium text-gray-700">Código</label>
+                <label htmlFor="codigo" className="text-sm font-medium text-gray-700">
+                  Código
+                  <span className="ml-1 text-red-500">*</span>
+                </label>
                 <input
                   id="codigo"
                   placeholder="Ex: R128"
@@ -830,7 +1136,10 @@ export default function Produtos() {
               </div>
 
               <div className="flex flex-col gap-2 md:col-span-2 xl:col-span-2">
-                <label htmlFor="descricao" className="text-sm font-medium text-gray-700">Descrição</label>
+                <label htmlFor="descricao" className="text-sm font-medium text-gray-700">
+                  Descrição
+                  <span className="ml-1 text-red-500">*</span>
+                </label>
                 <input
                   id="descricao"
                   placeholder="Nome do produto"
@@ -841,7 +1150,10 @@ export default function Produtos() {
               </div>
 
               <div className="flex flex-col gap-2">
-                <label htmlFor="peso" className="text-sm font-medium text-gray-700">Peso</label>
+                <label htmlFor="peso" className="text-sm font-medium text-gray-700">
+                  Peso
+                  <span className="ml-1 text-red-500">*</span>
+                </label>
                 <input
                   id="peso"
                   type="text"
@@ -854,20 +1166,28 @@ export default function Produtos() {
               </div>
 
               <div className="flex flex-col gap-2">
-                <label htmlFor="tipoPeso" className="text-sm font-medium text-gray-700">Tipo de peso</label>
-                <select
+                <label htmlFor="tipoPeso" className="text-sm font-medium text-gray-700">
+                  Tipo de peso
+                  <span className="ml-1 text-red-500">*</span>
+                </label>
+                <FormDropdown
                   id="tipoPeso"
-                  value={tipoPeso}
-                  onChange={e => setTipoPeso(parseInt(e.target.value, 10))}
-                  className={baseInputClasses}
-                >
-                  <option value={0}>Grama</option>
-                  <option value={1}>Quilo</option>
-                </select>
+                  value={String(tipoPeso)}
+                  onChange={nextValue => {
+                    const parsed = Number.parseInt(nextValue, 10);
+                    setTipoPeso(Number.isNaN(parsed) ? tipoPeso : parsed);
+                  }}
+                  options={tipoPesoDropdownOptions}
+                  placeholder="Selecione o tipo de peso"
+                  showPlaceholderOption={false}
+                />
               </div>
 
               <div className="flex flex-col gap-2">
-                <label htmlFor="qtdMin" className="text-sm font-medium text-gray-700">Qtd mínima (unidades)</label>
+                <label htmlFor="qtdMin" className="text-sm font-medium text-gray-700">
+                  Qtd mínima (unidades)
+                  <span className="ml-1 text-red-500">*</span>
+                </label>
                 <input
                   id="qtdMin"
                   type="text"
@@ -880,7 +1200,10 @@ export default function Produtos() {
               </div>
 
               <div className="flex flex-col gap-2 md:col-span-2 xl:col-span-2">
-                <label htmlFor="sabores" className="text-sm font-medium text-gray-700">Sabores</label>
+                <label htmlFor="sabores" className="text-sm font-medium text-gray-700">
+                  Sabores
+                  <span className="ml-1 text-red-500">*</span>
+                </label>
                 <input
                   id="sabores"
                   placeholder="Informe os sabores separados por vírgula"
@@ -891,64 +1214,79 @@ export default function Produtos() {
               </div>
 
               <div className="flex flex-col gap-2">
-                <label htmlFor="especie" className="text-sm font-medium text-gray-700">Espécie</label>
-                <select
+                <label htmlFor="especie" className="text-sm font-medium text-gray-700">
+                  Espécie
+                  <span className="ml-1 text-red-500">*</span>
+                </label>
+                <FormDropdown
                   id="especie"
                   value={especieId}
-                  onChange={e => setEspecieId(e.target.value)}
-                  className={baseInputClasses}
-                  disabled={!especies.length}
-                >
-                  {especies.length === 0 ? (
-                    <option value="" disabled>Carregando...</option>
-                  ) : (
-                    especies.map(opcao => (
-                      <option key={opcao.id} value={opcao.id}>{opcao.nome}</option>
-                    ))
-                  )}
-                </select>
+                  onChange={setEspecieId}
+                  options={especieSelectOptions}
+                  placeholder={
+                    opcoesCarregando && !especieSelectOptions.length
+                      ? "Carregando..."
+                      : "Selecione a espécie"
+                  }
+                  disabled={!especieSelectOptions.length}
+                  loading={opcoesCarregando && !especieSelectOptions.length}
+                  emptyMessage={
+                    opcoesCarregando ? "Carregando..." : "Nenhuma espécie disponível"
+                  }
+                />
               </div>
 
               <div className="flex flex-col gap-2 md:col-span-2 xl:col-span-2">
-                <label htmlFor="tipoProduto" className="text-sm font-medium text-gray-700">Tipo do Produto</label>
-                <select
+                <label htmlFor="tipoProduto" className="text-sm font-medium text-gray-700">
+                  Tipo do Produto
+                  <span className="ml-1 text-red-500">*</span>
+                </label>
+                <FormDropdown
                   id="tipoProduto"
                   value={tipoProdutoId}
-                  onChange={e => setTipoProdutoId(e.target.value)}
-                  className={baseInputClasses}
-                  disabled={!tiposProduto.length}
-                >
-                  {tiposProduto.length === 0 ? (
-                    <option value="" disabled>Carregando...</option>
-                  ) : (
-                    tiposProduto.map(opcao => (
-                      <option key={opcao.id} value={opcao.id}>{opcao.nome}</option>
-                    ))
-                  )}
-                </select>
+                  onChange={setTipoProdutoId}
+                  options={tipoProdutoSelectOptions}
+                  placeholder={
+                    opcoesCarregando && !tipoProdutoSelectOptions.length
+                      ? "Carregando..."
+                      : "Selecione o tipo do produto"
+                  }
+                  disabled={!tipoProdutoSelectOptions.length}
+                  loading={opcoesCarregando && !tipoProdutoSelectOptions.length}
+                  emptyMessage={
+                    opcoesCarregando ? "Carregando..." : "Nenhum tipo de produto disponível"
+                  }
+                />
               </div>
 
               <div className="flex flex-col gap-2">
-                <label htmlFor="faixaEtaria" className="text-sm font-medium text-gray-700">Faixa etária</label>
-                <select
+                <label htmlFor="faixaEtaria" className="text-sm font-medium text-gray-700">
+                  Faixa etária
+                  <span className="ml-1 text-red-500">*</span>
+                </label>
+                <FormDropdown
                   id="faixaEtaria"
                   value={faixaEtariaId}
-                  onChange={e => setFaixaEtariaId(e.target.value)}
-                  className={baseInputClasses}
-                  disabled={!faixasEtarias.length}
-                >
-                  {faixasEtarias.length === 0 ? (
-                    <option value="" disabled>Carregando...</option>
-                  ) : (
-                    faixasEtarias.map(opcao => (
-                      <option key={opcao.id} value={opcao.id}>{opcao.nome}</option>
-                    ))
-                  )}
-                </select>
+                  onChange={setFaixaEtariaId}
+                  options={faixaEtariaSelectOptions}
+                  placeholder={
+                    opcoesCarregando && !faixaEtariaSelectOptions.length
+                      ? "Carregando..."
+                      : "Selecione a faixa etária"
+                  }
+                  disabled={!faixaEtariaSelectOptions.length}
+                  loading={opcoesCarregando && !faixaEtariaSelectOptions.length}
+                  emptyMessage={
+                    opcoesCarregando ? "Carregando..." : "Nenhuma faixa etária disponível"
+                  }
+                />
               </div>
 
               <div className="flex flex-col gap-2 md:col-span-2 xl:col-span-2">
-                <label htmlFor="portes" className="text-sm font-medium text-gray-700">Porte</label>
+                <label htmlFor="portes" className="text-sm font-medium text-gray-700">
+                  Porte
+                  <span className="ml-1 text-red-500">*</span>
+                </label>
                 <Select
                   inputId="portes"
                   isMulti
@@ -969,7 +1307,10 @@ export default function Produtos() {
               </div>
 
               <div className="flex flex-col gap-2">
-                <label htmlFor="preco" className="text-sm font-medium text-gray-700">Preço (R$)</label>
+                <label htmlFor="preco" className="text-sm font-medium text-gray-700">
+                  Preço (R$)
+                  <span className="ml-1 text-red-500">*</span>
+                </label>
                 <input
                   id="preco"
                   type="text"
