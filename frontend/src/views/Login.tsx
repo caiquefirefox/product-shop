@@ -95,7 +95,7 @@ export default function Login() {
           <img src={PREMIERPET_LOGO_SRC} alt="PremieRpet" className="h-14 w-auto" />
 
           <div className="mt-10 space-y-3">
-            <h1 className="text-3xl font-semibold text-slate-900">Bem-vindo ao portal de pediso internos da PremieRpet®</h1>
+            <h1 className="text-3xl font-semibold text-slate-900">Bem-vindo ao portal de pedidos internos da PremieRpet®</h1>
             <p className="text-base text-slate-500">
               Utilize sua conta Microsoft corporativa para acessar o sistema.
             </p>
