@@ -246,6 +246,13 @@ public sealed class UsuarioService : IUsuarioService
         var normalizedEmail = TryNormalizeEmail(email);
         var normalizedRoles = NormalizeRoles(roles, strict: false);
 
+        if (!string.IsNullOrWhiteSpace(normalizedEmail))
+        {
+            var existentePorEmail = await _usuarios.GetByEmailAsync(normalizedEmail, ct);
+            if (existentePorEmail is not null)
+                throw new InvalidOperationException("E-mail já cadastrado para outro usuário.");
+        }
+
         var existente = await _usuarios.GetByCpfAsync(sanitizedCpf, ct);
         if (existente is not null)
             throw new InvalidOperationException("CPF já cadastrado.");
@@ -535,8 +542,8 @@ public sealed class UsuarioService : IUsuarioService
         {
             if (!usuario.Roles.Any())
             {
-                var normalized = NormalizeRoles(null);
-                await _usuarios.ReplaceRolesAsync(usuario.Id, normalized, ct);
+                var defaultRoles = NormalizeRoles(null);
+                await _usuarios.ReplaceRolesAsync(usuario.Id, defaultRoles, ct);
                 var atualizadoLocal = await _usuarios.GetByIdAsync(usuario.Id, ct);
                 if (atualizadoLocal is not null)
                     return atualizadoLocal;

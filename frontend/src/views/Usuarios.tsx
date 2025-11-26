@@ -171,6 +171,7 @@ export default function Usuarios() {
   const [loading, setLoading] = useState(true);
   const [reloading, setReloading] = useState(false);
   const [createPanelOpen, setCreatePanelOpen] = useState(false);
+  const [localPanelOpen, setLocalPanelOpen] = useState(false);
 
   const [newEmail, setNewEmail] = useState("");
   const [newCpf, setNewCpf] = useState("");
@@ -214,12 +215,31 @@ export default function Usuarios() {
 
   const handleOpenCreatePanel = () => {
     resetNewUserForm();
+    setLocalPanelOpen(false);
     setCreatePanelOpen(true);
   };
 
   const handleCloseCreatePanel = () => {
     resetNewUserForm();
     setCreatePanelOpen(false);
+  };
+
+  const resetLocalUserForm = () => {
+    setLocalCpf("");
+    setLocalSenha("");
+    setLocalEmail("");
+    setLocalIsAdmin(false);
+  };
+
+  const handleOpenLocalPanel = () => {
+    resetLocalUserForm();
+    setCreatePanelOpen(false);
+    setLocalPanelOpen(true);
+  };
+
+  const handleCloseLocalPanel = () => {
+    resetLocalUserForm();
+    setLocalPanelOpen(false);
   };
 
   const fetchUsuarios = useCallback(async () => {
@@ -551,10 +571,24 @@ export default function Usuarios() {
         <div>
           <h1 className="text-3xl font-bold">Usuários</h1>
         </div>
-        <button type="button" onClick={handleOpenCreatePanel} className={primaryActionButtonClasses}>
-          <Plus className="h-4 w-4" aria-hidden="true" />
-          Adicionar usuário
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={handleOpenCreatePanel}
+            className={primaryActionButtonClasses}
+          >
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            Adicionar usuário SSO
+          </button>
+          <button
+            type="button"
+            onClick={handleOpenLocalPanel}
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-800 shadow-sm transition-colors hover:border-indigo-200 hover:text-indigo-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2"
+          >
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            Adicionar usuário manual
+          </button>
+        </div>
       </div>
 
       {createPanelOpen && (
@@ -708,14 +742,28 @@ export default function Usuarios() {
             </button>
           </div>
         </form>
+      </section>
+      )}
 
-        <div className="mt-10 border-t border-gray-200 pt-8">
-          <h3 className="text-lg font-semibold text-gray-900">Cadastro manual (CPF e senha)</h3>
-          <p className="mt-1 text-sm text-gray-600">
-            Use esta opção para criar usuários sem SSO. Informe o CPF e uma senha de acesso. O e-mail é opcional e pode ser usado apenas para identificação.
-          </p>
+      {localPanelOpen && (
+        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Cadastro manual (CPF e senha)</h2>
+              <p className="text-sm text-gray-600">
+                Use esta opção para criar usuários sem SSO. Informe o CPF e uma senha de acesso. O e-mail é opcional e pode ser usado apenas para identificação.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleCloseLocalPanel}
+              className="text-sm font-semibold text-gray-500 transition hover:text-gray-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2"
+            >
+              Fechar
+            </button>
+          </div>
 
-          <form className="mt-4 grid gap-4 md:grid-cols-2" onSubmit={handleCreateLocal}>
+          <form className="mt-2 grid gap-4 md:grid-cols-2" onSubmit={handleCreateLocal}>
             <label className="flex flex-col gap-1">
               <span className="text-sm font-medium text-gray-700">CPF *</span>
               <input
@@ -770,6 +818,13 @@ export default function Usuarios() {
 
             <div className="md:col-span-2 flex justify-end gap-3">
               <button
+                type="button"
+                onClick={handleCloseLocalPanel}
+                className="inline-flex items-center rounded-xl border border-gray-300 px-5 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2"
+              >
+                Cancelar
+              </button>
+              <button
                 type="submit"
                 disabled={creatingLocal}
                 className={primaryActionButtonClasses}
@@ -778,7 +833,6 @@ export default function Usuarios() {
               </button>
             </div>
           </form>
-        </div>
         </section>
       )}
 

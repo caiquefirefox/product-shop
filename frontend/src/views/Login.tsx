@@ -141,9 +141,7 @@ export default function Login() {
 
           <div className="mt-10 space-y-3">
             <h1 className="text-3xl font-semibold text-slate-900">Bem-vindo ao portal de pedidos internos da PremieRpet®</h1>
-            <p className="text-base text-slate-500">
-              Utilize sua conta Microsoft corporativa para acessar o sistema.
-            </p>
+            <p className="text-base text-slate-500">Escolha como deseja acessar o sistema.</p>
           </div>
 
           {err && (
@@ -152,23 +150,8 @@ export default function Login() {
             </div>
           )}
 
-          <button
-            onClick={doLogin}
-            disabled={loading}
-            className="mt-8 flex w-full items-center justify-center gap-3 rounded-full bg-[#FF6900] px-6 py-3 text-base font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-[#e65f00] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6900]/40 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {loading ? (
-              <span>Entrando...</span>
-            ) : (
-              <>
-                <MicrosoftIcon className="h-5 w-5" />
-                <span>Entrar com Microsoft</span>
-              </>
-            )}
-          </button>
-
           <div className="mt-10 flex w-full flex-col gap-3 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-4 text-left">
-            <h2 className="text-lg font-semibold text-slate-900">Ou acesse com CPF e senha</h2>
+            <h2 className="text-lg font-semibold text-slate-900">Acesse com CPF e senha</h2>
             <form className="space-y-3" onSubmit={doLocalLogin}>
               <div className="space-y-1">
                 <label className="text-sm font-medium text-slate-700" htmlFor="login-cpf">CPF</label>
@@ -210,6 +193,21 @@ export default function Login() {
               </button>
             </form>
           </div>
+
+          <button
+            onClick={doLogin}
+            disabled={loading}
+            className="mt-6 flex w-full items-center justify-center gap-3 rounded-full bg-[#FF6900] px-6 py-3 text-base font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-[#e65f00] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6900]/40 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loading ? (
+              <span>Entrando...</span>
+            ) : (
+              <>
+                <MicrosoftIcon className="h-5 w-5" />
+                <span>Entrar com Microsoft</span>
+              </>
+            )}
+          </button>
 
           <p className="mt-6 text-sm text-slate-400">
             Ao acessar, você concorda com os <a href="https://premierpet.com.br/privacidade/"  target="_blank">termos de uso</a> e <a href="https://premierpet.com.br/privacidade/" target="_blank">política de privacidade</a> do portal PremieRpet.
