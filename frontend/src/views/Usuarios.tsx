@@ -176,6 +176,11 @@ export default function Usuarios() {
   const [newCpf, setNewCpf] = useState("");
   const [newIsAdmin, setNewIsAdmin] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [localCpf, setLocalCpf] = useState("");
+  const [localSenha, setLocalSenha] = useState("");
+  const [localEmail, setLocalEmail] = useState("");
+  const [localIsAdmin, setLocalIsAdmin] = useState(false);
+  const [creatingLocal, setCreatingLocal] = useState(false);
 
   const [searchResults, setSearchResults] = useState<UsuarioLookup[]>([]);
   const [searching, setSearching] = useState(false);
@@ -360,6 +365,51 @@ export default function Usuarios() {
       toast.error("Não foi possível salvar o usuário.", detail);
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleCreateLocal = async (event: FormEvent) => {
+    event.preventDefault();
+    const sanitized = sanitizeCpf(localCpf);
+
+    if (sanitized.length !== 11 || !isValidCpf(sanitized)) {
+      toast.error("CPF inválido.");
+      return;
+    }
+
+    if (!localSenha.trim()) {
+      toast.error("Informe a senha do usuário.");
+      return;
+    }
+
+    const roles = buildRoles(localIsAdmin);
+    const payload: { cpf: string; senha: string; roles: string[]; email?: string } = {
+      cpf: sanitized,
+      senha: localSenha,
+      roles,
+    };
+
+    const trimmedLocalEmail = localEmail.trim();
+    if (trimmedLocalEmail) {
+      payload.email = trimmedLocalEmail;
+    }
+
+    setCreatingLocal(true);
+    try {
+      await api.post<UsuarioPerfil>("/usuarios/local", payload);
+      toast.success("Usuário local salvo com sucesso.");
+      setLocalCpf("");
+      setLocalSenha("");
+      setLocalEmail("");
+      setLocalIsAdmin(false);
+      await fetchUsuarios();
+      await refreshRoles();
+    } catch (error: any) {
+      console.error("Erro ao criar usuário local", error);
+      const detail = error?.response?.data?.detail as string | undefined;
+      toast.error("Não foi possível salvar o usuário local.", detail);
+    } finally {
+      setCreatingLocal(false);
     }
   };
 
@@ -658,6 +708,77 @@ export default function Usuarios() {
             </button>
           </div>
         </form>
+
+        <div className="mt-10 border-t border-gray-200 pt-8">
+          <h3 className="text-lg font-semibold text-gray-900">Cadastro manual (CPF e senha)</h3>
+          <p className="mt-1 text-sm text-gray-600">
+            Use esta opção para criar usuários sem SSO. Informe o CPF e uma senha de acesso. O e-mail é opcional e pode ser usado apenas para identificação.
+          </p>
+
+          <form className="mt-4 grid gap-4 md:grid-cols-2" onSubmit={handleCreateLocal}>
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium text-gray-700">CPF *</span>
+              <input
+                type="text"
+                value={formatCpf(localCpf)}
+                onChange={(event) => setLocalCpf(sanitizeCpf(event.target.value))}
+                maxLength={14}
+                className="h-11 rounded-xl border border-gray-200 px-3 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-100"
+                placeholder="000.000.000-00"
+                required
+              />
+            </label>
+
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium text-gray-700">Senha *</span>
+              <input
+                type="password"
+                value={localSenha}
+                onChange={(event) => setLocalSenha(event.target.value)}
+                className="h-11 rounded-xl border border-gray-200 px-3 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-100"
+                placeholder="Digite uma senha segura"
+                required
+              />
+            </label>
+
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium text-gray-700">E-mail (opcional)</span>
+              <input
+                type="email"
+                value={localEmail}
+                onChange={(event) => setLocalEmail(event.target.value)}
+                className="h-11 rounded-xl border border-gray-200 px-3 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-100"
+                placeholder="usuario@empresa.com"
+              />
+            </label>
+
+            <div className="md:col-span-2 flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+              <div>
+                <div className="text-sm font-medium text-gray-700">Perfis</div>
+                <div className="text-xs text-gray-500">Todo usuário é Colaborador. Marque para conceder acesso de Administrador.</div>
+              </div>
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  checked={localIsAdmin}
+                  onChange={(event) => setLocalIsAdmin(event.target.checked)}
+                />
+                Administrador
+              </label>
+            </div>
+
+            <div className="md:col-span-2 flex justify-end gap-3">
+              <button
+                type="submit"
+                disabled={creatingLocal}
+                className={primaryActionButtonClasses}
+              >
+                {creatingLocal ? "Salvando..." : "Cadastrar sem SSO"}
+              </button>
+            </div>
+          </form>
+        </div>
         </section>
       )}
 

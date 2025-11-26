@@ -68,6 +68,7 @@ export default function App() {
   const gotoLogin = () => navigate("/login");
   const logout = async () => {
     clearRolesCache?.();
+    localStorage.removeItem("premier:local-token");
     await instance.logoutPopup();
     navigate("/login", { replace: true });
   };

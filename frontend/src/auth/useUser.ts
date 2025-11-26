@@ -3,17 +3,24 @@ import { useMsal } from "@azure/msal-react";
 import { pca } from "./msal";
 import api from "../lib/api";
 import type { UsuarioPerfil } from "../types/user";
+import { hasLocalToken } from "./localAuth";
 
 const LS_KEY = "premier:roles:v2";
 
 export function useUser() {
   const { accounts } = useMsal();
   const account = accounts[0] ?? pca.getActiveAccount() ?? pca.getAllAccounts()[0];
+  const localAuth = hasLocalToken();
+  const cacheKey = account?.homeAccountId
+    ? `${LS_KEY}:${account.homeAccountId}`
+    : localAuth
+      ? `${LS_KEY}:local`
+      : LS_KEY;
 
   const cachedRoles = useMemo<string[]>(
-    () => JSON.parse(localStorage.getItem(LS_KEY) || "[]"),
+    () => JSON.parse(localStorage.getItem(cacheKey) || "[]"),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [account?.homeAccountId]
+    [cacheKey]
   );
 
   const [roles, setRoles] = useState<string[]>(cachedRoles);
@@ -21,10 +28,10 @@ export function useUser() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const refreshProfile = useCallback(async () => {
-    if (!account) {
+    if (!account && !localAuth) {
       setProfile(null);
       setRoles([]);
-      localStorage.removeItem(LS_KEY);
+      localStorage.removeItem(cacheKey);
       setIsLoading(false);
       return;
     }
@@ -35,7 +42,7 @@ export function useUser() {
       const uniqueRoles = Array.from(new Set(data.roles ?? []));
       setProfile(data);
       setRoles(uniqueRoles);
-      localStorage.setItem(LS_KEY, JSON.stringify(uniqueRoles));
+      localStorage.setItem(cacheKey, JSON.stringify(uniqueRoles));
     } catch {
       // mantém o cache atual, mas remove o perfil até nova tentativa
       setProfile(null);
@@ -45,7 +52,7 @@ export function useUser() {
     } finally {
       setIsLoading(false);
     }
-  }, [account?.homeAccountId, cachedRoles]);
+  }, [account?.homeAccountId, cachedRoles, cacheKey, localAuth]);
 
   useEffect(() => {
     refreshProfile();
@@ -58,6 +65,6 @@ export function useUser() {
     isAdmin: roles.includes("Admin"),
     isLoading,
     refreshRoles: refreshProfile,
-    clearRolesCache: () => localStorage.removeItem(LS_KEY),
+    clearRolesCache: () => localStorage.removeItem(cacheKey),
   };
 }

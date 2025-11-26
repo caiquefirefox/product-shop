@@ -1,4 +1,7 @@
 using System.Globalization;
+using System.IdentityModel.Tokens.Jwt;
+using System.Linq;
+using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
@@ -43,9 +46,36 @@ builder.Services.AddApplication(builder.Configuration);
 var tenantId = builder.Configuration["Auth:TenantId"]!;
 var audience = builder.Configuration["Auth:Audience"]!;
 var apiClientId = builder.Configuration["Auth:ClientId"]!;
+var localIssuer = builder.Configuration["Auth:LocalIssuer"] ?? "premierpet.shop.local";
+var localAudience = builder.Configuration["Auth:LocalAudience"] ?? "premierpet.shop.api";
+var localSigningKey = builder.Configuration["Auth:LocalSigningKey"];
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(o =>
+builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultScheme = "CombinedBearer";
+        options.DefaultChallengeScheme = "CombinedBearer";
+    })
+    .AddPolicyScheme("CombinedBearer", "Bearer", options =>
+    {
+        options.ForwardDefaultSelector = context =>
+        {
+            var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+            if (authHeader?.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                var token = authHeader["Bearer ".Length..];
+                var handler = new JwtSecurityTokenHandler();
+                if (handler.CanReadToken(token))
+                {
+                    var jwt = handler.ReadJwtToken(token);
+                    if (string.Equals(jwt.Issuer, localIssuer, StringComparison.OrdinalIgnoreCase))
+                        return "LocalBearer";
+                }
+            }
+
+            return JwtBearerDefaults.AuthenticationScheme;
+        };
+    })
+    .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, o =>
     {
         // Authority pode ser v2, mas validaremos ambos os issuers abaixo
         o.Authority = $"https://login.microsoftonline.com/{tenantId}/v2.0";
@@ -66,6 +96,20 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             },
             ValidateIssuer = true,
             ValidateAudience = true
+        };
+    })
+    .AddJwtBearer("LocalBearer", o =>
+    {
+        if (string.IsNullOrWhiteSpace(localSigningKey))
+            throw new InvalidOperationException("Configuração Auth:LocalSigningKey ausente.");
+
+        o.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidIssuer = localIssuer,
+            ValidAudience = localAudience,
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(localSigningKey))
         };
     });
 

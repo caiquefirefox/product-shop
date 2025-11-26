@@ -8,6 +8,7 @@ public interface IUsuarioRepository
 {
     Task<Usuario?> GetByEmailAsync(string email, CancellationToken ct);
     Task<Usuario?> GetByMicrosoftIdAsync(string microsoftId, CancellationToken ct);
+    Task<Usuario?> GetByCpfAsync(string cpf, CancellationToken ct);
     Task<Usuario?> GetByIdAsync(Guid id, CancellationToken ct);
     Task<IReadOnlyList<Usuario>> ListAsync(CancellationToken ct);
     Task AddAsync(Usuario usuario, CancellationToken ct);

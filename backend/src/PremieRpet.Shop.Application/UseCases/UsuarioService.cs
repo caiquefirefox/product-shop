@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using PremieRpet.Shop.Application.DTOs;
 using PremieRpet.Shop.Application.Interfaces.Repositories;
 using PremieRpet.Shop.Application.Interfaces.Services;
@@ -233,6 +235,57 @@ public sealed class UsuarioService : IUsuarioService
             ?? throw new InvalidOperationException("Usuário não encontrado após atualização.");
 
         return ToDto(atualizado);
+    }
+
+    public async Task<UsuarioDto> CriarLocalAsync(string cpf, string senha, IEnumerable<string>? roles, string? email, CancellationToken ct)
+    {
+        var sanitizedCpf = SanitizeCpfOrNull(cpf) ?? throw new InvalidOperationException("CPF obrigatório.");
+        if (string.IsNullOrWhiteSpace(senha))
+            throw new InvalidOperationException("Senha obrigatória.");
+
+        var normalizedEmail = TryNormalizeEmail(email);
+        var normalizedRoles = NormalizeRoles(roles, strict: false);
+
+        var existente = await _usuarios.GetByCpfAsync(sanitizedCpf, ct);
+        if (existente is not null)
+            throw new InvalidOperationException("CPF já cadastrado.");
+
+        var agora = DateTimeOffset.UtcNow;
+        var usuario = new Usuario
+        {
+            Cpf = sanitizedCpf,
+            Email = normalizedEmail ?? $"{sanitizedCpf}@local",
+            PasswordHash = HashPassword(senha),
+            CriadoEm = agora,
+            AtualizadoEm = agora,
+        };
+
+        ApplyRoles(usuario, normalizedRoles);
+        await _usuarios.AddAsync(usuario, ct);
+        return ToDto(usuario);
+    }
+
+    public async Task<UsuarioDto> AutenticarLocalAsync(string cpf, string senha, CancellationToken ct)
+    {
+        var sanitizedCpf = SanitizeCpfOrNull(cpf) ?? throw new InvalidOperationException("CPF obrigatório.");
+        if (string.IsNullOrWhiteSpace(senha))
+            throw new InvalidOperationException("Senha obrigatória.");
+
+        var usuario = await _usuarios.GetByCpfAsync(sanitizedCpf, ct)
+            ?? throw new InvalidOperationException("Usuário não encontrado.");
+
+        if (!VerifyPassword(senha, usuario.PasswordHash))
+            throw new InvalidOperationException("Senha inválida.");
+
+        if (string.IsNullOrWhiteSpace(usuario.Email) && !string.IsNullOrWhiteSpace(usuario.Cpf))
+        {
+            usuario.Email = $"{usuario.Cpf}@local";
+            usuario.AtualizadoEm = DateTimeOffset.UtcNow;
+            await _usuarios.UpdateAsync(usuario, ct);
+        }
+
+        usuario = await EnsureRolesAsync(usuario, ct);
+        return ToDto(usuario);
     }
 
     public async Task<IReadOnlyCollection<UsuarioLookupDto>> BuscarEntraAsync(string termo, CancellationToken ct)
@@ -478,6 +531,20 @@ public sealed class UsuarioService : IUsuarioService
         var normalizedEmail = TryNormalizeEmail(usuario.Email);
         var microsoftId = knownMicrosoftId;
 
+        if (string.IsNullOrWhiteSpace(usuario.MicrosoftId) && string.IsNullOrWhiteSpace(microsoftId))
+        {
+            if (!usuario.Roles.Any())
+            {
+                var normalized = NormalizeRoles(null);
+                await _usuarios.ReplaceRolesAsync(usuario.Id, normalized, ct);
+                var atualizadoLocal = await _usuarios.GetByIdAsync(usuario.Id, ct);
+                if (atualizadoLocal is not null)
+                    return atualizadoLocal;
+            }
+
+            return usuario;
+        }
+
         if (string.IsNullOrWhiteSpace(microsoftId) ||
             string.IsNullOrWhiteSpace(usuario.MicrosoftId) ||
             !string.Equals(usuario.MicrosoftId, microsoftId, StringComparison.OrdinalIgnoreCase))
@@ -567,6 +634,35 @@ public sealed class UsuarioService : IUsuarioService
             throw new InvalidOperationException("E-mail do usuário inválido.");
 
         return normalized;
+    }
+
+    private static string HashPassword(string password)
+    {
+        var salt = RandomNumberGenerator.GetBytes(16);
+        var hash = Rfc2898DeriveBytes.Pbkdf2(Encoding.UTF8.GetBytes(password), salt, 100_000, HashAlgorithmName.SHA256, 32);
+        return $"{Convert.ToBase64String(salt)}.{Convert.ToBase64String(hash)}";
+    }
+
+    private static bool VerifyPassword(string password, string? stored)
+    {
+        if (string.IsNullOrWhiteSpace(stored))
+            return false;
+
+        var parts = stored.Split('.', 2);
+        if (parts.Length != 2)
+            return false;
+
+        try
+        {
+            var salt = Convert.FromBase64String(parts[0]);
+            var expected = Convert.FromBase64String(parts[1]);
+            var hash = Rfc2898DeriveBytes.Pbkdf2(Encoding.UTF8.GetBytes(password), salt, 100_000, HashAlgorithmName.SHA256, expected.Length);
+            return CryptographicOperations.FixedTimeEquals(hash, expected);
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static IReadOnlyList<string> NormalizeRoles(IEnumerable<string>? roles, bool strict = true)
