@@ -942,7 +942,7 @@ export default function Usuarios() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm lg:p-6">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
@@ -978,7 +978,7 @@ export default function Usuarios() {
         ) : !hasFilteredUsuarios ? (
           <div className="py-12 text-center text-sm text-gray-500">Nenhum usuário encontrado com os filtros aplicados.</div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="-mx-4 overflow-x-auto lg:-mx-6">
             <table className="min-w-full divide-y divide-gray-200 text-sm">
               <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                 <tr>
@@ -986,7 +986,7 @@ export default function Usuarios() {
                   <th className="px-4 py-3">Origem</th>
                   <th className="px-4 py-3">CPF</th>
                   <th className="px-4 py-3">Perfis</th>
-                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3 text-center">Ativo</th>
                   <th className="px-4 py-3">Atualizado em</th>
                   <th className="px-4 py-3 text-right">Ações</th>
                 </tr>
@@ -1077,23 +1077,17 @@ export default function Usuarios() {
                           </label>
                         </div>
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-col gap-2">
-                          <span
-                            className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold ${
-                              draftAtivo ? "bg-emerald-50 text-emerald-700" : "bg-slate-200 text-slate-700"
-                            }`}
-                          >
-                            {draftAtivo ? "Ativo" : "Inativo"}
-                          </span>
-                          <label className="flex items-center gap-2 text-xs font-medium text-gray-700">
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex justify-center">
+                          <label className="inline-flex items-center justify-center">
+                            <span className="sr-only">{draftAtivo ? "Usuário ativo" : "Usuário inativo"}</span>
                             <input
                               type="checkbox"
-                              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                              className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                               checked={draftAtivo}
                               onChange={() => toggleAtivo(usuario)}
+                              title={draftAtivo ? "Ativo" : "Inativo"}
                             />
-                            Manter acesso ativo
                           </label>
                         </div>
                       </td>
