@@ -190,6 +190,7 @@ export default function Usuarios() {
 
   const [draftAdmins, setDraftAdmins] = useState<Record<string, boolean>>({});
   const [draftCpfs, setDraftCpfs] = useState<Record<string, string>>({});
+  const [draftEmails, setDraftEmails] = useState<Record<string, string>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
 
@@ -249,6 +250,7 @@ export default function Usuarios() {
       setUsuarios(data);
       setDraftAdmins({});
       setDraftCpfs({});
+      setDraftEmails({});
     } catch (error) {
       console.error("Erro ao carregar usuários", error);
       toast.error("Não foi possível carregar a lista de usuários.");
@@ -440,6 +442,10 @@ export default function Usuarios() {
     });
   };
 
+  const handleDraftEmailChange = (usuario: UsuarioPerfil, value: string) => {
+    setDraftEmails((prev) => ({ ...prev, [usuario.id]: value }));
+  };
+
   const handleDraftCpfChange = (usuario: UsuarioPerfil, value: string) => {
     const sanitized = sanitizeCpf(value);
     setDraftCpfs((prev) => ({ ...prev, [usuario.id]: sanitized }));
@@ -451,6 +457,8 @@ export default function Usuarios() {
     const roles = buildRoles(isAdminDraft);
     const draftCpf = draftCpfs[usuario.id];
     const cpfToSend = usuario.cpf ?? (draftCpf && draftCpf.length ? draftCpf : undefined);
+    const draftEmail = (draftEmails[usuario.id] ?? usuario.email ?? "").trim();
+    const isLocal = !usuario.microsoftId;
 
     if (!usuario.cpf && draftCpf) {
       if (draftCpf.length < 11) {
@@ -463,13 +471,28 @@ export default function Usuarios() {
       }
     }
 
+    if (isLocal) {
+      if (!draftEmail || !draftEmail.includes("@")) {
+        toast.error("Informe um e-mail válido.");
+        return;
+      }
+    }
+
     setSavingId(usuario.id);
     try {
-      await api.post<UsuarioPerfil>("/usuarios", {
-        email: usuario.email,
-        roles,
-        cpf: cpfToSend,
-      });
+      if (isLocal) {
+        await api.put<UsuarioPerfil>(`/usuarios/local/${usuario.id}`, {
+          email: draftEmail || usuario.email,
+          roles,
+          cpf: cpfToSend,
+        });
+      } else {
+        await api.post<UsuarioPerfil>("/usuarios", {
+          email: usuario.email,
+          roles,
+          cpf: cpfToSend,
+        });
+      }
       toast.success("Alterações salvas.");
       setDraftAdmins((prev) => {
         const next = { ...prev };
@@ -477,6 +500,11 @@ export default function Usuarios() {
         return next;
       });
       setDraftCpfs((prev) => {
+        const next = { ...prev };
+        delete next[usuario.id];
+        return next;
+      });
+      setDraftEmails((prev) => {
         const next = { ...prev };
         delete next[usuario.id];
         return next;
@@ -936,13 +964,16 @@ export default function Usuarios() {
                   const isAdminOriginal = usuario.roles.includes("Admin");
                   const isAdminDraft = draftAdmins[usuario.id] ?? isAdminOriginal;
                   const draftCpf = draftCpfs[usuario.id] ?? "";
+                  const draftEmail = draftEmails[usuario.id] ?? usuario.email ?? "";
                   const cpfComplete = draftCpf.length === 11;
                   const cpfIncomplete = draftCpf.length > 0 && !cpfComplete;
                   const cpfInvalid = cpfComplete && !isValidCpf(draftCpf);
                   const cpfHasError = cpfIncomplete || cpfInvalid;
                   const canDefineCpf = !usuario.cpf;
                   const cpfChanged = canDefineCpf && cpfComplete && !cpfHasError;
-                  const hasChanges = isAdminDraft !== isAdminOriginal || cpfChanged;
+                  const isLocal = !usuario.microsoftId;
+                  const emailChanged = isLocal && draftEmail.trim() && draftEmail.trim() !== (usuario.email ?? "");
+                  const hasChanges = isAdminDraft !== isAdminOriginal || cpfChanged || emailChanged;
                   const isSaving = savingId === usuario.id;
 
                   const displayEmail = usuario.email || "—";
@@ -951,7 +982,29 @@ export default function Usuarios() {
                     <tr key={usuario.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3">
                         <div className="flex flex-col gap-1">
-                          <span className="font-mono text-xs text-gray-700">{displayEmail}</span>
+                          {isLocal ? (
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="email"
+                                  value={draftEmail}
+                                  onChange={(event) => handleDraftEmailChange(usuario, event.target.value)}
+                                  className="h-9 w-full rounded-lg border border-gray-200 px-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                                />
+                                <span className="inline-flex items-center rounded-full bg-orange-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-orange-700">
+                                  Usuário local
+                                </span>
+                              </div>
+                              {!draftEmail.trim() && <span className="text-xs text-red-600">E-mail obrigatório.</span>}
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-xs text-gray-700">{displayEmail}</span>
+                              <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700">
+                                Usuário SSO
+                              </span>
+                            </div>
+                          )}
                           <span className="font-mono text-[10px] text-gray-400">{usuario.microsoftId}</span>
                         </div>
                       </td>

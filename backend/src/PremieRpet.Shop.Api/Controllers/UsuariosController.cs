@@ -78,6 +78,21 @@ public sealed class UsuariosController(IUsuarioService usuarios) : ControllerBas
         }
     }
 
+    [HttpPut("local/{id:guid}")]
+    [Authorize("Admin")]
+    public async Task<IActionResult> AtualizarLocal(Guid id, [FromBody] UsuarioLocalUpdateRequest request, CancellationToken ct)
+    {
+        try
+        {
+            var resultado = await usuarios.AtualizarLocalAsync(id, request.Email, request.Cpf, request.Roles, ct);
+            return Ok(resultado);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Problem(detail: ex.Message, statusCode: StatusCodes.Status400BadRequest);
+        }
+    }
+
     [HttpPost("sincronizar")]
     [Authorize("Admin")]
     public async Task<IActionResult> Sincronizar(CancellationToken ct)

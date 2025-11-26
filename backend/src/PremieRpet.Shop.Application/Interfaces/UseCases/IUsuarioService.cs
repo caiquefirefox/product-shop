@@ -12,6 +12,7 @@ public interface IUsuarioService
     Task<UsuarioDto> UpsertAsync(string email, string? cpf, IEnumerable<string>? roles, CancellationToken ct);
     Task<UsuarioDto> CriarLocalAsync(string cpf, string senha, IEnumerable<string>? roles, string? email, CancellationToken ct);
     Task<UsuarioDto> AutenticarLocalAsync(string cpf, string senha, CancellationToken ct);
+    Task<UsuarioDto> AtualizarLocalAsync(Guid usuarioId, string email, string? cpf, IEnumerable<string>? roles, CancellationToken ct);
     Task<IReadOnlyCollection<UsuarioLookupDto>> BuscarEntraAsync(string termo, CancellationToken ct);
     Task<UsuarioSyncResult> SincronizarAsync(CancellationToken ct);
 }

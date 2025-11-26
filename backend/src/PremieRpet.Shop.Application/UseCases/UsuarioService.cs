@@ -295,6 +295,50 @@ public sealed class UsuarioService : IUsuarioService
         return ToDto(usuario);
     }
 
+    public async Task<UsuarioDto> AtualizarLocalAsync(Guid usuarioId, string email, string? cpf, IEnumerable<string>? roles, CancellationToken ct)
+    {
+        if (usuarioId == Guid.Empty)
+            throw new InvalidOperationException("Identificador do usuário obrigatório.");
+
+        if (string.IsNullOrWhiteSpace(email))
+            throw new InvalidOperationException("E-mail obrigatório.");
+
+        var normalizedEmail = NormalizeEmailValue(email);
+        var sanitizedCpf = SanitizeCpfOrNull(cpf);
+        var normalizedRoles = NormalizeRoles(roles, strict: false);
+
+        var usuario = await _usuarios.GetByIdAsync(usuarioId, ct)
+            ?? throw new InvalidOperationException("Usuário não encontrado.");
+
+        if (!string.IsNullOrWhiteSpace(usuario.MicrosoftId))
+            throw new InvalidOperationException("E-mail de usuário com SSO não pode ser alterado manualmente.");
+
+        var existentePorEmail = await _usuarios.GetByEmailAsync(normalizedEmail, ct);
+        if (existentePorEmail is not null && existentePorEmail.Id != usuario.Id)
+            throw new InvalidOperationException("E-mail já cadastrado para outro usuário.");
+
+        if (!string.IsNullOrWhiteSpace(sanitizedCpf))
+        {
+            if (!string.IsNullOrWhiteSpace(usuario.Cpf) && !string.Equals(usuario.Cpf, sanitizedCpf, StringComparison.Ordinal))
+                throw new InvalidOperationException("CPF já cadastrado e não pode ser alterado.");
+
+            if (string.IsNullOrWhiteSpace(usuario.Cpf))
+            {
+                usuario.Cpf = sanitizedCpf;
+            }
+        }
+
+        usuario.Email = normalizedEmail;
+        usuario.AtualizadoEm = DateTimeOffset.UtcNow;
+        ApplyRoles(usuario, normalizedRoles);
+
+        await _usuarios.UpdateAsync(usuario, ct);
+        await _usuarios.ReplaceRolesAsync(usuario.Id, normalizedRoles, ct);
+
+        var atualizado = await _usuarios.GetByIdAsync(usuario.Id, ct);
+        return atualizado is not null ? ToDto(atualizado) : ToDto(usuario);
+    }
+
     public async Task<IReadOnlyCollection<UsuarioLookupDto>> BuscarEntraAsync(string termo, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(termo))
