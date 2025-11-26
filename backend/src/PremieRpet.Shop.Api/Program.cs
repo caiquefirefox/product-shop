@@ -8,7 +8,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using PremieRpet.Shop.Application;
+using PremieRpet.Shop.Application.Interfaces.Repositories;
 using PremieRpet.Shop.Infrastructure;
+using PremieRpet.Shop.Api.Security;
+using PremieRpet.Shop.Domain.Entities;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -140,6 +143,50 @@ app.UseRequestLocalization(localizationOptions);
 app.UseHttpsRedirection();
 app.UseCors();
 app.UseAuthentication();
+
+app.Use(async (context, next) =>
+{
+    if (context.User?.Identity?.IsAuthenticated == true)
+    {
+        var repo = context.RequestServices.GetRequiredService<IUsuarioRepository>();
+
+        var usuarioId = context.User.GetUserId();
+        Usuario? usuario = null;
+
+        if (Guid.TryParse(usuarioId, out var parsedId))
+        {
+            usuario = await repo.GetByIdAsync(parsedId, context.RequestAborted);
+        }
+
+        if (usuario is null)
+        {
+            var microsoftId = context.User.GetUserObjectId();
+            if (!string.IsNullOrWhiteSpace(microsoftId))
+            {
+                usuario = await repo.GetByMicrosoftIdAsync(microsoftId, context.RequestAborted);
+            }
+        }
+
+        if (usuario is null)
+        {
+            var email = context.User.GetUserEmail()?.Trim().ToLowerInvariant();
+            if (!string.IsNullOrWhiteSpace(email))
+            {
+                usuario = await repo.GetByEmailAsync(email, context.RequestAborted);
+            }
+        }
+
+        if (usuario is not null && !usuario.Ativo)
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            await context.Response.WriteAsync("Usuário inativo.");
+            return;
+        }
+    }
+
+    await next();
+});
+
 app.UseAuthorization();
 app.MapControllers();
 

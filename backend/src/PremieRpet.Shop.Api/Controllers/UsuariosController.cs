@@ -20,9 +20,16 @@ public sealed class UsuariosController(IUsuarioService usuarios) : ControllerBas
         if (string.IsNullOrWhiteSpace(usuarioEmail))
             return Problem(title: "Token sem e-mail do usuário (preferred_username/email).", statusCode: StatusCodes.Status401Unauthorized);
 
-        var usuarioId = User.GetUserObjectId();
-        var perfil = await usuarios.ObterOuCriarAsync(usuarioEmail, usuarioId, ct);
-        return Ok(perfil);
+        try
+        {
+            var usuarioId = User.GetUserObjectId();
+            var perfil = await usuarios.ObterOuCriarAsync(usuarioEmail, usuarioId, ct);
+            return Ok(perfil);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Problem(detail: ex.Message, statusCode: StatusCodes.Status403Forbidden);
+        }
     }
 
     [HttpGet]
@@ -85,6 +92,21 @@ public sealed class UsuariosController(IUsuarioService usuarios) : ControllerBas
         try
         {
             var resultado = await usuarios.AtualizarLocalAsync(id, request.Email, request.Cpf, request.Roles, ct);
+            return Ok(resultado);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Problem(detail: ex.Message, statusCode: StatusCodes.Status400BadRequest);
+        }
+    }
+
+    [HttpPut("{id:guid}/status")]
+    [Authorize("Admin")]
+    public async Task<IActionResult> AtualizarStatus(Guid id, [FromBody] UsuarioStatusRequest request, CancellationToken ct)
+    {
+        try
+        {
+            var resultado = await usuarios.AtualizarStatusAsync(id, request.Ativo, ct);
             return Ok(resultado);
         }
         catch (InvalidOperationException ex)

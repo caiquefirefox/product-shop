@@ -7,6 +7,7 @@ public sealed record UsuarioDto(
     Guid Id,
     string MicrosoftId,
     string Email,
+    bool Ativo,
     string? Cpf,
     IReadOnlyCollection<string> Roles,
     DateTimeOffset CriadoEm,

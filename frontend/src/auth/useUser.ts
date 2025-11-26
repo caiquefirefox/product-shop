@@ -44,11 +44,9 @@ export function useUser() {
       setRoles(uniqueRoles);
       localStorage.setItem(cacheKey, JSON.stringify(uniqueRoles));
     } catch {
-      // mantém o cache atual, mas remove o perfil até nova tentativa
       setProfile(null);
-      if (cachedRoles.length === 0) {
-        setRoles([]);
-      }
+      setRoles([]);
+      localStorage.removeItem(cacheKey);
     } finally {
       setIsLoading(false);
     }

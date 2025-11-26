@@ -192,6 +192,7 @@ export default function Usuarios() {
   const [draftCpfs, setDraftCpfs] = useState<Record<string, string>>({});
   const [draftEmails, setDraftEmails] = useState<Record<string, string>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
 
   const [filterEmail, setFilterEmail] = useState("");
@@ -517,6 +518,23 @@ export default function Usuarios() {
       toast.error("Não foi possível atualizar o usuário.", detail);
     } finally {
       setSavingId(null);
+    }
+  };
+
+  const handleToggleStatus = async (usuario: UsuarioPerfil) => {
+    const nextAtivo = !usuario.ativo;
+    setStatusUpdatingId(usuario.id);
+    try {
+      await api.put<UsuarioPerfil>(`/usuarios/${usuario.id}/status`, { ativo: nextAtivo });
+      toast.success(nextAtivo ? "Usuário reativado." : "Usuário inativado.");
+      await fetchUsuarios();
+      await refreshRoles();
+    } catch (error: any) {
+      console.error("Erro ao atualizar status do usuário", error);
+      const detail = error?.response?.data?.detail as string | undefined;
+      toast.error("Não foi possível atualizar o status do usuário.", detail);
+    } finally {
+      setStatusUpdatingId(null);
     }
   };
 
@@ -953,8 +971,10 @@ export default function Usuarios() {
               <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                 <tr>
                   <th className="px-4 py-3">E-mail</th>
+                  <th className="px-4 py-3">Origem</th>
                   <th className="px-4 py-3">CPF</th>
                   <th className="px-4 py-3">Perfis</th>
+                  <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Atualizado em</th>
                   <th className="px-4 py-3 text-right">Ações</th>
                 </tr>
@@ -975,6 +995,7 @@ export default function Usuarios() {
                   const emailChanged = isLocal && draftEmail.trim() && draftEmail.trim() !== (usuario.email ?? "");
                   const hasChanges = isAdminDraft !== isAdminOriginal || cpfChanged || emailChanged;
                   const isSaving = savingId === usuario.id;
+                  const isStatusUpdating = statusUpdatingId === usuario.id;
 
                   const displayEmail = usuario.email || "—";
 
@@ -984,29 +1005,30 @@ export default function Usuarios() {
                         <div className="flex flex-col gap-1">
                           {isLocal ? (
                             <div className="flex flex-col gap-1">
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="email"
-                                  value={draftEmail}
-                                  onChange={(event) => handleDraftEmailChange(usuario, event.target.value)}
-                                  className="h-9 w-full rounded-lg border border-gray-200 px-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-                                />
-                                <span className="inline-flex items-center rounded-full bg-orange-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-orange-700">
-                                  Usuário local
-                                </span>
-                              </div>
+                              <input
+                                type="email"
+                                value={draftEmail}
+                                onChange={(event) => handleDraftEmailChange(usuario, event.target.value)}
+                                className="h-9 w-full rounded-lg border border-gray-200 px-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                              />
                               {!draftEmail.trim() && <span className="text-xs text-red-600">E-mail obrigatório.</span>}
                             </div>
                           ) : (
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono text-xs text-gray-700">{displayEmail}</span>
-                              <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-700">
-                                Usuário SSO
-                              </span>
-                            </div>
+                            <span className="font-mono text-xs text-gray-700">{displayEmail}</span>
                           )}
-                          <span className="font-mono text-[10px] text-gray-400">{usuario.microsoftId}</span>
+                          {usuario.microsoftId && (
+                            <span className="font-mono text-[10px] text-gray-400">{usuario.microsoftId}</span>
+                          )}
                         </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex items-center rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-wide ${
+                            isLocal ? "bg-orange-50 text-orange-700" : "bg-slate-100 text-slate-700"
+                          }`}
+                        >
+                          {isLocal ? "Local" : "SSO"}
+                        </span>
                       </td>
                       <td className="px-4 py-3">
                         {usuario.cpf ? (
@@ -1040,16 +1062,43 @@ export default function Usuarios() {
                           </label>
                         </div>
                       </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold ${
+                            usuario.ativo ? "bg-emerald-50 text-emerald-700" : "bg-slate-200 text-slate-700"
+                          }`}
+                        >
+                          {usuario.ativo ? "Ativo" : "Inativo"}
+                        </span>
+                      </td>
                       <td className="px-4 py-3 text-xs text-gray-500">{dateFormatter.format(new Date(usuario.atualizadoEm))}</td>
                       <td className="px-4 py-3 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleSaveUsuario(usuario)}
-                          disabled={!hasChanges || isSaving || cpfHasError}
-                          className="inline-flex items-center rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-gray-300"
-                        >
-                          {isSaving ? "Salvando..." : "Salvar"}
-                        </button>
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleStatus(usuario)}
+                            disabled={isStatusUpdating || isSaving}
+                            className={`inline-flex items-center rounded-lg px-4 py-2 text-xs font-semibold shadow-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
+                              usuario.ativo
+                                ? "bg-slate-200 text-slate-800 hover:bg-slate-300 focus-visible:outline-slate-500"
+                                : "bg-emerald-100 text-emerald-800 hover:bg-emerald-200 focus-visible:outline-emerald-600"
+                            } disabled:cursor-not-allowed disabled:opacity-70`}
+                          >
+                            {isStatusUpdating
+                              ? "Atualizando..."
+                              : usuario.ativo
+                                ? "Inativar"
+                                : "Reativar"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSaveUsuario(usuario)}
+                            disabled={!hasChanges || isSaving || cpfHasError || isStatusUpdating}
+                            className="inline-flex items-center rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-gray-300"
+                          >
+                            {isSaving ? "Salvando..." : "Salvar"}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

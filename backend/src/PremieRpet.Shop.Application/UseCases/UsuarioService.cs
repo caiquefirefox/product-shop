@@ -31,6 +31,9 @@ public sealed class UsuarioService : IUsuarioService
         var normalizedEmail = NormalizeEmailValue(email);
         var (usuario, resolvedMicrosoftId) = await FindExistingUsuarioAsync(normalizedEmail, microsoftId, ct);
 
+        if (usuario is not null && !usuario.Ativo)
+            throw new InvalidOperationException("Usuário inativo.");
+
         if (usuario is null)
         {
             var agora = DateTimeOffset.UtcNow;
@@ -41,6 +44,7 @@ public sealed class UsuarioService : IUsuarioService
             {
                 MicrosoftId = resolvedMicrosoftId,
                 Email = normalizedEmail,
+                Ativo = true,
                 CriadoEm = agora,
                 AtualizadoEm = agora,
             };
@@ -79,6 +83,7 @@ public sealed class UsuarioService : IUsuarioService
                 MicrosoftId = resolvedMicrosoftId,
                 Email = normalizedEmail,
                 Cpf = sanitized,
+                Ativo = true,
                 CriadoEm = agora,
                 AtualizadoEm = agora,
             };
@@ -89,6 +94,9 @@ public sealed class UsuarioService : IUsuarioService
         }
 
         usuario = await EnsureRolesAsync(usuario, ct, resolvedMicrosoftId);
+
+        if (!usuario.Ativo)
+            throw new InvalidOperationException("Usuário inativo.");
 
         if (string.IsNullOrWhiteSpace(usuario.Cpf))
         {
@@ -127,6 +135,7 @@ public sealed class UsuarioService : IUsuarioService
                 MicrosoftId = resolvedMicrosoftId,
                 Email = normalizedEmail,
                 Cpf = sanitized,
+                Ativo = true,
                 CriadoEm = agora,
                 AtualizadoEm = agora,
             };
@@ -137,6 +146,9 @@ public sealed class UsuarioService : IUsuarioService
         }
 
         usuario = await EnsureRolesAsync(usuario, ct, resolvedMicrosoftId);
+
+        if (!usuario.Ativo)
+            throw new InvalidOperationException("Usuário inativo.");
 
         if (!string.IsNullOrWhiteSpace(usuario.Cpf))
         {
@@ -197,6 +209,7 @@ public sealed class UsuarioService : IUsuarioService
                 MicrosoftId = microsoftId,
                 Email = normalizedEmail,
                 Cpf = sanitizedCpf,
+                Ativo = true,
                 CriadoEm = agora,
                 AtualizadoEm = agora,
             };
@@ -263,6 +276,7 @@ public sealed class UsuarioService : IUsuarioService
             Cpf = sanitizedCpf,
             Email = normalizedEmail ?? $"{sanitizedCpf}@local",
             PasswordHash = HashPassword(senha),
+            Ativo = true,
             CriadoEm = agora,
             AtualizadoEm = agora,
         };
@@ -280,6 +294,9 @@ public sealed class UsuarioService : IUsuarioService
 
         var usuario = await _usuarios.GetByCpfAsync(sanitizedCpf, ct)
             ?? throw new InvalidOperationException("Usuário não encontrado.");
+
+        if (!usuario.Ativo)
+            throw new InvalidOperationException("Usuário inativo.");
 
         if (!VerifyPassword(senha, usuario.PasswordHash))
             throw new InvalidOperationException("Senha inválida.");
@@ -334,6 +351,23 @@ public sealed class UsuarioService : IUsuarioService
 
         await _usuarios.UpdateAsync(usuario, ct);
         await _usuarios.ReplaceRolesAsync(usuario.Id, normalizedRoles, ct);
+
+        var atualizado = await _usuarios.GetByIdAsync(usuario.Id, ct);
+        return atualizado is not null ? ToDto(atualizado) : ToDto(usuario);
+    }
+
+    public async Task<UsuarioDto> AtualizarStatusAsync(Guid usuarioId, bool ativo, CancellationToken ct)
+    {
+        if (usuarioId == Guid.Empty)
+            throw new InvalidOperationException("Identificador do usuário obrigatório.");
+
+        var usuario = await _usuarios.GetByIdAsync(usuarioId, ct)
+            ?? throw new InvalidOperationException("Usuário não encontrado.");
+
+        usuario.Ativo = ativo;
+        usuario.AtualizadoEm = DateTimeOffset.UtcNow;
+
+        await _usuarios.UpdateAsync(usuario, ct);
 
         var atualizado = await _usuarios.GetByIdAsync(usuario.Id, ct);
         return atualizado is not null ? ToDto(atualizado) : ToDto(usuario);
@@ -462,6 +496,7 @@ public sealed class UsuarioService : IUsuarioService
             {
                 MicrosoftId = remoto.MicrosoftId,
                 Email = emailNormalizado,
+                Ativo = true,
                 CriadoEm = agora,
                 AtualizadoEm = agora,
             };
@@ -649,7 +684,7 @@ public sealed class UsuarioService : IUsuarioService
 
         var email = usuario.Email ?? string.Empty;
 
-        return new UsuarioDto(usuario.Id, microsoftId, email, usuario.Cpf, roles, usuario.CriadoEm, usuario.AtualizadoEm);
+        return new UsuarioDto(usuario.Id, microsoftId, email, usuario.Ativo, usuario.Cpf, roles, usuario.CriadoEm, usuario.AtualizadoEm);
     }
 
     private static string? TryNormalizeEmail(string? email)

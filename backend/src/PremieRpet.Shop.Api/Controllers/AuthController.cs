@@ -1,3 +1,4 @@
+using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -25,7 +26,11 @@ public sealed class AuthController(IConfiguration configuration, IUsuarioService
         }
         catch (InvalidOperationException ex)
         {
-            return Problem(detail: ex.Message, statusCode: StatusCodes.Status400BadRequest);
+            var status = string.Equals(ex.Message, "Usuário inativo.", StringComparison.OrdinalIgnoreCase)
+                ? StatusCodes.Status403Forbidden
+                : StatusCodes.Status400BadRequest;
+
+            return Problem(detail: ex.Message, statusCode: status);
         }
     }
 
