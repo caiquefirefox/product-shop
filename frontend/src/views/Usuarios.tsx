@@ -191,8 +191,8 @@ export default function Usuarios() {
   const [draftAdmins, setDraftAdmins] = useState<Record<string, boolean>>({});
   const [draftCpfs, setDraftCpfs] = useState<Record<string, string>>({});
   const [draftEmails, setDraftEmails] = useState<Record<string, string>>({});
+  const [draftAtivos, setDraftAtivos] = useState<Record<string, boolean>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
 
   const [filterEmail, setFilterEmail] = useState("");
@@ -252,6 +252,7 @@ export default function Usuarios() {
       setDraftAdmins({});
       setDraftCpfs({});
       setDraftEmails({});
+      setDraftAtivos({});
     } catch (error) {
       console.error("Erro ao carregar usuários", error);
       toast.error("Não foi possível carregar a lista de usuários.");
@@ -443,6 +444,13 @@ export default function Usuarios() {
     });
   };
 
+  const toggleAtivo = (usuario: UsuarioPerfil) => {
+    setDraftAtivos((prev) => {
+      const current = prev[usuario.id] ?? usuario.ativo;
+      return { ...prev, [usuario.id]: !current };
+    });
+  };
+
   const handleDraftEmailChange = (usuario: UsuarioPerfil, value: string) => {
     setDraftEmails((prev) => ({ ...prev, [usuario.id]: value }));
   };
@@ -460,6 +468,7 @@ export default function Usuarios() {
     const cpfToSend = usuario.cpf ?? (draftCpf && draftCpf.length ? draftCpf : undefined);
     const draftEmail = (draftEmails[usuario.id] ?? usuario.email ?? "").trim();
     const isLocal = !usuario.microsoftId;
+    const draftAtivo = draftAtivos[usuario.id] ?? usuario.ativo;
 
     if (!usuario.cpf && draftCpf) {
       if (draftCpf.length < 11) {
@@ -479,20 +488,35 @@ export default function Usuarios() {
       }
     }
 
+    const hasProfileChanges =
+      isAdminDraft !== isAdminOriginal ||
+      (!!cpfToSend && cpfToSend !== usuario.cpf) ||
+      (isLocal && draftEmail !== (usuario.email ?? ""));
+    const statusChanged = draftAtivo !== usuario.ativo;
+    const hasChanges = hasProfileChanges || statusChanged;
+
+    if (!hasChanges) {
+      toast.info("Nenhuma alteração para salvar.");
+      return;
+    }
+
     setSavingId(usuario.id);
     try {
-      if (isLocal) {
+      if (isLocal && hasProfileChanges) {
         await api.put<UsuarioPerfil>(`/usuarios/local/${usuario.id}`, {
           email: draftEmail || usuario.email,
           roles,
           cpf: cpfToSend,
         });
-      } else {
+      } else if (!isLocal && hasProfileChanges) {
         await api.post<UsuarioPerfil>("/usuarios", {
           email: usuario.email,
           roles,
           cpf: cpfToSend,
         });
+      }
+      if (statusChanged) {
+        await api.put<UsuarioPerfil>(`/usuarios/${usuario.id}/status`, { ativo: draftAtivo });
       }
       toast.success("Alterações salvas.");
       setDraftAdmins((prev) => {
@@ -510,6 +534,11 @@ export default function Usuarios() {
         delete next[usuario.id];
         return next;
       });
+      setDraftAtivos((prev) => {
+        const next = { ...prev };
+        delete next[usuario.id];
+        return next;
+      });
       await fetchUsuarios();
       await refreshRoles();
     } catch (error: any) {
@@ -518,23 +547,6 @@ export default function Usuarios() {
       toast.error("Não foi possível atualizar o usuário.", detail);
     } finally {
       setSavingId(null);
-    }
-  };
-
-  const handleToggleStatus = async (usuario: UsuarioPerfil) => {
-    const nextAtivo = !usuario.ativo;
-    setStatusUpdatingId(usuario.id);
-    try {
-      await api.put<UsuarioPerfil>(`/usuarios/${usuario.id}/status`, { ativo: nextAtivo });
-      toast.success(nextAtivo ? "Usuário reativado." : "Usuário inativado.");
-      await fetchUsuarios();
-      await refreshRoles();
-    } catch (error: any) {
-      console.error("Erro ao atualizar status do usuário", error);
-      const detail = error?.response?.data?.detail as string | undefined;
-      toast.error("Não foi possível atualizar o status do usuário.", detail);
-    } finally {
-      setStatusUpdatingId(null);
     }
   };
 
@@ -985,6 +997,7 @@ export default function Usuarios() {
                   const isAdminDraft = draftAdmins[usuario.id] ?? isAdminOriginal;
                   const draftCpf = draftCpfs[usuario.id] ?? "";
                   const draftEmail = draftEmails[usuario.id] ?? usuario.email ?? "";
+                  const draftAtivo = draftAtivos[usuario.id] ?? usuario.ativo;
                   const cpfComplete = draftCpf.length === 11;
                   const cpfIncomplete = draftCpf.length > 0 && !cpfComplete;
                   const cpfInvalid = cpfComplete && !isValidCpf(draftCpf);
@@ -992,10 +1005,12 @@ export default function Usuarios() {
                   const canDefineCpf = !usuario.cpf;
                   const cpfChanged = canDefineCpf && cpfComplete && !cpfHasError;
                   const isLocal = !usuario.microsoftId;
-                  const emailChanged = isLocal && draftEmail.trim() && draftEmail.trim() !== (usuario.email ?? "");
-                  const hasChanges = isAdminDraft !== isAdminOriginal || cpfChanged || emailChanged;
+                  const trimmedDraftEmail = draftEmail.trim();
+                  const emailChanged = isLocal && trimmedDraftEmail && trimmedDraftEmail !== (usuario.email ?? "");
+                  const hasProfileChanges = isAdminDraft !== isAdminOriginal || cpfChanged || emailChanged;
+                  const statusChanged = draftAtivo !== usuario.ativo;
+                  const hasChanges = hasProfileChanges || statusChanged;
                   const isSaving = savingId === usuario.id;
-                  const isStatusUpdating = statusUpdatingId === usuario.id;
 
                   const displayEmail = usuario.email || "—";
 
@@ -1063,37 +1078,32 @@ export default function Usuarios() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold ${
-                            usuario.ativo ? "bg-emerald-50 text-emerald-700" : "bg-slate-200 text-slate-700"
-                          }`}
-                        >
-                          {usuario.ativo ? "Ativo" : "Inativo"}
-                        </span>
+                        <div className="flex flex-col gap-2">
+                          <span
+                            className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold ${
+                              draftAtivo ? "bg-emerald-50 text-emerald-700" : "bg-slate-200 text-slate-700"
+                            }`}
+                          >
+                            {draftAtivo ? "Ativo" : "Inativo"}
+                          </span>
+                          <label className="flex items-center gap-2 text-xs font-medium text-gray-700">
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                              checked={draftAtivo}
+                              onChange={() => toggleAtivo(usuario)}
+                            />
+                            Manter acesso ativo
+                          </label>
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-xs text-gray-500">{dateFormatter.format(new Date(usuario.atualizadoEm))}</td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex justify-end gap-2">
                           <button
                             type="button"
-                            onClick={() => handleToggleStatus(usuario)}
-                            disabled={isStatusUpdating || isSaving}
-                            className={`inline-flex items-center rounded-lg px-4 py-2 text-xs font-semibold shadow-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
-                              usuario.ativo
-                                ? "bg-slate-200 text-slate-800 hover:bg-slate-300 focus-visible:outline-slate-500"
-                                : "bg-emerald-100 text-emerald-800 hover:bg-emerald-200 focus-visible:outline-emerald-600"
-                            } disabled:cursor-not-allowed disabled:opacity-70`}
-                          >
-                            {isStatusUpdating
-                              ? "Atualizando..."
-                              : usuario.ativo
-                                ? "Inativar"
-                                : "Reativar"}
-                          </button>
-                          <button
-                            type="button"
                             onClick={() => handleSaveUsuario(usuario)}
-                            disabled={!hasChanges || isSaving || cpfHasError || isStatusUpdating}
+                            disabled={!hasChanges || isSaving || cpfHasError}
                             className="inline-flex items-center rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-gray-300"
                           >
                             {isSaving ? "Salvando..." : "Salvar"}
