@@ -192,6 +192,7 @@ export default function Usuarios() {
   const [draftAdmins, setDraftAdmins] = useState<Record<string, boolean>>({});
   const [draftCpfs, setDraftCpfs] = useState<Record<string, string>>({});
   const [draftEmails, setDraftEmails] = useState<Record<string, string>>({});
+  const [draftNomes, setDraftNomes] = useState<Record<string, string>>({});
   const [draftAtivos, setDraftAtivos] = useState<Record<string, boolean>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
@@ -253,6 +254,7 @@ export default function Usuarios() {
       setDraftAdmins({});
       setDraftCpfs({});
       setDraftEmails({});
+      setDraftNomes({});
       setDraftAtivos({});
     } catch (error) {
       console.error("Erro ao carregar usuários", error);
@@ -468,6 +470,10 @@ export default function Usuarios() {
     setDraftEmails((prev) => ({ ...prev, [usuario.id]: value }));
   };
 
+  const handleDraftNomeChange = (usuario: UsuarioPerfil, value: string) => {
+    setDraftNomes((prev) => ({ ...prev, [usuario.id]: value }));
+  };
+
   const handleDraftCpfChange = (usuario: UsuarioPerfil, value: string) => {
     const sanitized = sanitizeCpf(value);
     setDraftCpfs((prev) => ({ ...prev, [usuario.id]: sanitized }));
@@ -480,6 +486,7 @@ export default function Usuarios() {
     const draftCpf = draftCpfs[usuario.id];
     const cpfToSend = usuario.cpf ?? (draftCpf && draftCpf.length ? draftCpf : undefined);
     const draftEmail = (draftEmails[usuario.id] ?? usuario.email ?? "").trim();
+    const draftNome = (draftNomes[usuario.id] ?? usuario.nome ?? "").trim();
     const isLocal = !usuario.microsoftId;
     const draftAtivo = draftAtivos[usuario.id] ?? usuario.ativo;
 
@@ -499,12 +506,18 @@ export default function Usuarios() {
         toast.error("Informe um e-mail válido.");
         return;
       }
+
+      if (!draftNome) {
+        toast.error("Informe o nome do usuário.");
+        return;
+      }
     }
 
     const hasProfileChanges =
       isAdminDraft !== isAdminOriginal ||
       (!!cpfToSend && cpfToSend !== usuario.cpf) ||
-      (isLocal && draftEmail !== (usuario.email ?? ""));
+      (isLocal && draftEmail !== (usuario.email ?? "")) ||
+      (isLocal && draftNome !== (usuario.nome ?? ""));
     const statusChanged = draftAtivo !== usuario.ativo;
     const hasChanges = hasProfileChanges || statusChanged;
 
@@ -520,6 +533,7 @@ export default function Usuarios() {
           email: draftEmail || usuario.email,
           roles,
           cpf: cpfToSend,
+          nome: draftNome || usuario.nome,
         });
       } else if (!isLocal && hasProfileChanges) {
         await api.post<UsuarioPerfil>("/usuarios", {
@@ -543,6 +557,11 @@ export default function Usuarios() {
         return next;
       });
       setDraftEmails((prev) => {
+        const next = { ...prev };
+        delete next[usuario.id];
+        return next;
+      });
+      setDraftNomes((prev) => {
         const next = { ...prev };
         delete next[usuario.id];
         return next;
@@ -1007,6 +1026,7 @@ export default function Usuarios() {
             <table className="min-w-full divide-y divide-gray-200 text-sm">
               <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                 <tr>
+                  <th className="px-4 py-3">Nome</th>
                   <th className="px-4 py-3">E-mail</th>
                   <th className="px-4 py-3">Origem</th>
                   <th className="px-4 py-3">CPF</th>
@@ -1022,6 +1042,7 @@ export default function Usuarios() {
                   const isAdminDraft = draftAdmins[usuario.id] ?? isAdminOriginal;
                   const draftCpf = draftCpfs[usuario.id] ?? "";
                   const draftEmail = draftEmails[usuario.id] ?? usuario.email ?? "";
+                  const draftNome = draftNomes[usuario.id] ?? usuario.nome ?? "";
                   const draftAtivo = draftAtivos[usuario.id] ?? usuario.ativo;
                   const cpfComplete = draftCpf.length === 11;
                   const cpfIncomplete = draftCpf.length > 0 && !cpfComplete;
@@ -1031,16 +1052,36 @@ export default function Usuarios() {
                   const cpfChanged = canDefineCpf && cpfComplete && !cpfHasError;
                   const isLocal = !usuario.microsoftId;
                   const trimmedDraftEmail = draftEmail.trim();
+                  const trimmedDraftNome = draftNome.trim();
                   const emailChanged = isLocal && trimmedDraftEmail && trimmedDraftEmail !== (usuario.email ?? "");
-                  const hasProfileChanges = isAdminDraft !== isAdminOriginal || cpfChanged || emailChanged;
+                  const nomeChanged = isLocal && trimmedDraftNome && trimmedDraftNome !== (usuario.nome ?? "");
+                  const nomeHasError = isLocal && !trimmedDraftNome;
+                  const hasProfileChanges = isAdminDraft !== isAdminOriginal || cpfChanged || emailChanged || nomeChanged;
                   const statusChanged = draftAtivo !== usuario.ativo;
                   const hasChanges = hasProfileChanges || statusChanged;
                   const isSaving = savingId === usuario.id;
 
                   const displayEmail = usuario.email || "—";
+                  const displayNome = usuario.nome || "—";
 
                   return (
                     <tr key={usuario.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3">
+                        {isLocal ? (
+                          <div className="flex flex-col gap-1">
+                            <input
+                              type="text"
+                              value={draftNome}
+                              onChange={(event) => handleDraftNomeChange(usuario, event.target.value)}
+                              className="h-9 w-full rounded-lg border border-gray-200 px-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                              placeholder="Nome completo"
+                            />
+                            {nomeHasError && <span className="text-xs text-red-600">Nome obrigatório.</span>}
+                          </div>
+                        ) : (
+                          <span className="text-sm font-medium text-gray-800">{displayNome}</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-col gap-1">
                           {isLocal ? (
@@ -1122,7 +1163,7 @@ export default function Usuarios() {
                           <button
                             type="button"
                             onClick={() => handleSaveUsuario(usuario)}
-                            disabled={!hasChanges || isSaving || cpfHasError}
+                            disabled={!hasChanges || isSaving || cpfHasError || nomeHasError}
                             className="inline-flex items-center rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-gray-300"
                           >
                             {isSaving ? "Salvando..." : "Salvar"}
