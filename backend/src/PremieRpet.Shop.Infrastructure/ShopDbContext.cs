@@ -168,6 +168,7 @@ public sealed class ShopDbContext : DbContext
         b.Entity<Usuario>(e =>
         {
             e.HasKey(u => u.Id);
+            e.Property(u => u.Nome).HasMaxLength(200);
             e.Property(u => u.MicrosoftId).HasMaxLength(200).IsRequired(false);
             e.HasIndex(u => u.MicrosoftId).IsUnique().HasFilter("\"MicrosoftId\" IS NOT NULL");
             e.Property(u => u.Email).HasMaxLength(200);

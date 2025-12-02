@@ -5,6 +5,7 @@ namespace PremieRpet.Shop.Domain.Entities;
 public sealed class Usuario
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+    public string? Nome { get; set; } = null;
     public string? MicrosoftId { get; set; } = null;
     public string? Email { get; set; } = null;
     public string? Cpf { get; set; } = null;

@@ -5,6 +5,7 @@ namespace PremieRpet.Shop.Application.DTOs;
 
 public sealed record UsuarioDto(
     Guid Id,
+    string? Nome,
     string MicrosoftId,
     string Email,
     bool Ativo,

@@ -26,9 +26,10 @@ public sealed class UsuarioService : IUsuarioService
         _entraRoles = entraRoles;
     }
 
-    public async Task<UsuarioDto> ObterOuCriarAsync(string email, string? microsoftId, CancellationToken ct)
+    public async Task<UsuarioDto> ObterOuCriarAsync(string email, string? microsoftId, string? nome, CancellationToken ct)
     {
         var normalizedEmail = NormalizeEmailValue(email);
+        var nomeNormalizado = NormalizeNome(nome);
         var (usuario, resolvedMicrosoftId) = await FindExistingUsuarioAsync(normalizedEmail, microsoftId, ct);
 
         if (usuario is not null && !usuario.Ativo)
@@ -45,6 +46,7 @@ public sealed class UsuarioService : IUsuarioService
 
             usuario = new Usuario
             {
+                Nome = nomeNormalizado,
                 MicrosoftId = resolvedMicrosoftId,
                 Email = normalizedEmail,
                 Ativo = true,
@@ -67,15 +69,18 @@ public sealed class UsuarioService : IUsuarioService
             }
         }
 
+        usuario = await EnsureNomeAsync(usuario, nomeNormalizado, ct);
+
         return ToDto(usuario);
     }
 
-    public async Task<UsuarioDto> RegistrarCpfAsync(string email, string? microsoftId, string cpf, CancellationToken ct)
+    public async Task<UsuarioDto> RegistrarCpfAsync(string email, string? microsoftId, string cpf, string? nome, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(cpf))
             throw new InvalidOperationException("CPF obrigatório.");
 
         var normalizedEmail = NormalizeEmailValue(email);
+        var nomeNormalizado = NormalizeNome(nome);
         var sanitized = CpfRules.Sanitize(cpf);
         if (!CpfRules.IsValid(sanitized))
             throw new InvalidOperationException("CPF inválido.");
@@ -93,6 +98,7 @@ public sealed class UsuarioService : IUsuarioService
 
             usuario = new Usuario
             {
+                Nome = nomeNormalizado,
                 MicrosoftId = resolvedMicrosoftId,
                 Email = normalizedEmail,
                 Cpf = sanitized,
@@ -103,6 +109,7 @@ public sealed class UsuarioService : IUsuarioService
 
             ApplyRoles(usuario, normalizedRoles);
             await _usuarios.AddAsync(usuario, ct);
+            usuario = await EnsureNomeAsync(usuario, nomeNormalizado, ct);
             return ToDto(usuario);
         }
 
@@ -132,9 +139,10 @@ public sealed class UsuarioService : IUsuarioService
         return ToDto(usuario);
     }
 
-    public async Task<UsuarioDto> GarantirCpfAsync(string email, string? microsoftId, string? cpf, CancellationToken ct)
+    public async Task<UsuarioDto> GarantirCpfAsync(string email, string? microsoftId, string? cpf, string? nome, CancellationToken ct)
     {
         var normalizedEmail = NormalizeEmailValue(email);
+        var nomeNormalizado = NormalizeNome(nome);
         var (usuario, resolvedMicrosoftId) = await FindExistingUsuarioAsync(normalizedEmail, microsoftId, ct);
 
         if (usuario is null)
@@ -155,6 +163,7 @@ public sealed class UsuarioService : IUsuarioService
 
             usuario = new Usuario
             {
+                Nome = nomeNormalizado,
                 MicrosoftId = resolvedMicrosoftId,
                 Email = normalizedEmail,
                 Cpf = sanitized,
@@ -165,6 +174,7 @@ public sealed class UsuarioService : IUsuarioService
 
             ApplyRoles(usuario, normalizedRoles);
             await _usuarios.AddAsync(usuario, ct);
+            usuario = await EnsureNomeAsync(usuario, nomeNormalizado, ct);
             return ToDto(usuario);
         }
 
@@ -189,6 +199,7 @@ public sealed class UsuarioService : IUsuarioService
                     throw new InvalidOperationException("CPF já cadastrado e não pode ser alterado.");
             }
 
+            usuario = await EnsureNomeAsync(usuario, nomeNormalizado, ct);
             return ToDto(usuario);
         }
 
@@ -202,6 +213,8 @@ public sealed class UsuarioService : IUsuarioService
         usuario.Cpf = novoCpf;
         usuario.AtualizadoEm = DateTimeOffset.UtcNow;
         await _usuarios.UpdateAsync(usuario, ct);
+
+        usuario = await EnsureNomeAsync(usuario, nomeNormalizado, ct);
 
         return ToDto(usuario);
     }
@@ -220,12 +233,13 @@ public sealed class UsuarioService : IUsuarioService
         return resultados;
     }
 
-    public async Task<UsuarioDto> UpsertAsync(string email, string? cpf, IEnumerable<string>? roles, CancellationToken ct)
+    public async Task<UsuarioDto> UpsertAsync(string email, string? cpf, string? nome, IEnumerable<string>? roles, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(email))
             throw new InvalidOperationException("E-mail do usuário obrigatório.");
 
         var normalizedEmail = NormalizeEmailValue(email);
+        var nomeNormalizado = NormalizeNome(nome);
         var normalizedRoles = NormalizeRoles(roles);
         var sanitizedCpf = SanitizeCpfOrNull(cpf);
 
@@ -236,6 +250,7 @@ public sealed class UsuarioService : IUsuarioService
         {
             usuario = new Usuario
             {
+                Nome = nomeNormalizado,
                 MicrosoftId = microsoftId,
                 Email = normalizedEmail,
                 Cpf = sanitizedCpf,
@@ -248,6 +263,7 @@ public sealed class UsuarioService : IUsuarioService
             await _usuarios.AddAsync(usuario, ct);
             await _entraRoles.ReplaceUserRolesAsync(microsoftId, normalizedRoles, ct);
 
+            usuario = await EnsureNomeAsync(usuario, nomeNormalizado, ct);
             return ToDto(usuario);
         }
 
@@ -263,6 +279,8 @@ public sealed class UsuarioService : IUsuarioService
                 usuario.Cpf = sanitizedCpf;
             }
         }
+
+        usuario = await EnsureNomeAsync(usuario, nomeNormalizado, ct);
 
         if (!string.IsNullOrWhiteSpace(normalizedEmail) && !string.Equals(usuario.Email, normalizedEmail, StringComparison.OrdinalIgnoreCase))
         {
@@ -280,13 +298,14 @@ public sealed class UsuarioService : IUsuarioService
         return ToDto(atualizado);
     }
 
-    public async Task<UsuarioDto> CriarLocalAsync(string cpf, string senha, IEnumerable<string>? roles, string? email, CancellationToken ct)
+    public async Task<UsuarioDto> CriarLocalAsync(string cpf, string senha, IEnumerable<string>? roles, string? email, string? nome, CancellationToken ct)
     {
         var sanitizedCpf = SanitizeCpfOrNull(cpf) ?? throw new InvalidOperationException("CPF obrigatório.");
         if (string.IsNullOrWhiteSpace(senha))
             throw new InvalidOperationException("Senha obrigatória.");
 
         var normalizedEmail = TryNormalizeEmail(email);
+        var nomeNormalizado = NormalizeNome(nome);
         var normalizedRoles = NormalizeRoles(roles, strict: false);
 
         if (!string.IsNullOrWhiteSpace(normalizedEmail))
@@ -303,6 +322,7 @@ public sealed class UsuarioService : IUsuarioService
         var agora = DateTimeOffset.UtcNow;
         var usuario = new Usuario
         {
+            Nome = nomeNormalizado,
             Cpf = sanitizedCpf,
             Email = normalizedEmail ?? $"{sanitizedCpf}@local",
             PasswordHash = HashPassword(senha),
@@ -338,11 +358,18 @@ public sealed class UsuarioService : IUsuarioService
             await _usuarios.UpdateAsync(usuario, ct);
         }
 
+        if (string.IsNullOrWhiteSpace(usuario.Nome))
+        {
+            usuario.Nome = usuario.Email ?? usuario.Cpf ?? usuario.Id.ToString("D");
+            usuario.AtualizadoEm = DateTimeOffset.UtcNow;
+            await _usuarios.UpdateAsync(usuario, ct);
+        }
+
         usuario = await SyncLocalWithEntraAsync(usuario, ct);
         return ToDto(usuario);
     }
 
-    public async Task<UsuarioDto> AtualizarLocalAsync(Guid usuarioId, string email, string? cpf, IEnumerable<string>? roles, CancellationToken ct)
+    public async Task<UsuarioDto> AtualizarLocalAsync(Guid usuarioId, string email, string? cpf, string? nome, IEnumerable<string>? roles, CancellationToken ct)
     {
         if (usuarioId == Guid.Empty)
             throw new InvalidOperationException("Identificador do usuário obrigatório.");
@@ -352,6 +379,7 @@ public sealed class UsuarioService : IUsuarioService
 
         var normalizedEmail = NormalizeEmailValue(email);
         var sanitizedCpf = SanitizeCpfOrNull(cpf);
+        var nomeNormalizado = NormalizeNome(nome);
         var normalizedRoles = NormalizeRoles(roles, strict: false);
 
         var usuario = await _usuarios.GetByIdAsync(usuarioId, ct)
@@ -373,6 +401,11 @@ public sealed class UsuarioService : IUsuarioService
             {
                 usuario.Cpf = sanitizedCpf;
             }
+        }
+
+        if (!string.IsNullOrWhiteSpace(nomeNormalizado))
+        {
+            usuario.Nome = nomeNormalizado;
         }
 
         usuario.Email = normalizedEmail;
@@ -469,6 +502,8 @@ public sealed class UsuarioService : IUsuarioService
             if (string.IsNullOrWhiteSpace(emailNormalizado))
                 continue;
 
+            var nomeNormalizado = NormalizeNome(remoto.DisplayName);
+
             if (existentesPorId.TryGetValue(remoto.MicrosoftId, out var existentePorId))
             {
                 var emailAtual = TryNormalizeEmail(existentePorId.Email);
@@ -488,6 +523,16 @@ public sealed class UsuarioService : IUsuarioService
                         atualizados.Add(existentePorId);
 
                     existentesPorEmail[emailNormalizado] = existentePorId;
+                }
+
+                if (!string.IsNullOrWhiteSpace(nomeNormalizado) &&
+                    !string.Equals(existentePorId.Nome, nomeNormalizado, StringComparison.Ordinal))
+                {
+                    existentePorId.Nome = nomeNormalizado;
+                    existentePorId.AtualizadoEm = agora;
+
+                    if (atualizadosPorId.Add(existentePorId.Id))
+                        atualizados.Add(existentePorId);
                 }
 
                 existentesPorId[remoto.MicrosoftId] = existentePorId;
@@ -513,6 +558,16 @@ public sealed class UsuarioService : IUsuarioService
                     }
                 }
 
+                if (!string.IsNullOrWhiteSpace(nomeNormalizado) &&
+                    !string.Equals(existentePorEmail.Nome, nomeNormalizado, StringComparison.Ordinal))
+                {
+                    existentePorEmail.Nome = nomeNormalizado;
+                    existentePorEmail.AtualizadoEm = agora;
+
+                    if (atualizadosPorId.Add(existentePorEmail.Id))
+                        atualizados.Add(existentePorEmail);
+                }
+
                 existentesPorId[remoto.MicrosoftId] = existentePorEmail;
                 continue;
             }
@@ -523,6 +578,7 @@ public sealed class UsuarioService : IUsuarioService
 
             var novoUsuario = new Usuario
             {
+                Nome = nomeNormalizado,
                 MicrosoftId = remoto.MicrosoftId,
                 Email = emailNormalizado,
                 Ativo = true,
@@ -747,6 +803,35 @@ public sealed class UsuarioService : IUsuarioService
         return atualizado ?? usuario;
     }
 
+    private static string? NormalizeNome(string? nome)
+    {
+        if (string.IsNullOrWhiteSpace(nome))
+            return null;
+
+        var trimmed = nome.Trim();
+        if (trimmed.Length == 0)
+            return null;
+
+        return trimmed.Length > 200
+            ? trimmed[..200]
+            : trimmed;
+    }
+
+    private async Task<Usuario> EnsureNomeAsync(Usuario usuario, string? nomeNormalizado, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(nomeNormalizado))
+            return usuario;
+
+        if (string.Equals(usuario.Nome, nomeNormalizado, StringComparison.Ordinal))
+            return usuario;
+
+        usuario.Nome = nomeNormalizado;
+        usuario.AtualizadoEm = DateTimeOffset.UtcNow;
+        await _usuarios.UpdateAsync(usuario, ct);
+
+        return usuario;
+    }
+
     private static void ApplyRoles(Usuario usuario, IReadOnlyCollection<string> roles)
     {
         usuario.Roles.Clear();
@@ -780,7 +865,7 @@ public sealed class UsuarioService : IUsuarioService
 
         var email = usuario.Email ?? string.Empty;
 
-        return new UsuarioDto(usuario.Id, microsoftId, email, usuario.Ativo, usuario.Cpf, roles, usuario.CriadoEm, usuario.AtualizadoEm);
+        return new UsuarioDto(usuario.Id, usuario.Nome, microsoftId, email, usuario.Ativo, usuario.Cpf, roles, usuario.CriadoEm, usuario.AtualizadoEm);
     }
 
     private static string? TryNormalizeEmail(string? email)

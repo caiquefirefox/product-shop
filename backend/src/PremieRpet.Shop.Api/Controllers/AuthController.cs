@@ -53,6 +53,12 @@ public sealed class AuthController(IConfiguration configuration, IUsuarioService
             new Claim("cpf", usuario.Cpf ?? string.Empty)
         };
 
+        if (!string.IsNullOrWhiteSpace(usuario.Nome))
+        {
+            claims.Add(new Claim(ClaimTypes.Name, usuario.Nome));
+            claims.Add(new Claim("name", usuario.Nome));
+        }
+
         var emailClaim = !string.IsNullOrWhiteSpace(usuario.Email)
             ? usuario.Email
             : !string.IsNullOrWhiteSpace(usuario.Cpf)

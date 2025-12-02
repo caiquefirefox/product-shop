@@ -22,7 +22,8 @@ public sealed class PedidosController(IPedidoService pedidos, IUsuarioService us
             return Problem(title: "Token sem e-mail do usuário (preferred_username/email).", statusCode: StatusCodes.Status401Unauthorized);
 
         var usuarioId = User.GetUserObjectId();
-        var usuario = await usuarios.ObterOuCriarAsync(usuarioEmail, usuarioId, ct);
+        var usuarioNome = User.GetDisplayName();
+        var usuario = await usuarios.ObterOuCriarAsync(usuarioEmail, usuarioId, usuarioNome, ct);
         var filtro = query?.ToDto() ?? new PedidoListFiltroDto(
             PedidoListFiltroDto.DefaultPage,
             PedidoListFiltroDto.DefaultPageSize,
@@ -46,7 +47,8 @@ public sealed class PedidosController(IPedidoService pedidos, IUsuarioService us
             return Problem(title: "Token sem e-mail do usuário (preferred_username/email).", statusCode: StatusCodes.Status401Unauthorized);
 
         var usuarioId = User.GetUserObjectId();
-        var usuario = await usuarios.ObterOuCriarAsync(usuarioEmail, usuarioId, ct);
+        var usuarioNome = User.GetDisplayName();
+        var usuario = await usuarios.ObterOuCriarAsync(usuarioEmail, usuarioId, usuarioNome, ct);
         var agora = DateTimeOffset.UtcNow;
         var inicioPadrao = new DateTimeOffset(new DateTime(agora.Year, agora.Month, 1, 0, 0, 0, DateTimeKind.Utc));
         var fimPadrao = inicioPadrao.AddMonths(1).AddTicks(-1);
@@ -80,7 +82,7 @@ public sealed class PedidosController(IPedidoService pedidos, IUsuarioService us
 
         var usuarioNome = User.GetDisplayName() ?? string.Empty;
         var usuarioId = User.GetUserObjectId();
-        var usuario = await usuarios.ObterOuCriarAsync(usuarioEmail, usuarioId, ct);
+        var usuario = await usuarios.ObterOuCriarAsync(usuarioEmail, usuarioId, usuarioNome, ct);
 
         try
         {
@@ -103,7 +105,7 @@ public sealed class PedidosController(IPedidoService pedidos, IUsuarioService us
 
         var usuarioNome = User.GetDisplayName() ?? string.Empty;
         var usuarioId = User.GetUserObjectId();
-        var usuario = await usuarios.ObterOuCriarAsync(usuarioEmail, usuarioId, ct);
+        var usuario = await usuarios.ObterOuCriarAsync(usuarioEmail, usuarioId, usuarioNome, ct);
 
         try
         {
@@ -125,7 +127,8 @@ public sealed class PedidosController(IPedidoService pedidos, IUsuarioService us
             return Problem(title: "Token sem e-mail do usuário (preferred_username/email).", statusCode: StatusCodes.Status401Unauthorized);
 
         var usuarioId = User.GetUserObjectId();
-        var usuario = await usuarios.ObterOuCriarAsync(usuarioEmail, usuarioId, ct);
+        var usuarioNome = User.GetDisplayName();
+        var usuario = await usuarios.ObterOuCriarAsync(usuarioEmail, usuarioId, usuarioNome, ct);
         var detalhe = await pedidos.ObterPedidoCompletoAsync(id, usuario.Id, User.IsInRole("Admin"), ct);
         if (detalhe is null)
             return NotFound();
@@ -146,7 +149,7 @@ public sealed class PedidosController(IPedidoService pedidos, IUsuarioService us
 
         var usuarioNome = User.GetDisplayName() ?? "";
         var usuarioId = User.GetUserObjectId();
-        var usuario = await usuarios.ObterOuCriarAsync(usuarioEmail, usuarioId, ct);
+        var usuario = await usuarios.ObterOuCriarAsync(usuarioEmail, usuarioId, usuarioNome, ct);
 
         try
         {
