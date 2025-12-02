@@ -552,6 +552,12 @@ public sealed class UsuarioService : IUsuarioService
         var existente = await _usuarios.GetByEmailAsync(normalizedEmail, ct);
         if (existente is not null)
         {
+            if (!string.IsNullOrWhiteSpace(existente.PasswordHash) &&
+                string.Equals(normalizedMicrosoftId, existente.Id.ToString("D"), StringComparison.OrdinalIgnoreCase))
+            {
+                normalizedMicrosoftId = null;
+            }
+
             var shouldSkipMicrosoftIdResolution = string.IsNullOrWhiteSpace(existente.MicrosoftId)
                 && string.IsNullOrWhiteSpace(normalizedMicrosoftId)
                 && !string.IsNullOrWhiteSpace(existente.PasswordHash);
@@ -690,6 +696,9 @@ public sealed class UsuarioService : IUsuarioService
         try
         {
             var microsoftGuid = await _entraRoles.ResolveUserIdAsync(normalizedEmail, ct);
+            if (!string.IsNullOrWhiteSpace(usuario.PasswordHash) && microsoftGuid == usuario.Id)
+                return await EnsureRolesAsync(usuario, ct);
+
             var microsoftId = microsoftGuid.ToString("D");
 
             return await SyncFromEntraAsync(usuario, normalizedEmail, microsoftId, ct);
