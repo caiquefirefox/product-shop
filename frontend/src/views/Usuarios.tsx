@@ -855,6 +855,18 @@ export default function Usuarios() {
 
           <form className="mt-2 grid gap-4 md:grid-cols-2" onSubmit={handleCreateLocal}>
             <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium text-gray-700">Nome completo *</span>
+              <input
+                type="text"
+                value={localNome}
+                onChange={(event) => setLocalNome(event.target.value)}
+                className="h-11 rounded-xl border border-gray-200 px-3 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-100"
+                placeholder="Digite o nome do usuário"
+                required
+              />
+            </label>
+
+            <label className="flex flex-col gap-1">
               <span className="text-sm font-medium text-gray-700">CPF *</span>
               <input
                 type="text"
@@ -875,18 +887,6 @@ export default function Usuarios() {
                 onChange={(event) => setLocalSenha(event.target.value)}
                 className="h-11 rounded-xl border border-gray-200 px-3 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-100"
                 placeholder="Digite uma senha segura"
-                required
-              />
-            </label>
-
-            <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium text-gray-700">Nome completo *</span>
-              <input
-                type="text"
-                value={localNome}
-                onChange={(event) => setLocalNome(event.target.value)}
-                className="h-11 rounded-xl border border-gray-200 px-3 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-100"
-                placeholder="Digite o nome do usuário"
                 required
               />
             </label>
@@ -1022,15 +1022,15 @@ export default function Usuarios() {
         ) : !hasFilteredUsuarios ? (
           <div className="py-12 text-center text-sm text-gray-500">Nenhum usuário encontrado com os filtros aplicados.</div>
         ) : (
-          <div className="overflow-hidden rounded-xl border border-gray-100">
-            <table className="min-w-full table-fixed divide-y divide-gray-200 text-sm">
+          <div className="overflow-x-auto rounded-xl border border-gray-100">
+            <table className="min-w-[1100px] divide-y divide-gray-200 text-sm">
               <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                 <tr>
                   <th className="px-4 py-3">Nome</th>
                   <th className="px-4 py-3">E-mail</th>
                   <th className="px-4 py-3">Origem</th>
                   <th className="px-4 py-3">CPF</th>
-                  <th className="px-4 py-3">Perfis</th>
+                  <th className="px-4 py-3 text-center">ADM</th>
                   <th className="px-4 py-3 text-center">Ativo</th>
                   <th className="px-4 py-3">Atualizado em</th>
                   <th className="px-4 py-3 text-right">Ações</th>
@@ -1129,17 +1129,17 @@ export default function Usuarios() {
                           </div>
                         )}
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">Colaborador</span>
-                          <label className="flex items-center gap-2 text-xs font-medium text-gray-700">
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex justify-center">
+                          <label className="inline-flex items-center justify-center">
+                            <span className="sr-only">{isAdminDraft ? "Usuário administrador" : "Usuário colaborador"}</span>
                             <input
                               type="checkbox"
-                              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                              className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                               checked={isAdminDraft}
                               onChange={() => toggleAdmin(usuario)}
+                              title={isAdminDraft ? "Administrador" : "Colaborador"}
                             />
-                            Administrador
                           </label>
                         </div>
                       </td>
