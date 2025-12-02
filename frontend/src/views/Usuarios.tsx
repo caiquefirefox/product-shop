@@ -1022,8 +1022,8 @@ export default function Usuarios() {
         ) : !hasFilteredUsuarios ? (
           <div className="py-12 text-center text-sm text-gray-500">Nenhum usuário encontrado com os filtros aplicados.</div>
         ) : (
-          <div className="-mx-4 overflow-x-auto lg:-mx-6">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
+          <div className="-mx-4 lg:-mx-6">
+            <table className="min-w-full table-fixed divide-y divide-gray-200 text-sm">
               <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                 <tr>
                   <th className="px-4 py-3">Nome</th>
@@ -1066,7 +1066,7 @@ export default function Usuarios() {
 
                   return (
                     <tr key={usuario.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 align-top">
                         {isLocal ? (
                           <div className="flex flex-col gap-1">
                             <input
@@ -1079,11 +1079,11 @@ export default function Usuarios() {
                             {nomeHasError && <span className="text-xs text-red-600">Nome obrigatório.</span>}
                           </div>
                         ) : (
-                          <span className="text-sm font-medium text-gray-800">{displayNome}</span>
+                          <span className="block max-w-[220px] break-words text-sm font-medium text-gray-800">{displayNome}</span>
                         )}
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-col gap-1">
+                      <td className="px-4 py-3 align-top">
+                        <div className="flex flex-col gap-1 break-words">
                           {isLocal ? (
                             <div className="flex flex-col gap-1">
                               <input
@@ -1095,10 +1095,10 @@ export default function Usuarios() {
                               {!draftEmail.trim() && <span className="text-xs text-red-600">E-mail obrigatório.</span>}
                             </div>
                           ) : (
-                            <span className="font-mono text-xs text-gray-700">{displayEmail}</span>
+                            <span className="max-w-[260px] break-words font-mono text-xs text-gray-700">{displayEmail}</span>
                           )}
                           {usuario.microsoftId && (
-                            <span className="font-mono text-[10px] text-gray-400">{usuario.microsoftId}</span>
+                            <span className="max-w-[260px] break-all font-mono text-[10px] text-gray-400">{usuario.microsoftId}</span>
                           )}
                         </div>
                       </td>
