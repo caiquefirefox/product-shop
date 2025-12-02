@@ -377,7 +377,6 @@ public sealed class UsuarioService : IUsuarioService
 
         usuario.Email = normalizedEmail;
         usuario.AtualizadoEm = DateTimeOffset.UtcNow;
-        ApplyRoles(usuario, normalizedRoles);
 
         await _usuarios.UpdateAsync(usuario, ct);
         await _usuarios.ReplaceRolesAsync(usuario.Id, normalizedRoles, ct);

@@ -62,7 +62,12 @@ public sealed class UsuarioRepository : IUsuarioRepository
 
     public async Task UpdateAsync(Usuario usuario, CancellationToken ct)
     {
-        _db.Usuarios.Update(usuario);
+        var entry = _db.Entry(usuario);
+        if (entry.State == EntityState.Detached)
+        {
+            _db.Usuarios.Update(usuario);
+        }
+
         await _db.SaveChangesAsync(ct);
     }
 
