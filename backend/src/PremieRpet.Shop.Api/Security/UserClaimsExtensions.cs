@@ -16,6 +16,7 @@ public static class UserClaimsExtensions
     private const string Oid = "oid";
     private const string Sub = "sub";
     private const string Name = "name";
+    private const string Cpf = "cpf";
 
     public static string? GetUserEmail(this ClaimsPrincipal user)
     {
@@ -28,7 +29,8 @@ public static class UserClaimsExtensions
         if (!string.IsNullOrWhiteSpace(email))
             return email;
 
-        return user.FindFirstValue(NameId);
+        return user.FindFirstValue(NameId)
+            ?? user.FindFirstValue(Cpf);
     }
 
     public static string? GetUserId(this ClaimsPrincipal user)

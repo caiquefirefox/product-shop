@@ -68,6 +68,7 @@ export default function App() {
   const gotoLogin = () => navigate("/login");
   const logout = async () => {
     clearRolesCache?.();
+    localStorage.removeItem("premier:local-token");
     await instance.logoutPopup();
     navigate("/login", { replace: true });
   };
@@ -223,7 +224,7 @@ export default function App() {
         />
       )}
 
-      <main className={isLoginRoute ? "" : "max-w-6xl mx-auto p-4"}>
+      <main className={isLoginRoute ? "" : "max-w-7xl mx-auto p-4"}>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<Protected><Catalogo/></Protected>} />

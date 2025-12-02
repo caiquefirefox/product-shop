@@ -2,6 +2,7 @@ type UsuarioPerfil = {
   id: string;
   microsoftId: string;
   email: string;
+  ativo: boolean;
   cpf: string | null;
   roles: string[];
   criadoEm: string;

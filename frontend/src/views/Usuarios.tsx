@@ -171,11 +171,17 @@ export default function Usuarios() {
   const [loading, setLoading] = useState(true);
   const [reloading, setReloading] = useState(false);
   const [createPanelOpen, setCreatePanelOpen] = useState(false);
+  const [localPanelOpen, setLocalPanelOpen] = useState(false);
 
   const [newEmail, setNewEmail] = useState("");
   const [newCpf, setNewCpf] = useState("");
   const [newIsAdmin, setNewIsAdmin] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [localCpf, setLocalCpf] = useState("");
+  const [localSenha, setLocalSenha] = useState("");
+  const [localEmail, setLocalEmail] = useState("");
+  const [localIsAdmin, setLocalIsAdmin] = useState(false);
+  const [creatingLocal, setCreatingLocal] = useState(false);
 
   const [searchResults, setSearchResults] = useState<UsuarioLookup[]>([]);
   const [searching, setSearching] = useState(false);
@@ -184,6 +190,8 @@ export default function Usuarios() {
 
   const [draftAdmins, setDraftAdmins] = useState<Record<string, boolean>>({});
   const [draftCpfs, setDraftCpfs] = useState<Record<string, string>>({});
+  const [draftEmails, setDraftEmails] = useState<Record<string, string>>({});
+  const [draftAtivos, setDraftAtivos] = useState<Record<string, boolean>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
 
@@ -209,12 +217,31 @@ export default function Usuarios() {
 
   const handleOpenCreatePanel = () => {
     resetNewUserForm();
+    setLocalPanelOpen(false);
     setCreatePanelOpen(true);
   };
 
   const handleCloseCreatePanel = () => {
     resetNewUserForm();
     setCreatePanelOpen(false);
+  };
+
+  const resetLocalUserForm = () => {
+    setLocalCpf("");
+    setLocalSenha("");
+    setLocalEmail("");
+    setLocalIsAdmin(false);
+  };
+
+  const handleOpenLocalPanel = () => {
+    resetLocalUserForm();
+    setCreatePanelOpen(false);
+    setLocalPanelOpen(true);
+  };
+
+  const handleCloseLocalPanel = () => {
+    resetLocalUserForm();
+    setLocalPanelOpen(false);
   };
 
   const fetchUsuarios = useCallback(async () => {
@@ -224,6 +251,8 @@ export default function Usuarios() {
       setUsuarios(data);
       setDraftAdmins({});
       setDraftCpfs({});
+      setDraftEmails({});
+      setDraftAtivos({});
     } catch (error) {
       console.error("Erro ao carregar usuários", error);
       toast.error("Não foi possível carregar a lista de usuários.");
@@ -363,11 +392,67 @@ export default function Usuarios() {
     }
   };
 
+  const handleCreateLocal = async (event: FormEvent) => {
+    event.preventDefault();
+    const sanitized = sanitizeCpf(localCpf);
+
+    if (sanitized.length !== 11 || !isValidCpf(sanitized)) {
+      toast.error("CPF inválido.");
+      return;
+    }
+
+    if (!localSenha.trim()) {
+      toast.error("Informe a senha do usuário.");
+      return;
+    }
+
+    const roles = buildRoles(localIsAdmin);
+    const payload: { cpf: string; senha: string; roles: string[]; email?: string } = {
+      cpf: sanitized,
+      senha: localSenha,
+      roles,
+    };
+
+    const trimmedLocalEmail = localEmail.trim();
+    if (trimmedLocalEmail) {
+      payload.email = trimmedLocalEmail;
+    }
+
+    setCreatingLocal(true);
+    try {
+      await api.post<UsuarioPerfil>("/usuarios/local", payload);
+      toast.success("Usuário local salvo com sucesso.");
+      setLocalCpf("");
+      setLocalSenha("");
+      setLocalEmail("");
+      setLocalIsAdmin(false);
+      await fetchUsuarios();
+      await refreshRoles();
+    } catch (error: any) {
+      console.error("Erro ao criar usuário local", error);
+      const detail = error?.response?.data?.detail as string | undefined;
+      toast.error("Não foi possível salvar o usuário local.", detail);
+    } finally {
+      setCreatingLocal(false);
+    }
+  };
+
   const toggleAdmin = (usuario: UsuarioPerfil) => {
     setDraftAdmins((prev) => {
       const current = prev[usuario.id] ?? usuario.roles.includes("Admin");
       return { ...prev, [usuario.id]: !current };
     });
+  };
+
+  const toggleAtivo = (usuario: UsuarioPerfil) => {
+    setDraftAtivos((prev) => {
+      const current = prev[usuario.id] ?? usuario.ativo;
+      return { ...prev, [usuario.id]: !current };
+    });
+  };
+
+  const handleDraftEmailChange = (usuario: UsuarioPerfil, value: string) => {
+    setDraftEmails((prev) => ({ ...prev, [usuario.id]: value }));
   };
 
   const handleDraftCpfChange = (usuario: UsuarioPerfil, value: string) => {
@@ -381,6 +466,9 @@ export default function Usuarios() {
     const roles = buildRoles(isAdminDraft);
     const draftCpf = draftCpfs[usuario.id];
     const cpfToSend = usuario.cpf ?? (draftCpf && draftCpf.length ? draftCpf : undefined);
+    const draftEmail = (draftEmails[usuario.id] ?? usuario.email ?? "").trim();
+    const isLocal = !usuario.microsoftId;
+    const draftAtivo = draftAtivos[usuario.id] ?? usuario.ativo;
 
     if (!usuario.cpf && draftCpf) {
       if (draftCpf.length < 11) {
@@ -393,13 +481,43 @@ export default function Usuarios() {
       }
     }
 
+    if (isLocal) {
+      if (!draftEmail || !draftEmail.includes("@")) {
+        toast.error("Informe um e-mail válido.");
+        return;
+      }
+    }
+
+    const hasProfileChanges =
+      isAdminDraft !== isAdminOriginal ||
+      (!!cpfToSend && cpfToSend !== usuario.cpf) ||
+      (isLocal && draftEmail !== (usuario.email ?? ""));
+    const statusChanged = draftAtivo !== usuario.ativo;
+    const hasChanges = hasProfileChanges || statusChanged;
+
+    if (!hasChanges) {
+      toast.info("Nenhuma alteração para salvar.");
+      return;
+    }
+
     setSavingId(usuario.id);
     try {
-      await api.post<UsuarioPerfil>("/usuarios", {
-        email: usuario.email,
-        roles,
-        cpf: cpfToSend,
-      });
+      if (isLocal && hasProfileChanges) {
+        await api.put<UsuarioPerfil>(`/usuarios/local/${usuario.id}`, {
+          email: draftEmail || usuario.email,
+          roles,
+          cpf: cpfToSend,
+        });
+      } else if (!isLocal && hasProfileChanges) {
+        await api.post<UsuarioPerfil>("/usuarios", {
+          email: usuario.email,
+          roles,
+          cpf: cpfToSend,
+        });
+      }
+      if (statusChanged) {
+        await api.put<UsuarioPerfil>(`/usuarios/${usuario.id}/status`, { ativo: draftAtivo });
+      }
       toast.success("Alterações salvas.");
       setDraftAdmins((prev) => {
         const next = { ...prev };
@@ -407,6 +525,16 @@ export default function Usuarios() {
         return next;
       });
       setDraftCpfs((prev) => {
+        const next = { ...prev };
+        delete next[usuario.id];
+        return next;
+      });
+      setDraftEmails((prev) => {
+        const next = { ...prev };
+        delete next[usuario.id];
+        return next;
+      });
+      setDraftAtivos((prev) => {
         const next = { ...prev };
         delete next[usuario.id];
         return next;
@@ -501,10 +629,24 @@ export default function Usuarios() {
         <div>
           <h1 className="text-3xl font-bold">Usuários</h1>
         </div>
-        <button type="button" onClick={handleOpenCreatePanel} className={primaryActionButtonClasses}>
-          <Plus className="h-4 w-4" aria-hidden="true" />
-          Adicionar usuário
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={handleOpenCreatePanel}
+            className={primaryActionButtonClasses}
+          >
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            Adicionar usuário SSO
+          </button>
+          <button
+            type="button"
+            onClick={handleOpenLocalPanel}
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-800 shadow-sm transition-colors hover:border-indigo-200 hover:text-indigo-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2"
+          >
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            Adicionar usuário manual
+          </button>
+        </div>
       </div>
 
       {createPanelOpen && (
@@ -658,6 +800,97 @@ export default function Usuarios() {
             </button>
           </div>
         </form>
+      </section>
+      )}
+
+      {localPanelOpen && (
+        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Cadastro manual (CPF e senha)</h2>
+              <p className="text-sm text-gray-600">
+                Use esta opção para criar usuários sem SSO. Informe o CPF e uma senha de acesso. O e-mail é opcional e pode ser usado apenas para identificação.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleCloseLocalPanel}
+              className="text-sm font-semibold text-gray-500 transition hover:text-gray-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2"
+            >
+              Fechar
+            </button>
+          </div>
+
+          <form className="mt-2 grid gap-4 md:grid-cols-2" onSubmit={handleCreateLocal}>
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium text-gray-700">CPF *</span>
+              <input
+                type="text"
+                value={formatCpf(localCpf)}
+                onChange={(event) => setLocalCpf(sanitizeCpf(event.target.value))}
+                maxLength={14}
+                className="h-11 rounded-xl border border-gray-200 px-3 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-100"
+                placeholder="000.000.000-00"
+                required
+              />
+            </label>
+
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium text-gray-700">Senha *</span>
+              <input
+                type="password"
+                value={localSenha}
+                onChange={(event) => setLocalSenha(event.target.value)}
+                className="h-11 rounded-xl border border-gray-200 px-3 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-100"
+                placeholder="Digite uma senha segura"
+                required
+              />
+            </label>
+
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium text-gray-700">E-mail (opcional)</span>
+              <input
+                type="email"
+                value={localEmail}
+                onChange={(event) => setLocalEmail(event.target.value)}
+                className="h-11 rounded-xl border border-gray-200 px-3 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-100"
+                placeholder="usuario@empresa.com"
+              />
+            </label>
+
+            <div className="md:col-span-2 flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+              <div>
+                <div className="text-sm font-medium text-gray-700">Perfis</div>
+                <div className="text-xs text-gray-500">Todo usuário é Colaborador. Marque para conceder acesso de Administrador.</div>
+              </div>
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  checked={localIsAdmin}
+                  onChange={(event) => setLocalIsAdmin(event.target.checked)}
+                />
+                Administrador
+              </label>
+            </div>
+
+            <div className="md:col-span-2 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={handleCloseLocalPanel}
+                className="inline-flex items-center rounded-xl border border-gray-300 px-5 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={creatingLocal}
+                className={primaryActionButtonClasses}
+              >
+                {creatingLocal ? "Salvando..." : "Cadastrar sem SSO"}
+              </button>
+            </div>
+          </form>
         </section>
       )}
 
@@ -709,7 +942,7 @@ export default function Usuarios() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm lg:p-6">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
@@ -745,13 +978,15 @@ export default function Usuarios() {
         ) : !hasFilteredUsuarios ? (
           <div className="py-12 text-center text-sm text-gray-500">Nenhum usuário encontrado com os filtros aplicados.</div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="-mx-4 overflow-x-auto lg:-mx-6">
             <table className="min-w-full divide-y divide-gray-200 text-sm">
               <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                 <tr>
                   <th className="px-4 py-3">E-mail</th>
+                  <th className="px-4 py-3">Origem</th>
                   <th className="px-4 py-3">CPF</th>
                   <th className="px-4 py-3">Perfis</th>
+                  <th className="px-4 py-3 text-center">Ativo</th>
                   <th className="px-4 py-3">Atualizado em</th>
                   <th className="px-4 py-3 text-right">Ações</th>
                 </tr>
@@ -761,13 +996,20 @@ export default function Usuarios() {
                   const isAdminOriginal = usuario.roles.includes("Admin");
                   const isAdminDraft = draftAdmins[usuario.id] ?? isAdminOriginal;
                   const draftCpf = draftCpfs[usuario.id] ?? "";
+                  const draftEmail = draftEmails[usuario.id] ?? usuario.email ?? "";
+                  const draftAtivo = draftAtivos[usuario.id] ?? usuario.ativo;
                   const cpfComplete = draftCpf.length === 11;
                   const cpfIncomplete = draftCpf.length > 0 && !cpfComplete;
                   const cpfInvalid = cpfComplete && !isValidCpf(draftCpf);
                   const cpfHasError = cpfIncomplete || cpfInvalid;
                   const canDefineCpf = !usuario.cpf;
                   const cpfChanged = canDefineCpf && cpfComplete && !cpfHasError;
-                  const hasChanges = isAdminDraft !== isAdminOriginal || cpfChanged;
+                  const isLocal = !usuario.microsoftId;
+                  const trimmedDraftEmail = draftEmail.trim();
+                  const emailChanged = isLocal && trimmedDraftEmail && trimmedDraftEmail !== (usuario.email ?? "");
+                  const hasProfileChanges = isAdminDraft !== isAdminOriginal || cpfChanged || emailChanged;
+                  const statusChanged = draftAtivo !== usuario.ativo;
+                  const hasChanges = hasProfileChanges || statusChanged;
                   const isSaving = savingId === usuario.id;
 
                   const displayEmail = usuario.email || "—";
@@ -776,9 +1018,32 @@ export default function Usuarios() {
                     <tr key={usuario.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3">
                         <div className="flex flex-col gap-1">
-                          <span className="font-mono text-xs text-gray-700">{displayEmail}</span>
-                          <span className="font-mono text-[10px] text-gray-400">{usuario.microsoftId}</span>
+                          {isLocal ? (
+                            <div className="flex flex-col gap-1">
+                              <input
+                                type="email"
+                                value={draftEmail}
+                                onChange={(event) => handleDraftEmailChange(usuario, event.target.value)}
+                                className="h-9 w-full rounded-lg border border-gray-200 px-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                              />
+                              {!draftEmail.trim() && <span className="text-xs text-red-600">E-mail obrigatório.</span>}
+                            </div>
+                          ) : (
+                            <span className="font-mono text-xs text-gray-700">{displayEmail}</span>
+                          )}
+                          {usuario.microsoftId && (
+                            <span className="font-mono text-[10px] text-gray-400">{usuario.microsoftId}</span>
+                          )}
                         </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex items-center rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-wide ${
+                            isLocal ? "bg-orange-50 text-orange-700" : "bg-slate-100 text-slate-700"
+                          }`}
+                        >
+                          {isLocal ? "Local" : "SSO"}
+                        </span>
                       </td>
                       <td className="px-4 py-3">
                         {usuario.cpf ? (
@@ -812,16 +1077,32 @@ export default function Usuarios() {
                           </label>
                         </div>
                       </td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex justify-center">
+                          <label className="inline-flex items-center justify-center">
+                            <span className="sr-only">{draftAtivo ? "Usuário ativo" : "Usuário inativo"}</span>
+                            <input
+                              type="checkbox"
+                              className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                              checked={draftAtivo}
+                              onChange={() => toggleAtivo(usuario)}
+                              title={draftAtivo ? "Ativo" : "Inativo"}
+                            />
+                          </label>
+                        </div>
+                      </td>
                       <td className="px-4 py-3 text-xs text-gray-500">{dateFormatter.format(new Date(usuario.atualizadoEm))}</td>
                       <td className="px-4 py-3 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleSaveUsuario(usuario)}
-                          disabled={!hasChanges || isSaving || cpfHasError}
-                          className="inline-flex items-center rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-gray-300"
-                        >
-                          {isSaving ? "Salvando..." : "Salvar"}
-                        </button>
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleSaveUsuario(usuario)}
+                            disabled={!hasChanges || isSaving || cpfHasError}
+                            className="inline-flex items-center rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-gray-300"
+                          >
+                            {isSaving ? "Salvando..." : "Salvar"}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

@@ -26,6 +26,11 @@ public sealed class UsuarioRepository : IUsuarioRepository
             .Include(u => u.Roles)
             .FirstOrDefaultAsync(u => u.MicrosoftId == microsoftId, ct);
 
+    public Task<Usuario?> GetByCpfAsync(string cpf, CancellationToken ct)
+        => _db.Usuarios
+            .Include(u => u.Roles)
+            .FirstOrDefaultAsync(u => u.Cpf == cpf, ct);
+
     public Task<Usuario?> GetByIdAsync(Guid id, CancellationToken ct)
         => _db.Usuarios
             .Include(u => u.Roles)

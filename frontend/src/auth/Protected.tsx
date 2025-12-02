@@ -3,6 +3,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import type { ReactElement } from "react";
 import { useUser } from "./useUser";
 import { InteractionStatus } from "@azure/msal-browser";
+import { hasLocalToken } from "./localAuth";
 
 export default function Protected({
   children,
@@ -20,7 +21,7 @@ export default function Protected({
   if (isInitializing) return null;
 
   const cachedAccounts = instance.getAllAccounts();
-  const hasAnyAccount = isAuth || cachedAccounts.length > 0;
+  const hasAnyAccount = isAuth || cachedAccounts.length > 0 || hasLocalToken();
 
   if (!hasAnyAccount) {
     return <Navigate to="/login" replace state={{ returnTo }} />;
