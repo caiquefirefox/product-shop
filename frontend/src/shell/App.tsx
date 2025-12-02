@@ -26,7 +26,7 @@ export default function App() {
   const { instance } = useMsal();
   const navigate = useNavigate();
   const location = useLocation();
-  const { account, isAdmin, isLoading, clearRolesCache } = useUser();
+  const { account, profile, isAdmin, isLoading, clearRolesCache } = useUser();
   const { totalUnidades, totalPesoKg, totalValor } = useCart();
   const isLoginRoute = location.pathname.startsWith("/login");
   const isCatalogActive =
@@ -66,6 +66,8 @@ export default function App() {
     }`;
 
   const gotoLogin = () => navigate("/login");
+  const activeUserName = profile?.name ?? account?.name;
+  const isAuthenticated = Boolean(profile ?? account);
   const logout = async () => {
     clearRolesCache?.();
     localStorage.removeItem("premier:local-token");
@@ -149,9 +151,9 @@ export default function App() {
                   <span className="hidden text-sm tabular-nums sm:inline">| {pesoResumo}</span>
                 </button>
 
-                {account ? (
+                {isAuthenticated ? (
                   <div className="hidden items-center gap-2 sm:flex sm:gap-3">
-                    <span className="hidden text-sm font-semibold text-gray-600 sm:inline">{account.name}</span>
+                    <span className="hidden text-sm font-semibold text-gray-600 sm:inline">{activeUserName}</span>
                     <button onClick={logout} className="rounded-lg border px-3 py-1 text-sm">
                       Sair
                     </button>
@@ -197,9 +199,9 @@ export default function App() {
                 )}
               </nav>
               <div className="max-w-6xl mx-auto flex flex-col gap-3 px-4 pb-3">
-                {account ? (
+                {isAuthenticated ? (
                   <>
-                    <span className="text-sm font-semibold text-gray-600">{account.name}</span>
+                    <span className="text-sm font-semibold text-gray-600">{activeUserName}</span>
                     <button onClick={logout} className="rounded-lg border px-3 py-2 text-sm">
                       Sair
                     </button>

@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using PremieRpet.Shop.Api.Contracts;
+using PremieRpet.Shop.Api;
 using PremieRpet.Shop.Application.Interfaces.UseCases;
 
 namespace PremieRpet.Shop.Api.Controllers;
@@ -26,11 +27,11 @@ public sealed class AuthController(IConfiguration configuration, IUsuarioService
         }
         catch (InvalidOperationException ex)
         {
-            var status = string.Equals(ex.Message, "Usuário inativo.", StringComparison.OrdinalIgnoreCase)
-                ? StatusCodes.Status403Forbidden
-                : StatusCodes.Status400BadRequest;
+            var isInactiveUser = string.Equals(ex.Message, "Usuário inativo.", StringComparison.OrdinalIgnoreCase);
+            var status = isInactiveUser ? StatusCodes.Status403Forbidden : StatusCodes.Status400BadRequest;
+            var type = isInactiveUser ? ProblemTypeConstants.InactiveUser : null;
 
-            return Problem(detail: ex.Message, statusCode: status);
+            return Problem(detail: ex.Message, statusCode: status, type: type, title: isInactiveUser ? "Usuário inativo" : null);
         }
     }
 

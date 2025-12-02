@@ -34,13 +34,15 @@ public static class UserClaimsExtensions
     }
 
     public static string? GetUserId(this ClaimsPrincipal user)
-        => user.GetUserObjectId();
+        => user.FindFirstValue(Sub)
+            ?? user.FindFirstValue(NameId)
+            ?? user.FindFirstValue(ObjectId)
+            ?? user.FindFirstValue(Oid);
 
     public static string? GetUserObjectId(this ClaimsPrincipal user)
         => user.FindFirstValue(ObjectId)
             ?? user.FindFirstValue(Oid)
-            ?? user.FindFirstValue(NameId)
-            ?? user.FindFirstValue(Sub);
+            ?? user.FindFirstValue(NameId);
 
     public static string? GetDisplayName(this ClaimsPrincipal user)
     {
