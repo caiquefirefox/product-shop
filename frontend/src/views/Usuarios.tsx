@@ -1030,7 +1030,7 @@ export default function Usuarios() {
                   <th className="px-4 py-3">E-mail</th>
                   <th className="px-4 py-3">Origem</th>
                   <th className="px-4 py-3">CPF</th>
-                  <th className="px-4 py-3">Perfis</th>
+                  <th className="px-4 py-3 text-center">ADM</th>
                   <th className="px-4 py-3 text-center">Ativo</th>
                   <th className="px-4 py-3">Atualizado em</th>
                   <th className="px-4 py-3 text-right">Ações</th>
@@ -1129,17 +1129,17 @@ export default function Usuarios() {
                           </div>
                         )}
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">Colaborador</span>
-                          <label className="flex items-center gap-2 text-xs font-medium text-gray-700">
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex justify-center">
+                          <label className="inline-flex items-center justify-center">
+                            <span className="sr-only">{isAdminDraft ? "Usuário administrador" : "Usuário colaborador"}</span>
                             <input
                               type="checkbox"
-                              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                              className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                               checked={isAdminDraft}
                               onChange={() => toggleAdmin(usuario)}
+                              title={isAdminDraft ? "Administrador" : "Colaborador"}
                             />
-                            Administrador
                           </label>
                         </div>
                       </td>
