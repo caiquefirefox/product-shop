@@ -855,6 +855,18 @@ export default function Usuarios() {
 
           <form className="mt-2 grid gap-4 md:grid-cols-2" onSubmit={handleCreateLocal}>
             <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium text-gray-700">Nome completo *</span>
+              <input
+                type="text"
+                value={localNome}
+                onChange={(event) => setLocalNome(event.target.value)}
+                className="h-11 rounded-xl border border-gray-200 px-3 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-100"
+                placeholder="Digite o nome do usuário"
+                required
+              />
+            </label>
+
+            <label className="flex flex-col gap-1">
               <span className="text-sm font-medium text-gray-700">CPF *</span>
               <input
                 type="text"
@@ -875,18 +887,6 @@ export default function Usuarios() {
                 onChange={(event) => setLocalSenha(event.target.value)}
                 className="h-11 rounded-xl border border-gray-200 px-3 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-100"
                 placeholder="Digite uma senha segura"
-                required
-              />
-            </label>
-
-            <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium text-gray-700">Nome completo *</span>
-              <input
-                type="text"
-                value={localNome}
-                onChange={(event) => setLocalNome(event.target.value)}
-                className="h-11 rounded-xl border border-gray-200 px-3 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-100"
-                placeholder="Digite o nome do usuário"
                 required
               />
             </label>
