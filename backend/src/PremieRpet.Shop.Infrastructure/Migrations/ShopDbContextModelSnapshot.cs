@@ -108,6 +108,10 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                     b.Property<DateTimeOffset>("CriadoEm")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Nome")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<string>("MicrosoftId")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");

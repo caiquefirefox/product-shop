@@ -179,6 +179,7 @@ export default function Usuarios() {
   const [creating, setCreating] = useState(false);
   const [localCpf, setLocalCpf] = useState("");
   const [localSenha, setLocalSenha] = useState("");
+  const [localNome, setLocalNome] = useState("");
   const [localEmail, setLocalEmail] = useState("");
   const [localIsAdmin, setLocalIsAdmin] = useState(false);
   const [creatingLocal, setCreatingLocal] = useState(false);
@@ -363,10 +364,14 @@ export default function Usuarios() {
     }
 
     const roles = buildRoles(newIsAdmin);
-    const payload: { email: string; cpf?: string; roles: string[] } = {
+    const payload: { email: string; cpf?: string; roles: string[]; nome?: string } = {
       email,
       roles,
     };
+    const nome = chosenUser.displayName?.trim();
+    if (nome) {
+      payload.nome = nome;
+    }
     if (newCpf) {
       payload.cpf = newCpf;
     }
@@ -406,11 +411,18 @@ export default function Usuarios() {
       return;
     }
 
+    const trimmedLocalNome = localNome.trim();
+    if (!trimmedLocalNome) {
+      toast.error("Informe o nome do usuário.");
+      return;
+    }
+
     const roles = buildRoles(localIsAdmin);
-    const payload: { cpf: string; senha: string; roles: string[]; email?: string } = {
+    const payload: { cpf: string; senha: string; roles: string[]; email?: string; nome: string } = {
       cpf: sanitized,
       senha: localSenha,
       roles,
+      nome: trimmedLocalNome,
     };
 
     const trimmedLocalEmail = localEmail.trim();
@@ -424,6 +436,7 @@ export default function Usuarios() {
       toast.success("Usuário local salvo com sucesso.");
       setLocalCpf("");
       setLocalSenha("");
+      setLocalNome("");
       setLocalEmail("");
       setLocalIsAdmin(false);
       await fetchUsuarios();
@@ -843,6 +856,18 @@ export default function Usuarios() {
                 onChange={(event) => setLocalSenha(event.target.value)}
                 className="h-11 rounded-xl border border-gray-200 px-3 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-100"
                 placeholder="Digite uma senha segura"
+                required
+              />
+            </label>
+
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium text-gray-700">Nome completo *</span>
+              <input
+                type="text"
+                value={localNome}
+                onChange={(event) => setLocalNome(event.target.value)}
+                className="h-11 rounded-xl border border-gray-200 px-3 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-100"
+                placeholder="Digite o nome do usuário"
                 required
               />
             </label>

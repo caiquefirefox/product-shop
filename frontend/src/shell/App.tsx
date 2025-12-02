@@ -66,7 +66,7 @@ export default function App() {
     }`;
 
   const gotoLogin = () => navigate("/login");
-  const activeUserName = profile?.name ?? account?.name;
+  const activeUserName = profile?.nome ?? profile?.email ?? account?.name;
   const isAuthenticated = Boolean(profile ?? account);
   const logout = async () => {
     clearRolesCache?.();

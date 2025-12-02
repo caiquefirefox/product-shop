@@ -236,7 +236,7 @@ public sealed class PedidoService : IPedidoService
             ?? throw new InvalidOperationException("Unidade de entrega inválida.");
 
         var agora = DateTimeOffset.UtcNow;
-        var perfil = await _usuarios.GarantirCpfAsync(usuarioEmail, usuarioMicrosoftId, dto.Cpf, ct);
+        var perfil = await _usuarios.GarantirCpfAsync(usuarioEmail, usuarioMicrosoftId, dto.Cpf, usuarioNome, ct);
         var pesoAcumulado = await PesoAcumuladoMesEmKgAsync(perfil.Id, agora, ct);
 
         var inicioMes = InicioMesUtc(agora.Year, agora.Month);

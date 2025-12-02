@@ -1,5 +1,6 @@
 type UsuarioPerfil = {
   id: string;
+  nome: string | null;
   microsoftId: string;
   email: string;
   ativo: boolean;

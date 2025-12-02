@@ -23,7 +23,8 @@ public sealed class UsuariosController(IUsuarioService usuarios) : ControllerBas
         try
         {
             var usuarioId = User.GetUserObjectId();
-            var perfil = await usuarios.ObterOuCriarAsync(usuarioEmail, usuarioId, ct);
+            var usuarioNome = User.GetDisplayName();
+            var perfil = await usuarios.ObterOuCriarAsync(usuarioEmail, usuarioId, usuarioNome, ct);
             return Ok(perfil);
         }
         catch (InvalidOperationException ex)
@@ -61,7 +62,7 @@ public sealed class UsuariosController(IUsuarioService usuarios) : ControllerBas
     {
         try
         {
-            var resultado = await usuarios.UpsertAsync(request.Email, request.Cpf, request.Roles, ct);
+            var resultado = await usuarios.UpsertAsync(request.Email, request.Cpf, request.Nome, request.Roles, ct);
             return Ok(resultado);
         }
         catch (InvalidOperationException ex)
@@ -76,7 +77,7 @@ public sealed class UsuariosController(IUsuarioService usuarios) : ControllerBas
     {
         try
         {
-            var resultado = await usuarios.CriarLocalAsync(request.Cpf, request.Senha, request.Roles, request.Email, ct);
+            var resultado = await usuarios.CriarLocalAsync(request.Cpf, request.Senha, request.Roles, request.Email, request.Nome, ct);
             return Ok(resultado);
         }
         catch (InvalidOperationException ex)
@@ -91,7 +92,7 @@ public sealed class UsuariosController(IUsuarioService usuarios) : ControllerBas
     {
         try
         {
-            var resultado = await usuarios.AtualizarLocalAsync(id, request.Email, request.Cpf, request.Roles, ct);
+            var resultado = await usuarios.AtualizarLocalAsync(id, request.Email, request.Cpf, request.Nome, request.Roles, ct);
             return Ok(resultado);
         }
         catch (InvalidOperationException ex)
@@ -141,7 +142,8 @@ public sealed class UsuariosController(IUsuarioService usuarios) : ControllerBas
         try
         {
             var usuarioId = User.GetUserObjectId();
-            var perfil = await usuarios.RegistrarCpfAsync(usuarioEmail, usuarioId, request.Cpf, ct);
+            var usuarioNome = User.GetDisplayName();
+            var perfil = await usuarios.RegistrarCpfAsync(usuarioEmail, usuarioId, request.Cpf, usuarioNome, ct);
             return Ok(perfil);
         }
         catch (InvalidOperationException ex)
