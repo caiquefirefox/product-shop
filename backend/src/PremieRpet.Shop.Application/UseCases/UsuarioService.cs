@@ -36,6 +36,9 @@ public sealed class UsuarioService : IUsuarioService
 
         if (usuario is null)
         {
+            if (string.IsNullOrWhiteSpace(resolvedMicrosoftId))
+                throw new InvalidOperationException("Usuário não encontrado.");
+
             var agora = DateTimeOffset.UtcNow;
             var remoteRoles = await _entraRoles.GetUserRolesAsync(resolvedMicrosoftId, ct);
             var normalizedRoles = NormalizeRoles(remoteRoles, strict: false);
@@ -75,6 +78,9 @@ public sealed class UsuarioService : IUsuarioService
 
         if (usuario is null)
         {
+            if (string.IsNullOrWhiteSpace(resolvedMicrosoftId))
+                throw new InvalidOperationException("Usuário não encontrado.");
+
             var remoteRoles = await _entraRoles.GetUserRolesAsync(resolvedMicrosoftId, ct);
             var normalizedRoles = NormalizeRoles(remoteRoles, strict: false);
 
@@ -121,6 +127,9 @@ public sealed class UsuarioService : IUsuarioService
         {
             if (string.IsNullOrWhiteSpace(cpf))
                 throw new InvalidOperationException("CPF obrigatório.");
+
+            if (string.IsNullOrWhiteSpace(resolvedMicrosoftId))
+                throw new InvalidOperationException("Usuário não encontrado.");
 
             var sanitized = CpfRules.Sanitize(cpf);
             if (!CpfRules.IsValid(sanitized))
@@ -516,16 +525,23 @@ public sealed class UsuarioService : IUsuarioService
         return new UsuarioSyncResult(novos.Count, atualizados.Count);
     }
 
-    private async Task<(Usuario? usuario, string microsoftId)> FindExistingUsuarioAsync(string normalizedEmail, string? providedMicrosoftId, CancellationToken ct)
+    private async Task<(Usuario? usuario, string? microsoftId)> FindExistingUsuarioAsync(string normalizedEmail, string? providedMicrosoftId, CancellationToken ct)
     {
+        var normalizedMicrosoftId = NormalizeMicrosoftId(providedMicrosoftId);
         var existente = await _usuarios.GetByEmailAsync(normalizedEmail, ct);
         if (existente is not null)
         {
-            var ensuredId = await EnsureMicrosoftIdAsync(existente, normalizedEmail, NormalizeMicrosoftId(providedMicrosoftId), ct);
+            var shouldSkipMicrosoftIdResolution = string.IsNullOrWhiteSpace(existente.MicrosoftId)
+                && string.IsNullOrWhiteSpace(normalizedMicrosoftId)
+                && !string.IsNullOrWhiteSpace(existente.PasswordHash);
+
+            if (shouldSkipMicrosoftIdResolution)
+                return (existente, null);
+
+            var ensuredId = await EnsureMicrosoftIdAsync(existente, normalizedEmail, normalizedMicrosoftId, ct);
             return (existente, ensuredId);
         }
 
-        var normalizedMicrosoftId = NormalizeMicrosoftId(providedMicrosoftId);
         if (normalizedMicrosoftId is not null)
         {
             var porIdPorToken = await _usuarios.GetByMicrosoftIdAsync(normalizedMicrosoftId, ct);
