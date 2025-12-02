@@ -57,7 +57,14 @@ public sealed class UsuarioService : IUsuarioService
         }
         else
         {
-            usuario = await EnsureRolesAsync(usuario, ct, resolvedMicrosoftId);
+            if (string.IsNullOrWhiteSpace(resolvedMicrosoftId))
+            {
+                usuario = await EnsureRolesAsync(usuario, ct, resolvedMicrosoftId);
+            }
+            else
+            {
+                usuario = await SyncFromEntraAsync(usuario, normalizedEmail, resolvedMicrosoftId, ct);
+            }
         }
 
         return ToDto(usuario);
@@ -99,7 +106,14 @@ public sealed class UsuarioService : IUsuarioService
             return ToDto(usuario);
         }
 
-        usuario = await EnsureRolesAsync(usuario, ct, resolvedMicrosoftId);
+        if (string.IsNullOrWhiteSpace(resolvedMicrosoftId))
+        {
+            usuario = await EnsureRolesAsync(usuario, ct, resolvedMicrosoftId);
+        }
+        else
+        {
+            usuario = await SyncFromEntraAsync(usuario, normalizedEmail, resolvedMicrosoftId, ct);
+        }
 
         if (!usuario.Ativo)
             throw new InvalidOperationException("Usuário inativo.");
@@ -154,7 +168,14 @@ public sealed class UsuarioService : IUsuarioService
             return ToDto(usuario);
         }
 
-        usuario = await EnsureRolesAsync(usuario, ct, resolvedMicrosoftId);
+        if (string.IsNullOrWhiteSpace(resolvedMicrosoftId))
+        {
+            usuario = await EnsureRolesAsync(usuario, ct, resolvedMicrosoftId);
+        }
+        else
+        {
+            usuario = await SyncFromEntraAsync(usuario, normalizedEmail, resolvedMicrosoftId, ct);
+        }
 
         if (!usuario.Ativo)
             throw new InvalidOperationException("Usuário inativo.");
@@ -317,7 +338,7 @@ public sealed class UsuarioService : IUsuarioService
             await _usuarios.UpdateAsync(usuario, ct);
         }
 
-        usuario = await EnsureRolesAsync(usuario, ct);
+        usuario = await SyncLocalWithEntraAsync(usuario, ct);
         return ToDto(usuario);
     }
 
@@ -626,6 +647,57 @@ public sealed class UsuarioService : IUsuarioService
         }
 
         return usuario.MicrosoftId ?? throw new InvalidOperationException("Não foi possível determinar o usuário no Microsoft Entra ID.");
+    }
+
+    private async Task<Usuario> SyncFromEntraAsync(Usuario usuario, string normalizedEmail, string microsoftId, CancellationToken ct)
+    {
+        var normalizedMicrosoftId = NormalizeMicrosoftId(microsoftId)
+            ?? throw new InvalidOperationException("Identificador do usuário no Microsoft Entra ID inválido.");
+
+        var remoteRoles = await _entraRoles.GetUserRolesAsync(normalizedEmail, ct);
+        var normalizedRoles = NormalizeRoles(remoteRoles, strict: false);
+        var needsUpdate = false;
+
+        if (!string.Equals(usuario.MicrosoftId, normalizedMicrosoftId, StringComparison.OrdinalIgnoreCase))
+        {
+            usuario.MicrosoftId = normalizedMicrosoftId;
+            needsUpdate = true;
+        }
+
+        if (!string.Equals(usuario.Email, normalizedEmail, StringComparison.OrdinalIgnoreCase))
+        {
+            usuario.Email = normalizedEmail;
+            needsUpdate = true;
+        }
+
+        if (needsUpdate)
+        {
+            usuario.AtualizadoEm = DateTimeOffset.UtcNow;
+            await _usuarios.UpdateAsync(usuario, ct);
+        }
+
+        await _usuarios.ReplaceRolesAsync(usuario.Id, normalizedRoles, ct);
+        var atualizado = await _usuarios.GetByIdAsync(usuario.Id, ct);
+        return atualizado ?? usuario;
+    }
+
+    private async Task<Usuario> SyncLocalWithEntraAsync(Usuario usuario, CancellationToken ct)
+    {
+        var normalizedEmail = TryNormalizeEmail(usuario.Email);
+        if (string.IsNullOrWhiteSpace(normalizedEmail))
+            return await EnsureRolesAsync(usuario, ct);
+
+        try
+        {
+            var microsoftGuid = await _entraRoles.ResolveUserIdAsync(normalizedEmail, ct);
+            var microsoftId = microsoftGuid.ToString("D");
+
+            return await SyncFromEntraAsync(usuario, normalizedEmail, microsoftId, ct);
+        }
+        catch (InvalidOperationException)
+        {
+            return await EnsureRolesAsync(usuario, ct);
+        }
     }
 
     private async Task<Usuario> EnsureRolesAsync(Usuario usuario, CancellationToken ct, string? knownMicrosoftId = null)
