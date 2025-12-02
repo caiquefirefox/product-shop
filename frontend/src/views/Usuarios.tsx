@@ -1022,8 +1022,8 @@ export default function Usuarios() {
         ) : !hasFilteredUsuarios ? (
           <div className="py-12 text-center text-sm text-gray-500">Nenhum usuário encontrado com os filtros aplicados.</div>
         ) : (
-          <div className="overflow-hidden rounded-xl border border-gray-100">
-            <table className="min-w-full table-fixed divide-y divide-gray-200 text-sm">
+          <div className="overflow-x-auto rounded-xl border border-gray-100">
+            <table className="min-w-[1100px] divide-y divide-gray-200 text-sm">
               <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
                 <tr>
                   <th className="px-4 py-3">Nome</th>
