@@ -4,6 +4,8 @@ import { clearLocalToken, getLocalToken } from "../auth/localAuth";
 
 const api = axios.create({ baseURL: import.meta.env.VITE_API_BASE_URL });
 
+const INACTIVE_USER_PROBLEM_TYPE = "https://pedido-interno.premierpet.com.br/problems/user-inactive";
+
 api.interceptors.request.use(async (config) => {
   const localToken = getLocalToken();
   if (localToken) {
@@ -28,11 +30,9 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const status = error?.response?.status as number | undefined;
-    const detail = error?.response?.data?.detail as string | undefined;
-    const message = detail ?? (error?.response?.data?.message as string | undefined);
+    const problemType = error?.response?.data?.type as string | undefined;
 
-    const isInactiveUser =
-      status === 403 && typeof message === "string" && message.toLowerCase().includes("usuário inativo");
+    const isInactiveUser = status === 403 && problemType === INACTIVE_USER_PROBLEM_TYPE;
 
     if (isInactiveUser) {
       clearLocalToken();
