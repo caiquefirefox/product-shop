@@ -87,6 +87,7 @@ public sealed class UsuarioService : IUsuarioService
             throw new InvalidOperationException("CPF inválido.");
 
         var (usuario, resolvedMicrosoftId) = await FindExistingUsuarioAsync(normalizedEmail, microsoftId, ct);
+        await EnsureCpfDisponivelAsync(sanitized, usuario?.Id, ct);
         var agora = DateTimeOffset.UtcNow;
 
         if (usuario is null)
@@ -126,15 +127,11 @@ public sealed class UsuarioService : IUsuarioService
         if (!usuario.Ativo)
             throw new InvalidOperationException("Usuário inativo.");
 
-        if (string.IsNullOrWhiteSpace(usuario.Cpf))
+        if (string.IsNullOrWhiteSpace(usuario.Cpf) || !string.Equals(usuario.Cpf, sanitized, StringComparison.Ordinal))
         {
             usuario.Cpf = sanitized;
             usuario.AtualizadoEm = agora;
             await _usuarios.UpdateAsync(usuario, ct);
-        }
-        else if (!string.Equals(usuario.Cpf, sanitized, StringComparison.Ordinal))
-        {
-            throw new InvalidOperationException("CPF já cadastrado e não pode ser alterado.");
         }
 
         return ToDto(usuario);
@@ -157,6 +154,7 @@ public sealed class UsuarioService : IUsuarioService
             var sanitized = CpfRules.Sanitize(cpf);
             if (!CpfRules.IsValid(sanitized))
                 throw new InvalidOperationException("CPF inválido.");
+            await EnsureCpfDisponivelAsync(sanitized, usuario?.Id, ct);
 
             var agora = DateTimeOffset.UtcNow;
             var remoteRoles = await _entraRoles.GetUserRolesAsync(resolvedMicrosoftId, ct);
@@ -197,7 +195,12 @@ public sealed class UsuarioService : IUsuarioService
             {
                 var sanitized = CpfRules.Sanitize(cpf);
                 if (!string.Equals(usuario.Cpf, sanitized, StringComparison.Ordinal))
-                    throw new InvalidOperationException("CPF já cadastrado e não pode ser alterado.");
+                {
+                    await EnsureCpfDisponivelAsync(sanitized, usuario.Id, ct);
+                    usuario.Cpf = sanitized;
+                    usuario.AtualizadoEm = DateTimeOffset.UtcNow;
+                    await _usuarios.UpdateAsync(usuario, ct);
+                }
             }
 
             usuario = await EnsureNomeAsync(usuario, nomeNormalizado, ct);
@@ -210,6 +213,7 @@ public sealed class UsuarioService : IUsuarioService
         var novoCpf = CpfRules.Sanitize(cpf);
         if (!CpfRules.IsValid(novoCpf))
             throw new InvalidOperationException("CPF inválido.");
+        await EnsureCpfDisponivelAsync(novoCpf, usuario.Id, ct);
 
         usuario.Cpf = novoCpf;
         usuario.AtualizadoEm = DateTimeOffset.UtcNow;
@@ -315,6 +319,9 @@ public sealed class UsuarioService : IUsuarioService
         var (usuario, microsoftId) = await FindExistingUsuarioAsync(normalizedEmail, null, ct);
         var agora = DateTimeOffset.UtcNow;
 
+        if (!string.IsNullOrWhiteSpace(sanitizedCpf))
+            await EnsureCpfDisponivelAsync(sanitizedCpf, usuario?.Id, ct);
+
         if (usuario is null)
         {
             usuario = new Usuario
@@ -340,10 +347,7 @@ public sealed class UsuarioService : IUsuarioService
 
         if (!string.IsNullOrWhiteSpace(sanitizedCpf))
         {
-            if (!string.IsNullOrWhiteSpace(usuario.Cpf) && !string.Equals(usuario.Cpf, sanitizedCpf, StringComparison.Ordinal))
-                throw new InvalidOperationException("CPF já cadastrado e não pode ser alterado.");
-
-            if (string.IsNullOrWhiteSpace(usuario.Cpf))
+            if (string.IsNullOrWhiteSpace(usuario.Cpf) || !string.Equals(usuario.Cpf, sanitizedCpf, StringComparison.Ordinal))
             {
                 usuario.Cpf = sanitizedCpf;
             }
@@ -384,9 +388,7 @@ public sealed class UsuarioService : IUsuarioService
                 throw new InvalidOperationException("E-mail já cadastrado para outro usuário.");
         }
 
-        var existente = await _usuarios.GetByCpfAsync(sanitizedCpf, ct);
-        if (existente is not null)
-            throw new InvalidOperationException("CPF já cadastrado.");
+        await EnsureCpfDisponivelAsync(sanitizedCpf, null, ct);
 
         var agora = DateTimeOffset.UtcNow;
         var usuario = new Usuario
@@ -403,6 +405,84 @@ public sealed class UsuarioService : IUsuarioService
         ApplyRoles(usuario, normalizedRoles);
         await _usuarios.AddAsync(usuario, ct);
         return ToDto(usuario);
+    }
+
+    public async Task<IReadOnlyList<UsuarioDto>> UpsertEmLoteAsync(IEnumerable<UsuarioUpsertBatchDto> usuarios, CancellationToken ct)
+    {
+        if (usuarios is null)
+            throw new InvalidOperationException("Nenhuma alteração recebida.");
+
+        var alteracoes = usuarios.ToList();
+        if (alteracoes.Count == 0)
+            return Array.Empty<UsuarioDto>();
+
+        var ids = new HashSet<Guid>();
+
+        foreach (var alteracao in alteracoes)
+        {
+            if (alteracao.Id == Guid.Empty)
+                throw new InvalidOperationException("Id do usuário obrigatório.");
+
+            if (!alteracao.AtualizarPerfil && !alteracao.AtualizarStatus)
+                throw new InvalidOperationException("Nenhuma alteração informada para o usuário.");
+
+            if (!ids.Add(alteracao.Id))
+                throw new InvalidOperationException("Usuário duplicado na lista de alterações.");
+        }
+
+        await _usuarios.ExecuteInTransactionAsync(async innerCt =>
+        {
+            foreach (var alteracao in alteracoes)
+            {
+                var usuario = await _usuarios.GetByIdAsync(alteracao.Id, innerCt)
+                    ?? throw new InvalidOperationException("Usuário não encontrado.");
+
+                if (alteracao.AtualizarPerfil)
+                {
+                    var roles = alteracao.Roles ?? usuario.Roles.Select(r => r.Role);
+                    var nome = alteracao.Nome ?? usuario.Nome;
+                    var email = alteracao.Email ?? usuario.Email;
+                    var cpf = alteracao.Cpf ?? usuario.Cpf;
+
+                    if (string.IsNullOrWhiteSpace(usuario.MicrosoftId))
+                    {
+                        var emailParaAtualizar = email ?? throw new InvalidOperationException("E-mail do usuário obrigatório.");
+                        await AtualizarLocalAsync(usuario.Id, emailParaAtualizar, cpf, nome, roles, innerCt);
+                    }
+                    else
+                    {
+                        var emailParaAtualizar = email ?? usuario.Email ?? throw new InvalidOperationException("E-mail do usuário obrigatório.");
+                        await UpsertAsync(emailParaAtualizar, cpf, nome, roles, innerCt);
+                    }
+
+                    usuario = await _usuarios.GetByIdAsync(alteracao.Id, innerCt)
+                        ?? throw new InvalidOperationException("Usuário não encontrado após atualização de perfil.");
+                }
+
+                if (alteracao.AtualizarStatus)
+                {
+                    if (!alteracao.Ativo.HasValue)
+                        throw new InvalidOperationException("Status do usuário obrigatório para atualização.");
+
+                    if (usuario.Ativo != alteracao.Ativo.Value)
+                    {
+                        await AtualizarStatusAsync(usuario.Id, alteracao.Ativo.Value, innerCt);
+                    }
+                }
+            }
+        }, ct);
+
+        var atualizados = new List<UsuarioDto>(ids.Count);
+        foreach (var id in ids)
+        {
+            var usuario = await _usuarios.GetByIdAsync(id, ct)
+                ?? throw new InvalidOperationException("Usuário não encontrado após atualização.");
+
+            var ensured = await EnsureRolesAsync(usuario, ct);
+            atualizados.Add(ToDto(ensured));
+        }
+
+        return atualizados;
     }
 
     public async Task<UsuarioDto> AutenticarLocalAsync(string cpf, string senha, CancellationToken ct)
@@ -463,10 +543,9 @@ public sealed class UsuarioService : IUsuarioService
 
         if (!string.IsNullOrWhiteSpace(sanitizedCpf))
         {
-            if (!string.IsNullOrWhiteSpace(usuario.Cpf) && !string.Equals(usuario.Cpf, sanitizedCpf, StringComparison.Ordinal))
-                throw new InvalidOperationException("CPF já cadastrado e não pode ser alterado.");
+            await EnsureCpfDisponivelAsync(sanitizedCpf, usuario.Id, ct);
 
-            if (string.IsNullOrWhiteSpace(usuario.Cpf))
+            if (string.IsNullOrWhiteSpace(usuario.Cpf) || !string.Equals(usuario.Cpf, sanitizedCpf, StringComparison.Ordinal))
             {
                 usuario.Cpf = sanitizedCpf;
             }
@@ -999,6 +1078,13 @@ public sealed class UsuarioService : IUsuarioService
         {
             return false;
         }
+    }
+
+    private async Task EnsureCpfDisponivelAsync(string cpf, Guid? usuarioId, CancellationToken ct)
+    {
+        var existente = await _usuarios.GetByCpfAsync(cpf, ct);
+        if (existente is not null && (!usuarioId.HasValue || existente.Id != usuarioId.Value))
+            throw new InvalidOperationException("CPF já cadastrado para outro usuário.");
     }
 
     private static IReadOnlyList<string> NormalizeRoles(IEnumerable<string>? roles, bool strict = true)

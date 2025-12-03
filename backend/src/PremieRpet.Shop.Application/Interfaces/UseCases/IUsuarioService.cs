@@ -16,4 +16,5 @@ public interface IUsuarioService
     Task<UsuarioDto> AtualizarStatusAsync(Guid usuarioId, bool ativo, CancellationToken ct);
     Task<IReadOnlyCollection<UsuarioLookupDto>> BuscarEntraAsync(string termo, CancellationToken ct);
     Task<UsuarioSyncResult> SincronizarAsync(CancellationToken ct);
+    Task<IReadOnlyList<UsuarioDto>> UpsertEmLoteAsync(IEnumerable<UsuarioUpsertBatchDto> usuarios, CancellationToken ct);
 }

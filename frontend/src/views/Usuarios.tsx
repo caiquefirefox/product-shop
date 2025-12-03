@@ -202,8 +202,10 @@ export default function Usuarios() {
   const [draftEmails, setDraftEmails] = useState<Record<string, string>>({});
   const [draftNomes, setDraftNomes] = useState<Record<string, string>>({});
   const [draftAtivos, setDraftAtivos] = useState<Record<string, boolean>>({});
-  const [savingId, setSavingId] = useState<string | null>(null);
+  const [draftBases, setDraftBases] = useState<Record<string, UsuarioPerfil>>({});
   const [syncing, setSyncing] = useState(false);
+  const [confirmChangesOpen, setConfirmChangesOpen] = useState(false);
+  const [savingAll, setSavingAll] = useState(false);
 
   const [filterEmail, setFilterEmail] = useState("");
   const [filterCpf, setFilterCpf] = useState("");
@@ -309,12 +311,6 @@ export default function Usuarios() {
         setPageSize(safePageSize);
         setTotalItems(safeTotalItems);
         setTotalPages(normalizedTotalPages);
-
-        setDraftAdmins({});
-        setDraftCpfs({});
-        setDraftEmails({});
-        setDraftNomes({});
-        setDraftAtivos({});
 
         if (safePageFromResponse !== page) {
           setPage(safePageFromResponse);
@@ -528,7 +524,17 @@ export default function Usuarios() {
     }
   };
 
+  const rememberDraftBase = useCallback((usuario: UsuarioPerfil) => {
+    setDraftBases((prev) => {
+      if (prev[usuario.id]) {
+        return prev;
+      }
+      return { ...prev, [usuario.id]: usuario };
+    });
+  }, []);
+
   const toggleAdmin = (usuario: UsuarioPerfil) => {
+    rememberDraftBase(usuario);
     setDraftAdmins((prev) => {
       const current = prev[usuario.id] ?? usuario.roles.includes("Admin");
       return { ...prev, [usuario.id]: !current };
@@ -536,6 +542,7 @@ export default function Usuarios() {
   };
 
   const toggleAtivo = (usuario: UsuarioPerfil) => {
+    rememberDraftBase(usuario);
     setDraftAtivos((prev) => {
       const current = prev[usuario.id] ?? usuario.ativo;
       return { ...prev, [usuario.id]: !current };
@@ -543,118 +550,246 @@ export default function Usuarios() {
   };
 
   const handleDraftEmailChange = (usuario: UsuarioPerfil, value: string) => {
+    rememberDraftBase(usuario);
     setDraftEmails((prev) => ({ ...prev, [usuario.id]: value }));
   };
 
   const handleDraftNomeChange = (usuario: UsuarioPerfil, value: string) => {
+    rememberDraftBase(usuario);
     setDraftNomes((prev) => ({ ...prev, [usuario.id]: value }));
   };
 
   const handleDraftCpfChange = (usuario: UsuarioPerfil, value: string) => {
+    rememberDraftBase(usuario);
     const sanitized = sanitizeCpf(value);
     setDraftCpfs((prev) => ({ ...prev, [usuario.id]: sanitized }));
   };
 
-  const handleSaveUsuario = async (usuario: UsuarioPerfil) => {
-    const isAdminOriginal = usuario.roles.includes("Admin");
-    const isAdminDraft = draftAdmins[usuario.id] ?? isAdminOriginal;
-    const roles = buildRoles(isAdminDraft);
-    const draftCpf = draftCpfs[usuario.id];
-    const cpfToSend = usuario.cpf ?? (draftCpf && draftCpf.length ? draftCpf : undefined);
-    const draftEmail = (draftEmails[usuario.id] ?? usuario.email ?? "").trim();
-    const draftNome = (draftNomes[usuario.id] ?? usuario.nome ?? "").trim();
-    const isLocal = !usuario.microsoftId;
-    const draftAtivo = draftAtivos[usuario.id] ?? usuario.ativo;
+  type UsuarioDraftInfo = {
+    usuario: UsuarioPerfil;
+    isLocal: boolean;
+    isAdminOriginal: boolean;
+    isAdminDraft: boolean;
+    roles: string[];
+    draftCpf: string;
+    cpfIncomplete: boolean;
+    cpfInvalid: boolean;
+    cpfToSend?: string;
+    draftEmail: string;
+    draftNome: string;
+    rawDraftEmail: string;
+    rawDraftNome: string;
+    draftAtivo: boolean;
+    cpfHasError: boolean;
+    nomeHasError: boolean;
+    emailHasError: boolean;
+    hasProfileChanges: boolean;
+    statusChanged: boolean;
+    hasChanges: boolean;
+    hasError: boolean;
+    changeDescriptions: string[];
+  };
 
-    if (!usuario.cpf && draftCpf) {
-      if (draftCpf.length < 11) {
-        toast.error("CPF incompleto.");
-        return;
+  const clearDraftsForUsuario = (usuarioId: string) => {
+    setDraftAdmins((prev) => {
+      const next = { ...prev };
+      delete next[usuarioId];
+      return next;
+    });
+    setDraftCpfs((prev) => {
+      const next = { ...prev };
+      delete next[usuarioId];
+      return next;
+    });
+    setDraftEmails((prev) => {
+      const next = { ...prev };
+      delete next[usuarioId];
+      return next;
+    });
+    setDraftNomes((prev) => {
+      const next = { ...prev };
+      delete next[usuarioId];
+      return next;
+    });
+    setDraftAtivos((prev) => {
+      const next = { ...prev };
+      delete next[usuarioId];
+      return next;
+    });
+    setDraftBases((prev) => {
+      const next = { ...prev };
+      delete next[usuarioId];
+      return next;
+    });
+  };
+
+  const getUsuarioDraftInfo = useCallback(
+    (usuario: UsuarioPerfil): UsuarioDraftInfo => {
+      const isAdminOriginal = usuario.roles.includes("Admin");
+      const isAdminDraft = draftAdmins[usuario.id] ?? isAdminOriginal;
+      const roles = buildRoles(isAdminDraft);
+    const originalCpf = sanitizeCpf(usuario.cpf ?? "");
+    const draftCpf = draftCpfs[usuario.id] ?? originalCpf;
+    const cpfComplete = draftCpf.length === 11;
+    const cpfIncomplete = draftCpf.length > 0 && !cpfComplete;
+    const cpfInvalid = cpfComplete && !isValidCpf(draftCpf);
+    const cpfHasError = cpfIncomplete || cpfInvalid;
+    const cpfToSend = cpfComplete && !cpfHasError ? draftCpf : originalCpf || undefined;
+      const draftEmail = draftEmails[usuario.id] ?? usuario.email ?? "";
+      const draftNome = draftNomes[usuario.id] ?? usuario.nome ?? "";
+      const draftAtivo = draftAtivos[usuario.id] ?? usuario.ativo;
+      const isLocal = !usuario.microsoftId;
+      const trimmedDraftEmail = draftEmail.trim();
+      const trimmedDraftNome = draftNome.trim();
+      const emailHasError = isLocal && (!trimmedDraftEmail || !trimmedDraftEmail.includes("@"));
+      const nomeHasError = isLocal && !trimmedDraftNome;
+      const emailChanged = isLocal && trimmedDraftEmail && trimmedDraftEmail !== (usuario.email ?? "");
+      const nomeChanged = isLocal && trimmedDraftNome && trimmedDraftNome !== (usuario.nome ?? "");
+    const cpfChanged = cpfComplete && draftCpf !== originalCpf && !cpfHasError;
+      const hasProfileChanges = isAdminDraft !== isAdminOriginal || cpfChanged || emailChanged || nomeChanged;
+      const statusChanged = draftAtivo !== usuario.ativo;
+      const hasChanges = hasProfileChanges || statusChanged;
+      const hasError = cpfHasError || nomeHasError || emailHasError;
+
+      const changeDescriptions: string[] = [];
+      if (nomeChanged) {
+        changeDescriptions.push(`Nome: ${usuario.nome || "—"} → ${trimmedDraftNome}`);
       }
-      if (!isValidCpf(draftCpf)) {
-        toast.error("CPF inválido.");
-        return;
+      if (emailChanged) {
+        changeDescriptions.push(`E-mail: ${usuario.email || "—"} → ${trimmedDraftEmail}`);
       }
-    }
-
-    if (isLocal) {
-      if (!draftEmail || !draftEmail.includes("@")) {
-        toast.error("Informe um e-mail válido.");
-        return;
+      if (cpfChanged && cpfToSend) {
+        changeDescriptions.push(`CPF: ${originalCpf ? formatCpf(originalCpf) : "—"} → ${formatCpf(cpfToSend)}`);
+      }
+      if (isAdminDraft !== isAdminOriginal) {
+        changeDescriptions.push(
+          `Perfil: ${isAdminOriginal ? "Administrador" : "Colaborador"} → ${isAdminDraft ? "Administrador" : "Colaborador"}`,
+        );
+      }
+      if (statusChanged) {
+        changeDescriptions.push(`Status: ${usuario.ativo ? "Ativo" : "Inativo"} → ${draftAtivo ? "Ativo" : "Inativo"}`);
       }
 
-      if (!draftNome) {
-        toast.error("Informe o nome do usuário.");
-        return;
-      }
-    }
+      return {
+        usuario,
+        isLocal,
+        isAdminOriginal,
+        isAdminDraft,
+        roles,
+        draftCpf,
+        cpfIncomplete,
+        cpfInvalid,
+        cpfToSend,
+        rawDraftEmail: draftEmail,
+        draftEmail: trimmedDraftEmail,
+        rawDraftNome: draftNome,
+        draftNome: trimmedDraftNome,
+        draftAtivo,
+        cpfHasError,
+        nomeHasError,
+        emailHasError,
+        hasProfileChanges,
+        statusChanged,
+        hasChanges,
+        hasError,
+        changeDescriptions,
+      };
+    },
+    [draftAdmins, draftAtivos, draftCpfs, draftEmails, draftNomes],
+  );
 
-    const hasProfileChanges =
-      isAdminDraft !== isAdminOriginal ||
-      (!!cpfToSend && cpfToSend !== usuario.cpf) ||
-      (isLocal && draftEmail !== (usuario.email ?? "")) ||
-      (isLocal && draftNome !== (usuario.nome ?? ""));
-    const statusChanged = draftAtivo !== usuario.ativo;
-    const hasChanges = hasProfileChanges || statusChanged;
+  const pendingChanges = useMemo(
+    () => {
+      const ids = new Set<string>([
+        ...Object.keys(draftAdmins),
+        ...Object.keys(draftAtivos),
+        ...Object.keys(draftCpfs),
+        ...Object.keys(draftEmails),
+        ...Object.keys(draftNomes),
+      ]);
 
-    if (!hasChanges) {
+      const byId: Record<string, UsuarioPerfil> = {};
+      usuarios.forEach((usuario) => {
+        byId[usuario.id] = usuario;
+      });
+
+      return Array.from(ids)
+        .map((usuarioId) => {
+          const baseUsuario = byId[usuarioId] ?? draftBases[usuarioId];
+          if (!baseUsuario) {
+            return null;
+          }
+          return getUsuarioDraftInfo(baseUsuario);
+        })
+        .filter((info): info is UsuarioDraftInfo => Boolean(info?.hasChanges));
+    },
+    [draftAdmins, draftAtivos, draftBases, draftCpfs, draftEmails, draftNomes, getUsuarioDraftInfo, usuarios],
+  );
+
+  const hasPendingErrors = useMemo(
+    () => pendingChanges.some((change) => change.hasError),
+    [pendingChanges],
+  );
+
+  type UsuarioLotePayload = {
+    id: string;
+    atualizarPerfil: boolean;
+    atualizarStatus: boolean;
+    email?: string | null;
+    cpf?: string | null;
+    nome?: string | null;
+    roles?: string[];
+    ativo?: boolean;
+  };
+
+  const handleOpenConfirmChanges = () => {
+    if (!pendingChanges.length) {
       toast.info("Nenhuma alteração para salvar.");
       return;
     }
 
-    setSavingId(usuario.id);
+    if (hasPendingErrors) {
+      toast.error("Corrija os campos destacados antes de salvar.");
+      return;
+    }
+
+    setConfirmChangesOpen(true);
+  };
+
+  const handleConfirmSaveChanges = async () => {
+    if (!pendingChanges.length) {
+      setConfirmChangesOpen(false);
+      return;
+    }
+
+    setSavingAll(true);
     try {
-      if (isLocal && hasProfileChanges) {
-        await api.put<UsuarioPerfil>(`/usuarios/local/${usuario.id}`, {
-          email: draftEmail || usuario.email,
-          roles,
-          cpf: cpfToSend,
-          nome: draftNome || usuario.nome,
-        });
-      } else if (!isLocal && hasProfileChanges) {
-        await api.post<UsuarioPerfil>("/usuarios", {
-          email: usuario.email,
-          roles,
-          cpf: cpfToSend,
-        });
-      }
-      if (statusChanged) {
-        await api.put<UsuarioPerfil>(`/usuarios/${usuario.id}/status`, { ativo: draftAtivo });
+      const payload: UsuarioLotePayload[] = pendingChanges.map(change => ({
+        id: change.usuario.id,
+        atualizarPerfil: change.hasProfileChanges,
+        atualizarStatus: change.statusChanged,
+        email: change.hasProfileChanges ? change.draftEmail || change.usuario.email : undefined,
+        cpf: change.hasProfileChanges ? change.cpfToSend : undefined,
+        nome: change.hasProfileChanges ? change.draftNome || change.usuario.nome : undefined,
+        roles: change.hasProfileChanges ? change.roles : undefined,
+        ativo: change.statusChanged ? change.draftAtivo : undefined,
+      }));
+
+      await api.post<UsuarioPerfil[]>("/usuarios/lote", { usuarios: payload });
+
+      for (const change of pendingChanges) {
+        clearDraftsForUsuario(change.usuario.id);
       }
       toast.success("Alterações salvas.");
-      setDraftAdmins((prev) => {
-        const next = { ...prev };
-        delete next[usuario.id];
-        return next;
-      });
-      setDraftCpfs((prev) => {
-        const next = { ...prev };
-        delete next[usuario.id];
-        return next;
-      });
-      setDraftEmails((prev) => {
-        const next = { ...prev };
-        delete next[usuario.id];
-        return next;
-      });
-      setDraftNomes((prev) => {
-        const next = { ...prev };
-        delete next[usuario.id];
-        return next;
-      });
-      setDraftAtivos((prev) => {
-        const next = { ...prev };
-        delete next[usuario.id];
-        return next;
-      });
+      setConfirmChangesOpen(false);
       await fetchUsuarios(page);
       await refreshRoles();
     } catch (error: any) {
-      console.error("Erro ao atualizar usuário", error);
+      console.error("Erro ao atualizar usuários", error);
       const detail = error?.response?.data?.detail as string | undefined;
-      toast.error("Não foi possível atualizar o usuário.", detail);
+      toast.error("Não foi possível atualizar os usuários.", detail);
     } finally {
-      setSavingId(null);
+      setSavingAll(false);
     }
   };
 
@@ -727,30 +862,31 @@ export default function Usuarios() {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Usuários</h1>
+    <>
+      <div className="space-y-8">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Usuários</h1>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={handleOpenCreatePanel}
+              className={primaryActionButtonClasses}
+            >
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              Adicionar usuário SSO
+            </button>
+            <button
+              type="button"
+              onClick={handleOpenLocalPanel}
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-800 shadow-sm transition-colors hover:border-indigo-200 hover:text-indigo-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2"
+            >
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              Adicionar usuário manual
+            </button>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={handleOpenCreatePanel}
-            className={primaryActionButtonClasses}
-          >
-            <Plus className="h-4 w-4" aria-hidden="true" />
-            Adicionar usuário SSO
-          </button>
-          <button
-            type="button"
-            onClick={handleOpenLocalPanel}
-            className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-800 shadow-sm transition-colors hover:border-indigo-200 hover:text-indigo-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2"
-          >
-            <Plus className="h-4 w-4" aria-hidden="true" />
-            Adicionar usuário manual
-          </button>
-        </div>
-      </div>
 
       {createPanelOpen && (
         <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
@@ -1070,11 +1206,11 @@ export default function Usuarios() {
       </section>
 
       <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm lg:p-6">
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={fetchUsuarios}
+              onClick={() => fetchUsuarios(page)}
               disabled={reloading || syncing}
               className="rounded-full border border-gray-200 px-5 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
@@ -1094,6 +1230,28 @@ export default function Usuarios() {
                   Sincronizar usuários
                 </>
               )}
+            </button>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="text-sm text-gray-600">
+              {pendingChanges.length > 0 ? (
+                <span className="font-semibold text-gray-900">{pendingChanges.length} alteração(es) pendente(s)</span>
+              ) : (
+                "Nenhuma alteração pendente"
+              )}
+              {hasPendingErrors && (
+                <span className="ml-2 rounded-full bg-red-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-red-700">
+                  Corrija os campos destacados
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={handleOpenConfirmChanges}
+              disabled={pendingChanges.length === 0 || hasPendingErrors || savingAll}
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-200 disabled:cursor-not-allowed disabled:bg-gray-300"
+            >
+              {savingAll ? "Salvando..." : "Salvar alterações"}
             </button>
           </div>
         </div>
@@ -1119,33 +1277,28 @@ export default function Usuarios() {
                     <th className="px-4 py-3 text-center">ADM</th>
                     <th className="px-4 py-3 text-center">Ativo</th>
                     <th className="px-4 py-3">Atualizado em</th>
-                    <th className="px-4 py-3 text-right">Ações</th>
+                    <th className="px-4 py-3 text-right">Pendências</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {usuarios.map((usuario) => {
-                  const isAdminOriginal = usuario.roles.includes("Admin");
-                  const isAdminDraft = draftAdmins[usuario.id] ?? isAdminOriginal;
-                  const draftCpf = draftCpfs[usuario.id] ?? "";
-                  const draftEmail = draftEmails[usuario.id] ?? usuario.email ?? "";
-                  const draftNome = draftNomes[usuario.id] ?? usuario.nome ?? "";
-                  const draftAtivo = draftAtivos[usuario.id] ?? usuario.ativo;
-                  const cpfComplete = draftCpf.length === 11;
-                  const cpfIncomplete = draftCpf.length > 0 && !cpfComplete;
-                  const cpfInvalid = cpfComplete && !isValidCpf(draftCpf);
-                  const cpfHasError = cpfIncomplete || cpfInvalid;
-                  const canDefineCpf = !usuario.cpf;
-                  const cpfChanged = canDefineCpf && cpfComplete && !cpfHasError;
-                  const isLocal = !usuario.microsoftId;
-                  const trimmedDraftEmail = draftEmail.trim();
-                  const trimmedDraftNome = draftNome.trim();
-                  const emailChanged = isLocal && trimmedDraftEmail && trimmedDraftEmail !== (usuario.email ?? "");
-                  const nomeChanged = isLocal && trimmedDraftNome && trimmedDraftNome !== (usuario.nome ?? "");
-                  const nomeHasError = isLocal && !trimmedDraftNome;
-                  const hasProfileChanges = isAdminDraft !== isAdminOriginal || cpfChanged || emailChanged || nomeChanged;
-                  const statusChanged = draftAtivo !== usuario.ativo;
-                  const hasChanges = hasProfileChanges || statusChanged;
-                  const isSaving = savingId === usuario.id;
+                  const draftInfo = getUsuarioDraftInfo(usuario);
+                  const {
+                    isLocal,
+                    isAdminDraft,
+                    isAdminOriginal,
+                    draftCpf,
+                    cpfIncomplete,
+                    cpfInvalid,
+                    rawDraftEmail,
+                    rawDraftNome,
+                    draftAtivo,
+                    nomeHasError,
+                    emailHasError,
+                    hasChanges,
+                    changeDescriptions,
+                  } = draftInfo;
+                  const canEditCpf = true;
 
                   const displayEmail = usuario.email || "—";
                   const displayNome = usuario.nome || "—";
@@ -1157,7 +1310,7 @@ export default function Usuarios() {
                           <div className="flex flex-col gap-1">
                             <input
                               type="text"
-                              value={draftNome}
+                              value={rawDraftNome}
                               onChange={(event) => handleDraftNomeChange(usuario, event.target.value)}
                               className="h-9 w-full rounded-lg border border-gray-200 px-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
                               placeholder="Nome completo"
@@ -1174,11 +1327,11 @@ export default function Usuarios() {
                             <div className="flex flex-col gap-1">
                               <input
                                 type="email"
-                                value={draftEmail}
+                                value={rawDraftEmail}
                                 onChange={(event) => handleDraftEmailChange(usuario, event.target.value)}
                                 className="h-9 w-full rounded-lg border border-gray-200 px-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
                               />
-                              {!draftEmail.trim() && <span className="text-xs text-red-600">E-mail obrigatório.</span>}
+                              {emailHasError && <span className="text-xs text-red-600">Informe um e-mail válido.</span>}
                             </div>
                           ) : (
                             <span className="max-w-[260px] break-words font-mono text-xs text-gray-700">{displayEmail}</span>
@@ -1198,9 +1351,7 @@ export default function Usuarios() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        {usuario.cpf ? (
-                          <span className="text-gray-700">{formatCpf(usuario.cpf)}</span>
-                        ) : (
+                        {canEditCpf ? (
                           <div className="flex flex-col gap-1">
                             <input
                               type="text"
@@ -1213,6 +1364,8 @@ export default function Usuarios() {
                             {cpfIncomplete && <span className="text-xs text-red-600">CPF incompleto.</span>}
                             {!cpfIncomplete && cpfInvalid && <span className="text-xs text-red-600">CPF inválido.</span>}
                           </div>
+                        ) : (
+                          <span className="text-gray-700">{usuario.cpf ? formatCpf(usuario.cpf) : "—"}</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-center">
@@ -1245,16 +1398,22 @@ export default function Usuarios() {
                       </td>
                       <td className="px-4 py-3 text-xs text-gray-500">{dateFormatter.format(new Date(usuario.atualizadoEm))}</td>
                       <td className="px-4 py-3 text-right">
-                        <div className="flex justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleSaveUsuario(usuario)}
-                            disabled={!hasChanges || isSaving || cpfHasError || nomeHasError}
-                            className="inline-flex items-center rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-gray-300"
-                          >
-                            {isSaving ? "Salvando..." : "Salvar"}
-                          </button>
-                        </div>
+                        {hasChanges ? (
+                          <div className="flex flex-col items-end gap-2">
+                            <span className="inline-flex items-center rounded-full bg-amber-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-700">
+                              Alteração pendente
+                            </span>
+                            {changeDescriptions.length > 0 && (
+                              <ul className="max-w-[280px] list-disc list-inside text-right text-xs text-gray-600">
+                                {changeDescriptions.map((change) => (
+                                  <li key={change}>{change}</li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-400">Nenhuma alteração</span>
+                        )}
                       </td>
                     </tr>
                   );
@@ -1306,5 +1465,70 @@ export default function Usuarios() {
         )}
       </section>
     </div>
+
+    {confirmChangesOpen && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="w-full max-w-4xl rounded-2xl bg-white p-6 shadow-2xl">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Confirmar alterações</h2>
+              <p className="text-sm text-gray-600">Revise as mudanças abaixo antes de salvar.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setConfirmChangesOpen(false)}
+              className="text-sm font-semibold text-gray-500 transition hover:text-gray-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2"
+            >
+              Fechar
+            </button>
+          </div>
+
+          <div className="mt-4 max-h-[60vh] space-y-3 overflow-y-auto">
+            {pendingChanges.map((change) => {
+              const displayName = change.usuario.nome || change.usuario.email || "Usuário sem nome";
+              const displayEmail = change.usuario.email ?? "Sem e-mail";
+              return (
+                <div key={change.usuario.id} className="rounded-xl border border-gray-200 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold text-gray-900">{displayName}</div>
+                      <div className="text-xs text-gray-500">{displayEmail}</div>
+                    </div>
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-700">
+                      ID: {change.usuario.id}
+                    </span>
+                  </div>
+                  <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-gray-700">
+                    {change.changeDescriptions.map((desc) => (
+                      <li key={desc}>{desc}</li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-6 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setConfirmChangesOpen(false)}
+              className="inline-flex items-center rounded-xl border border-gray-300 px-5 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmSaveChanges}
+              disabled={savingAll}
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-200 disabled:cursor-not-allowed disabled:bg-gray-300"
+            >
+              {savingAll ? "Salvando..." : "Confirmar alterações"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    </>
   );
 }
