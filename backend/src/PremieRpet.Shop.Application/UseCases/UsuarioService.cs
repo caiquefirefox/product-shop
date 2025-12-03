@@ -127,15 +127,11 @@ public sealed class UsuarioService : IUsuarioService
         if (!usuario.Ativo)
             throw new InvalidOperationException("Usuário inativo.");
 
-        if (string.IsNullOrWhiteSpace(usuario.Cpf))
+        if (string.IsNullOrWhiteSpace(usuario.Cpf) || !string.Equals(usuario.Cpf, sanitized, StringComparison.Ordinal))
         {
             usuario.Cpf = sanitized;
             usuario.AtualizadoEm = agora;
             await _usuarios.UpdateAsync(usuario, ct);
-        }
-        else if (!string.Equals(usuario.Cpf, sanitized, StringComparison.Ordinal))
-        {
-            throw new InvalidOperationException("CPF já cadastrado e não pode ser alterado.");
         }
 
         return ToDto(usuario);
@@ -199,7 +195,12 @@ public sealed class UsuarioService : IUsuarioService
             {
                 var sanitized = CpfRules.Sanitize(cpf);
                 if (!string.Equals(usuario.Cpf, sanitized, StringComparison.Ordinal))
-                    throw new InvalidOperationException("CPF já cadastrado e não pode ser alterado.");
+                {
+                    await EnsureCpfDisponivelAsync(sanitized, usuario.Id, ct);
+                    usuario.Cpf = sanitized;
+                    usuario.AtualizadoEm = DateTimeOffset.UtcNow;
+                    await _usuarios.UpdateAsync(usuario, ct);
+                }
             }
 
             usuario = await EnsureNomeAsync(usuario, nomeNormalizado, ct);
@@ -346,10 +347,7 @@ public sealed class UsuarioService : IUsuarioService
 
         if (!string.IsNullOrWhiteSpace(sanitizedCpf))
         {
-            if (!string.IsNullOrWhiteSpace(usuario.Cpf) && !string.Equals(usuario.Cpf, sanitizedCpf, StringComparison.Ordinal))
-                throw new InvalidOperationException("CPF já cadastrado e não pode ser alterado.");
-
-            if (string.IsNullOrWhiteSpace(usuario.Cpf))
+            if (string.IsNullOrWhiteSpace(usuario.Cpf) || !string.Equals(usuario.Cpf, sanitizedCpf, StringComparison.Ordinal))
             {
                 usuario.Cpf = sanitizedCpf;
             }
@@ -547,10 +545,7 @@ public sealed class UsuarioService : IUsuarioService
         {
             await EnsureCpfDisponivelAsync(sanitizedCpf, usuario.Id, ct);
 
-            if (!string.IsNullOrWhiteSpace(usuario.Cpf) && !string.Equals(usuario.Cpf, sanitizedCpf, StringComparison.Ordinal))
-                throw new InvalidOperationException("CPF já cadastrado e não pode ser alterado.");
-
-            if (string.IsNullOrWhiteSpace(usuario.Cpf))
+            if (string.IsNullOrWhiteSpace(usuario.Cpf) || !string.Equals(usuario.Cpf, sanitizedCpf, StringComparison.Ordinal))
             {
                 usuario.Cpf = sanitizedCpf;
             }
