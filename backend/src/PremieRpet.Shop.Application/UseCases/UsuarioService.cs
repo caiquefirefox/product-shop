@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using PremieRpet.Shop.Application.DTOs;
+using PremieRpet.Shop.Application.Exceptions;
 using PremieRpet.Shop.Application.Interfaces.Repositories;
 using PremieRpet.Shop.Application.Interfaces.Services;
 using PremieRpet.Shop.Application.Interfaces.UseCases;
@@ -397,6 +398,7 @@ public sealed class UsuarioService : IUsuarioService
             Cpf = sanitizedCpf,
             Email = normalizedEmail ?? $"{sanitizedCpf}@local",
             PasswordHash = HashPassword(senha),
+            DeveTrocarSenha = true,
             Ativo = true,
             CriadoEm = agora,
             AtualizadoEm = agora,
@@ -513,6 +515,56 @@ public sealed class UsuarioService : IUsuarioService
             usuario.AtualizadoEm = DateTimeOffset.UtcNow;
             await _usuarios.UpdateAsync(usuario, ct);
         }
+
+        if (usuario.DeveTrocarSenha)
+            throw new PasswordChangeRequiredException();
+
+        usuario = await SyncLocalWithEntraAsync(usuario, ct);
+        return ToDto(usuario);
+    }
+
+    public async Task<UsuarioDto> AlterarSenhaLocalAsync(string cpf, string senhaAtual, string novaSenha, CancellationToken ct)
+    {
+        var sanitizedCpf = SanitizeCpfOrNull(cpf) ?? throw new InvalidOperationException("CPF obrigatório.");
+        if (string.IsNullOrWhiteSpace(senhaAtual))
+            throw new InvalidOperationException("Senha atual obrigatória.");
+
+        if (string.IsNullOrWhiteSpace(novaSenha))
+            throw new InvalidOperationException("Nova senha obrigatória.");
+
+        var usuario = await _usuarios.GetByCpfAsync(sanitizedCpf, ct)
+            ?? throw new InvalidOperationException("Usuário não encontrado.");
+
+        if (!usuario.Ativo)
+            throw new InvalidOperationException("Usuário inativo.");
+
+        if (string.IsNullOrWhiteSpace(usuario.PasswordHash))
+            throw new InvalidOperationException("Usuário não suporta autenticação local.");
+
+        if (!VerifyPassword(senhaAtual, usuario.PasswordHash))
+            throw new InvalidOperationException("Senha atual inválida.");
+
+        if (string.Equals(senhaAtual, novaSenha, StringComparison.Ordinal))
+            throw new InvalidOperationException("A nova senha deve ser diferente da atual.");
+
+        if (string.IsNullOrWhiteSpace(usuario.Email) && !string.IsNullOrWhiteSpace(usuario.Cpf))
+        {
+            usuario.Email = $"{usuario.Cpf}@local";
+        }
+
+        if (string.IsNullOrWhiteSpace(usuario.Nome))
+        {
+            usuario.Nome = usuario.Email ?? usuario.Cpf ?? usuario.Id.ToString("D");
+        }
+
+        usuario.PasswordHash = HashPassword(novaSenha);
+        usuario.DeveTrocarSenha = false;
+        usuario.AtualizadoEm = DateTimeOffset.UtcNow;
+
+        await _usuarios.UpdateAsync(usuario, ct);
+
+        usuario = await _usuarios.GetByCpfAsync(sanitizedCpf, ct)
+            ?? throw new InvalidOperationException("Usuário não encontrado após atualização.");
 
         usuario = await SyncLocalWithEntraAsync(usuario, ct);
         return ToDto(usuario);
@@ -1013,7 +1065,7 @@ public sealed class UsuarioService : IUsuarioService
 
         var email = usuario.Email ?? string.Empty;
 
-        return new UsuarioDto(usuario.Id, usuario.Nome, microsoftId, email, usuario.Ativo, usuario.Cpf, roles, usuario.CriadoEm, usuario.AtualizadoEm);
+        return new UsuarioDto(usuario.Id, usuario.Nome, microsoftId, email, usuario.Ativo, usuario.DeveTrocarSenha, usuario.Cpf, roles, usuario.CriadoEm, usuario.AtualizadoEm);
     }
 
     private static string? TryNormalizeEmail(string? email)

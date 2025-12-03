@@ -4,6 +4,7 @@ type UsuarioPerfil = {
   microsoftId: string;
   email: string;
   ativo: boolean;
+  deveTrocarSenha: boolean;
   cpf: string | null;
   roles: string[];
   criadoEm: string;

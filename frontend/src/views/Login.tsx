@@ -96,6 +96,8 @@ export default function Login() {
     }
   };
 
+  const PASSWORD_CHANGE_REQUIRED_TYPE = "https://pedido-interno.premierpet.com.br/problems/password-change-required";
+
   type LocalLoginResponse = { token: string };
 
   const doLocalLogin = async (event: FormEvent) => {
@@ -127,6 +129,20 @@ export default function Login() {
       navigate(returnTo, { replace: true });
     } catch (error: any) {
       const detail = error?.response?.data?.detail as string | undefined;
+      const type = error?.response?.data?.type as string | undefined;
+
+      if (type === PASSWORD_CHANGE_REQUIRED_TYPE) {
+        navigate("/trocar-senha", {
+          replace: true,
+          state: {
+            cpf: sanitizedCpf,
+            returnTo,
+            mensagem: detail ?? "Você precisa trocar a senha antes de continuar.",
+          },
+        });
+        return;
+      }
+
       setLocalErr(detail ?? "Não foi possível entrar com CPF e senha.");
     } finally {
       setLocalLoading(false);

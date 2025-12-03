@@ -9,6 +9,7 @@ public sealed record UsuarioDto(
     string MicrosoftId,
     string Email,
     bool Ativo,
+    bool DeveTrocarSenha,
     string? Cpf,
     IReadOnlyCollection<string> Roles,
     DateTimeOffset CriadoEm,
