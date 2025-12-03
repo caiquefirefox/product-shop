@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using PremieRpet.Shop.Api.Contracts;
 using PremieRpet.Shop.Api;
+using PremieRpet.Shop.Application.Exceptions;
 using PremieRpet.Shop.Application.Interfaces.UseCases;
 
 namespace PremieRpet.Shop.Api.Controllers;
@@ -24,6 +25,34 @@ public sealed class AuthController(IConfiguration configuration, IUsuarioService
             var usuario = await usuarios.AutenticarLocalAsync(request.Cpf, request.Senha, ct);
             var token = GenerateToken(usuario);
             return Ok(new LocalLoginResponse(token, usuario));
+        }
+        catch (PasswordChangeRequiredException ex)
+        {
+            return Problem(detail: ex.Message, statusCode: StatusCodes.Status403Forbidden, type: ProblemTypeConstants.PasswordChangeRequired, title: "Troca de senha obrigatória");
+        }
+        catch (InvalidOperationException ex)
+        {
+            var isInactiveUser = string.Equals(ex.Message, "Usuário inativo.", StringComparison.OrdinalIgnoreCase);
+            var status = isInactiveUser ? StatusCodes.Status403Forbidden : StatusCodes.Status400BadRequest;
+            var type = isInactiveUser ? ProblemTypeConstants.InactiveUser : null;
+
+            return Problem(detail: ex.Message, statusCode: status, type: type, title: isInactiveUser ? "Usuário inativo" : null);
+        }
+    }
+
+    [HttpPost("alterar-senha")]
+    [AllowAnonymous]
+    public async Task<IActionResult> AlterarSenha([FromBody] LocalPasswordChangeRequest request, CancellationToken ct)
+    {
+        try
+        {
+            var usuario = await usuarios.AlterarSenhaLocalAsync(request.Cpf, request.SenhaAtual, request.NovaSenha, ct);
+            var token = GenerateToken(usuario);
+            return Ok(new LocalLoginResponse(token, usuario));
+        }
+        catch (PasswordChangeRequiredException ex)
+        {
+            return Problem(detail: ex.Message, statusCode: StatusCodes.Status403Forbidden, type: ProblemTypeConstants.PasswordChangeRequired, title: "Troca de senha obrigatória");
         }
         catch (InvalidOperationException ex)
         {

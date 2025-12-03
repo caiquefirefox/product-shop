@@ -176,6 +176,7 @@ public sealed class ShopDbContext : DbContext
             e.Property(u => u.Cpf).HasMaxLength(11);
             e.HasIndex(u => u.Cpf).IsUnique().HasFilter("\"Cpf\" IS NOT NULL");
             e.Property(u => u.PasswordHash).HasMaxLength(500);
+            e.Property(u => u.DeveTrocarSenha).HasDefaultValue(false);
             e.Property(u => u.Ativo).HasDefaultValue(true);
             e.Property(u => u.CriadoEm);
             e.Property(u => u.AtualizadoEm);
