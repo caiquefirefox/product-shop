@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using PremieRpet.Shop.Domain.Entities;
 
 namespace PremieRpet.Shop.Application.Interfaces.Repositories;
@@ -11,6 +12,7 @@ public interface IUsuarioRepository
     Task<Usuario?> GetByCpfAsync(string cpf, CancellationToken ct);
     Task<Usuario?> GetByIdAsync(Guid id, CancellationToken ct);
     Task<IReadOnlyList<Usuario>> ListAsync(CancellationToken ct);
+    IQueryable<Usuario> Query();
     Task AddAsync(Usuario usuario, CancellationToken ct);
     Task AddRangeAsync(IEnumerable<Usuario> usuarios, CancellationToken ct);
     Task UpdateAsync(Usuario usuario, CancellationToken ct);

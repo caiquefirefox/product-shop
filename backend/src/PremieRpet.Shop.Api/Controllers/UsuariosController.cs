@@ -35,9 +35,9 @@ public sealed class UsuariosController(IUsuarioService usuarios) : ControllerBas
 
     [HttpGet]
     [Authorize("Admin")]
-    public async Task<IActionResult> Listar(CancellationToken ct)
+    public async Task<ActionResult<PagedResultDto<UsuarioDto>>> Listar([FromQuery] UsuarioListQuery query, CancellationToken ct)
     {
-        var lista = await usuarios.ListAsync(ct);
+        var lista = await usuarios.ListAsync(query.ToDto(), ct);
         return Ok(lista);
     }
 

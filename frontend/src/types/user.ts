@@ -18,4 +18,14 @@ type UsuarioLookup = {
   displayName: string | null;
 };
 
-export type { UsuarioPerfil, UsuarioLookup };
+type UsuarioListResponse =
+  | UsuarioPerfil[]
+  | {
+      items: UsuarioPerfil[];
+      page: number;
+      pageSize: number;
+      totalItems: number;
+      totalPages: number;
+    };
+
+export type { UsuarioListResponse, UsuarioPerfil, UsuarioLookup };

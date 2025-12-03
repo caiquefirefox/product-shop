@@ -48,6 +48,11 @@ public sealed class UsuarioRepository : IUsuarioRepository
         return usuarios;
     }
 
+    public IQueryable<Usuario> Query()
+        => _db.Usuarios
+            .Include(u => u.Roles)
+            .AsQueryable();
+
     public async Task AddAsync(Usuario usuario, CancellationToken ct)
     {
         _db.Usuarios.Add(usuario);

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using Microsoft.EntityFrameworkCore;
 using PremieRpet.Shop.Application.DTOs;
 using PremieRpet.Shop.Application.Interfaces.Repositories;
 using PremieRpet.Shop.Application.Interfaces.Services;
@@ -219,9 +220,77 @@ public sealed class UsuarioService : IUsuarioService
         return ToDto(usuario);
     }
 
-    public async Task<IReadOnlyCollection<UsuarioDto>> ListAsync(CancellationToken ct)
+    public async Task<PagedResultDto<UsuarioDto>> ListAsync(UsuarioFiltroDto filtro, CancellationToken ct)
     {
-        var usuarios = await _usuarios.ListAsync(ct);
+        var query = _usuarios
+            .Query()
+            .AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(filtro.Busca))
+        {
+            var termo = filtro.Busca.Trim().ToLowerInvariant();
+            query = query.Where(u =>
+                (!string.IsNullOrEmpty(u.Email) && u.Email.ToLower().Contains(termo)) ||
+                (!string.IsNullOrEmpty(u.Nome) && u.Nome.ToLower().Contains(termo)) ||
+                (!string.IsNullOrEmpty(u.MicrosoftId) && u.MicrosoftId.ToLower().Contains(termo)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(filtro.Cpf))
+        {
+            var sanitized = CpfRules.Sanitize(filtro.Cpf);
+            if (!string.IsNullOrWhiteSpace(sanitized))
+            {
+                query = query.Where(u => !string.IsNullOrEmpty(u.Cpf) && u.Cpf.Contains(sanitized));
+            }
+        }
+
+        if (filtro.HasPerfilAdminFilter)
+        {
+            query = query.Where(u => u.Roles.Any(r => r.Role == "Admin"));
+        }
+        else if (filtro.HasPerfilColaboradorFilter)
+        {
+            query = query.Where(u => u.Roles.All(r => !string.IsNullOrEmpty(r.Role) && r.Role.ToLower() != "admin"));
+        }
+
+        if (filtro.IsOrigemLocal)
+        {
+            query = query.Where(u => string.IsNullOrEmpty(u.MicrosoftId));
+        }
+        else if (filtro.IsOrigemSso)
+        {
+            query = query.Where(u => !string.IsNullOrEmpty(u.MicrosoftId));
+        }
+
+        var page = filtro.Page > 0 ? filtro.Page : 1;
+        var pageSize = filtro.PageSize > 0 ? filtro.PageSize : UsuarioFiltroDto.DefaultPageSize;
+
+        var totalItems = await query.CountAsync(ct);
+
+        if (totalItems == 0)
+        {
+            return new PagedResultDto<UsuarioDto>(
+                Array.Empty<UsuarioDto>(),
+                1,
+                pageSize,
+                0,
+                0);
+        }
+
+        var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
+        if (page > totalPages)
+            page = totalPages;
+
+        var skip = (page - 1) * pageSize;
+
+        var usuarios = await query
+            .OrderBy(u => u.Email == null)
+            .ThenBy(u => u.Email)
+            .ThenBy(u => u.MicrosoftId)
+            .Skip(skip)
+            .Take(pageSize)
+            .ToListAsync(ct);
+
         var resultados = new List<UsuarioDto>(usuarios.Count);
 
         foreach (var usuario in usuarios)
@@ -230,7 +299,7 @@ public sealed class UsuarioService : IUsuarioService
             resultados.Add(ToDto(ensured));
         }
 
-        return resultados;
+        return new PagedResultDto<UsuarioDto>(resultados, page, pageSize, totalItems, totalPages);
     }
 
     public async Task<UsuarioDto> UpsertAsync(string email, string? cpf, string? nome, IEnumerable<string>? roles, CancellationToken ct)
