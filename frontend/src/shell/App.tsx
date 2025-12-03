@@ -243,7 +243,7 @@ export default function App() {
         </Routes>
       </main>
 
-      {!isLoginRoute && !isLoading && (
+      {!isAuthRoute && !isLoading && (
         <CartSidebar
           open={isCartOpen}
           onClose={() => setIsCartOpen(false)}
