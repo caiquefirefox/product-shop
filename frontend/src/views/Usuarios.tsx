@@ -1060,7 +1060,7 @@ export default function Usuarios() {
           />
 
           {hasUserFilters && (
-            <div className="flex justify-end md:justify-self-end">
+            <div className="flex justify-start md:justify-start">
               <button type="button" onClick={handleClearUserFilters} className={clearFiltersButtonClasses}>
                 Limpar filtros
               </button>
