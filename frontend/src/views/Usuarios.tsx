@@ -1010,7 +1010,7 @@ export default function Usuarios() {
       )}
 
       <section className="rounded-2xl border border-indigo-100 bg-white p-5 shadow-sm">
-        <div className="grid gap-4 md:items-end md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
+        <div className="flex flex-col gap-4 md:flex-row md:flex-wrap md:items-end">
           <div className="flex flex-col gap-2 text-left">
             <label htmlFor="usuarios-filtro-email" className={filterLabelClasses}>
               E-mail ou nome
