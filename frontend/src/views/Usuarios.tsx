@@ -628,12 +628,13 @@ export default function Usuarios() {
       const isAdminOriginal = usuario.roles.includes("Admin");
       const isAdminDraft = draftAdmins[usuario.id] ?? isAdminOriginal;
       const roles = buildRoles(isAdminDraft);
-      const draftCpf = draftCpfs[usuario.id] ?? "";
-      const cpfComplete = draftCpf.length === 11;
-      const cpfIncomplete = draftCpf.length > 0 && !cpfComplete;
-      const cpfInvalid = cpfComplete && !isValidCpf(draftCpf);
-      const cpfHasError = cpfIncomplete || cpfInvalid;
-      const cpfToSend = usuario.cpf ?? (cpfComplete ? draftCpf : undefined);
+    const originalCpf = sanitizeCpf(usuario.cpf ?? "");
+    const draftCpf = draftCpfs[usuario.id] ?? originalCpf;
+    const cpfComplete = draftCpf.length === 11;
+    const cpfIncomplete = draftCpf.length > 0 && !cpfComplete;
+    const cpfInvalid = cpfComplete && !isValidCpf(draftCpf);
+    const cpfHasError = cpfIncomplete || cpfInvalid;
+    const cpfToSend = cpfComplete && !cpfHasError ? draftCpf : originalCpf || undefined;
       const draftEmail = draftEmails[usuario.id] ?? usuario.email ?? "";
       const draftNome = draftNomes[usuario.id] ?? usuario.nome ?? "";
       const draftAtivo = draftAtivos[usuario.id] ?? usuario.ativo;
@@ -644,7 +645,7 @@ export default function Usuarios() {
       const nomeHasError = isLocal && !trimmedDraftNome;
       const emailChanged = isLocal && trimmedDraftEmail && trimmedDraftEmail !== (usuario.email ?? "");
       const nomeChanged = isLocal && trimmedDraftNome && trimmedDraftNome !== (usuario.nome ?? "");
-      const cpfChanged = !usuario.cpf && cpfComplete && !cpfHasError;
+    const cpfChanged = cpfComplete && draftCpf !== originalCpf && !cpfHasError;
       const hasProfileChanges = isAdminDraft !== isAdminOriginal || cpfChanged || emailChanged || nomeChanged;
       const statusChanged = draftAtivo !== usuario.ativo;
       const hasChanges = hasProfileChanges || statusChanged;
@@ -658,7 +659,7 @@ export default function Usuarios() {
         changeDescriptions.push(`E-mail: ${usuario.email || "—"} → ${trimmedDraftEmail}`);
       }
       if (cpfChanged && cpfToSend) {
-        changeDescriptions.push(`CPF: ${usuario.cpf ? formatCpf(usuario.cpf) : "—"} → ${formatCpf(cpfToSend)}`);
+        changeDescriptions.push(`CPF: ${originalCpf ? formatCpf(originalCpf) : "—"} → ${formatCpf(cpfToSend)}`);
       }
       if (isAdminDraft !== isAdminOriginal) {
         changeDescriptions.push(
@@ -1297,7 +1298,7 @@ export default function Usuarios() {
                     hasChanges,
                     changeDescriptions,
                   } = draftInfo;
-                  const canDefineCpf = !usuario.cpf;
+                  const canEditCpf = !isLocal || !usuario.cpf;
 
                   const displayEmail = usuario.email || "—";
                   const displayNome = usuario.nome || "—";
@@ -1350,9 +1351,7 @@ export default function Usuarios() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        {usuario.cpf ? (
-                          <span className="text-gray-700">{formatCpf(usuario.cpf)}</span>
-                        ) : (
+                        {canEditCpf ? (
                           <div className="flex flex-col gap-1">
                             <input
                               type="text"
@@ -1365,6 +1364,8 @@ export default function Usuarios() {
                             {cpfIncomplete && <span className="text-xs text-red-600">CPF incompleto.</span>}
                             {!cpfIncomplete && cpfInvalid && <span className="text-xs text-red-600">CPF inválido.</span>}
                           </div>
+                        ) : (
+                          <span className="text-gray-700">{usuario.cpf ? formatCpf(usuario.cpf) : "—"}</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-center">
