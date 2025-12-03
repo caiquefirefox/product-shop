@@ -250,7 +250,7 @@ public sealed class UsuarioService : IUsuarioService
         }
         else if (filtro.HasPerfilColaboradorFilter)
         {
-            query = query.Where(u => u.Roles.All(r => !EF.Functions.ILike(r.Role, "admin")));
+            query = query.Where(u => u.Roles.All(r => !string.IsNullOrEmpty(r.Role) && r.Role.ToLower() != "admin"));
         }
 
         if (filtro.IsOrigemLocal)
