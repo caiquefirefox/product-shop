@@ -10,7 +10,7 @@ import {
 import api from "../lib/api";
 import { useToast } from "../ui/toast";
 import { formatCpf, isValidCpf, sanitizeCpf } from "../lib/cpf";
-import type { UsuarioPerfil, UsuarioLookup } from "../types/user";
+import type { UsuarioListResponse, UsuarioPerfil, UsuarioLookup } from "../types/user";
 import { useUser } from "../auth/useUser";
 import { Check, ChevronDown, Plus, RefreshCcw } from "lucide-react";
 
@@ -24,6 +24,7 @@ function buildRoles(isAdmin: boolean) {
 }
 
 const MIN_SEARCH_LENGTH = 3;
+const DEFAULT_PAGE_SIZE = 12;
 
 const filterLabelClasses = "text-xs font-semibold uppercase tracking-wide text-slate-500";
 const filterInputClasses =
@@ -42,32 +43,39 @@ const perfilDropdownOptionClasses =
 const primaryActionButtonClasses =
   "inline-flex items-center justify-center gap-2 rounded-full bg-[#FF6900] px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#FF6900]/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6900]/40 disabled:cursor-not-allowed disabled:opacity-60";
 
-type PerfilOption = {
+type FilterOption = {
   value: string;
   label: string;
 };
 
-const perfilFilterOptions: PerfilOption[] = [
+const perfilFilterOptions: FilterOption[] = [
   { value: "", label: "Todos os perfis" },
   { value: "Admin", label: "Administrador" },
   { value: "Colaborador", label: "Colaborador" },
 ];
 
-type PerfilFilterDropdownProps = {
+const origemFilterOptions: FilterOption[] = [
+  { value: "", label: "Todas as origens" },
+  { value: "sso", label: "SSO" },
+  { value: "local", label: "Local" },
+];
+
+type FilterDropdownProps = {
   id: string;
   label: string;
   value: string;
+  options: FilterOption[];
   onChange: (value: string) => void;
 };
 
-function PerfilFilterDropdown({ id, label, value, onChange }: PerfilFilterDropdownProps) {
+function FilterDropdown({ id, label, value, options, onChange }: FilterDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   const selectedOption = useMemo(
-    () => perfilFilterOptions.find(option => option.value === value) ?? perfilFilterOptions[0],
-    [value],
+    () => options.find(option => option.value === value) ?? options[0],
+    [options, value],
   );
   const isPlaceholder = value === "";
 
@@ -139,7 +147,7 @@ function PerfilFilterDropdown({ id, label, value, onChange }: PerfilFilterDropdo
           aria-labelledby={id}
         >
           <div className="max-h-60 overflow-y-auto">
-            {perfilFilterOptions.map(option => {
+            {options.map(option => {
               const isSelected = option.value === value;
               return (
                 <button
@@ -200,6 +208,12 @@ export default function Usuarios() {
   const [filterEmail, setFilterEmail] = useState("");
   const [filterCpf, setFilterCpf] = useState("");
   const [filterPerfil, setFilterPerfil] = useState("");
+  const [filterOrigem, setFilterOrigem] = useState("");
+
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   const newCpfComplete = newCpf.length === 11;
   const newCpfIncomplete = newCpf.length > 0 && !newCpfComplete;
@@ -246,28 +260,79 @@ export default function Usuarios() {
     setLocalPanelOpen(false);
   };
 
-  const fetchUsuarios = useCallback(async () => {
-    setReloading(true);
-    try {
-      const { data } = await api.get<UsuarioPerfil[]>("/usuarios");
-      setUsuarios(data);
-      setDraftAdmins({});
-      setDraftCpfs({});
-      setDraftEmails({});
-      setDraftNomes({});
-      setDraftAtivos({});
-    } catch (error) {
-      console.error("Erro ao carregar usuários", error);
-      toast.error("Não foi possível carregar a lista de usuários.");
-    } finally {
-      setLoading(false);
-      setReloading(false);
-    }
-  }, [toast]);
+  const fetchUsuarios = useCallback(
+    async (targetPage: number) => {
+      setReloading(true);
+
+      try {
+        const params: Record<string, string | number> = {
+          page: targetPage,
+          pageSize: DEFAULT_PAGE_SIZE,
+        };
+
+        const busca = filterEmail.trim();
+        if (busca) {
+          params.busca = busca;
+        }
+
+        const cpfFiltro = sanitizeCpf(filterCpf);
+        if (cpfFiltro) {
+          params.cpf = cpfFiltro;
+        }
+
+        if (filterPerfil) {
+          params.perfil = filterPerfil;
+        }
+
+        if (filterOrigem) {
+          params.origem = filterOrigem;
+        }
+
+        const { data } = await api.get<UsuarioListResponse>("/usuarios", { params });
+        const isArrayResponse = Array.isArray(data);
+        const items = isArrayResponse ? data : Array.isArray(data?.items) ? data.items : [];
+        const reportedPage = !isArrayResponse && typeof data?.page === "number" ? data.page : targetPage;
+        const reportedPageSize = !isArrayResponse && typeof data?.pageSize === "number" ? data.pageSize : DEFAULT_PAGE_SIZE;
+        const reportedTotalItems = !isArrayResponse && typeof data?.totalItems === "number" ? data.totalItems : items.length;
+        const reportedTotalPages = !isArrayResponse && typeof data?.totalPages === "number" ? data.totalPages : 0;
+
+        const safePageSize = reportedPageSize > 0 ? reportedPageSize : DEFAULT_PAGE_SIZE;
+        const safeTotalItems = Math.max(0, reportedTotalItems);
+        const normalizedTotalPages = safeTotalItems > 0
+          ? (reportedTotalPages > 0 ? reportedTotalPages : Math.max(Math.ceil(safeTotalItems / safePageSize), 1))
+          : 0;
+        const safePageFromResponse = normalizedTotalPages > 0
+          ? Math.min(Math.max(reportedPage > 0 ? reportedPage : targetPage, 1), normalizedTotalPages)
+          : 1;
+
+        setUsuarios(items);
+        setPageSize(safePageSize);
+        setTotalItems(safeTotalItems);
+        setTotalPages(normalizedTotalPages);
+
+        setDraftAdmins({});
+        setDraftCpfs({});
+        setDraftEmails({});
+        setDraftNomes({});
+        setDraftAtivos({});
+
+        if (safePageFromResponse !== page) {
+          setPage(safePageFromResponse);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar usuários", error);
+        toast.error("Não foi possível carregar a lista de usuários.");
+      } finally {
+        setLoading(false);
+        setReloading(false);
+      }
+    },
+    [filterCpf, filterEmail, filterOrigem, filterPerfil, page, toast],
+  );
 
   useEffect(() => {
-    fetchUsuarios();
-  }, [fetchUsuarios]);
+    fetchUsuarios(page);
+  }, [fetchUsuarios, page]);
 
   useEffect(() => {
     const query = newEmail.trim();
@@ -340,6 +405,17 @@ export default function Usuarios() {
 
   const handleFilterCpfChange = (event: ChangeEvent<HTMLInputElement>) => {
     setFilterCpf(sanitizeCpf(event.target.value));
+    setPage(1);
+  };
+
+  const handlePerfilFilterChange = (value: string) => {
+    setFilterPerfil(value);
+    setPage(1);
+  };
+
+  const handleOrigemFilterChange = (value: string) => {
+    setFilterOrigem(value);
+    setPage(1);
   };
 
   const handleSelectSuggestion = (suggestion: UsuarioLookup) => {
@@ -388,7 +464,7 @@ export default function Usuarios() {
       setSelectedSuggestion(null);
       setSearchResults([]);
       setSearchError(null);
-      await fetchUsuarios();
+      await fetchUsuarios(page);
       await refreshRoles();
     } catch (error: any) {
       console.error("Erro ao criar usuário", error);
@@ -441,7 +517,7 @@ export default function Usuarios() {
       setLocalNome("");
       setLocalEmail("");
       setLocalIsAdmin(false);
-      await fetchUsuarios();
+      await fetchUsuarios(page);
       await refreshRoles();
     } catch (error: any) {
       console.error("Erro ao criar usuário local", error);
@@ -571,7 +647,7 @@ export default function Usuarios() {
         delete next[usuario.id];
         return next;
       });
-      await fetchUsuarios();
+      await fetchUsuarios(page);
       await refreshRoles();
     } catch (error: any) {
       console.error("Erro ao atualizar usuário", error);
@@ -582,28 +658,21 @@ export default function Usuarios() {
     }
   };
 
-  const filteredUsuarios = useMemo(() => {
-    const normalizedEmail = filterEmail.trim().toLowerCase();
-    const normalizedCpf = filterCpf;
-    const perfil = filterPerfil;
-
-    return usuarios.filter((usuario) => {
-      const email = usuario.email ?? "";
-      const matchesEmail =
-        !normalizedEmail ||
-        email.toLowerCase().includes(normalizedEmail) ||
-        usuario.microsoftId.toLowerCase().includes(normalizedEmail);
-      const usuarioCpf = sanitizeCpf(usuario.cpf ?? "");
-      const matchesCpf = !normalizedCpf || usuarioCpf.includes(normalizedCpf);
-      const matchesPerfil = !perfil || usuario.roles.includes(perfil);
-
-      return matchesEmail && matchesCpf && matchesPerfil;
-    });
-  }, [usuarios, filterEmail, filterCpf, filterPerfil]);
-
   const hasUsuarios = usuarios.length > 0;
-  const hasFilteredUsuarios = filteredUsuarios.length > 0;
-  const hasUserFilters = Boolean(filterEmail.trim() || filterCpf || filterPerfil);
+  const hasUserFilters = Boolean(filterEmail.trim() || filterCpf || filterPerfil || filterOrigem);
+
+  const safePageSize = pageSize > 0 ? pageSize : DEFAULT_PAGE_SIZE;
+  const safeTotalItems = hasUsuarios ? Math.max(totalItems, usuarios.length) : totalItems;
+  const normalizedTotalPages = safeTotalItems > 0
+    ? (totalPages > 0 ? totalPages : Math.max(Math.ceil(safeTotalItems / safePageSize), 1))
+    : 0;
+  const safePage = normalizedTotalPages > 0 ? Math.min(Math.max(page, 1), normalizedTotalPages) : 1;
+  const showingStart = hasUsuarios ? (safePage - 1) * safePageSize + 1 : 0;
+  const showingEnd = hasUsuarios ? Math.min(showingStart + usuarios.length - 1, safeTotalItems) : 0;
+  const canGoPrev = hasUsuarios && safePage > 1;
+  const canGoNext = hasUsuarios && normalizedTotalPages > 0 && safePage < normalizedTotalPages;
+  const displayTotalPages = normalizedTotalPages > 0 ? normalizedTotalPages : 1;
+  const noResults = !loading && safeTotalItems === 0;
 
   const handleSyncUsuarios = async () => {
     setSyncing(true);
@@ -639,7 +708,7 @@ export default function Usuarios() {
       } else {
         toast.info("Sincronização concluída", "Nenhuma alteração encontrada.");
       }
-      await fetchUsuarios();
+      await fetchUsuarios(page);
     } catch (error: any) {
       console.error("Erro ao sincronizar usuários", error);
       const detail = error?.response?.data?.detail as string | undefined;
@@ -653,6 +722,8 @@ export default function Usuarios() {
     setFilterEmail("");
     setFilterCpf("");
     setFilterPerfil("");
+    setFilterOrigem("");
+    setPage(1);
   };
 
   return (
@@ -947,17 +1018,20 @@ export default function Usuarios() {
           )}
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="flex flex-col gap-2 text-left">
             <label htmlFor="usuarios-filtro-email" className={filterLabelClasses}>
-              E-mail
+              E-mail ou nome
             </label>
             <input
               id="usuarios-filtro-email"
               type="text"
               value={filterEmail}
-              onChange={(event) => setFilterEmail(event.target.value)}
-              placeholder="Buscar por e-mail"
+              onChange={(event) => {
+                setFilterEmail(event.target.value);
+                setPage(1);
+              }}
+              placeholder="Buscar por e-mail ou nome"
               className={filterInputClasses}
             />
           </div>
@@ -977,11 +1051,20 @@ export default function Usuarios() {
             />
           </div>
 
-          <PerfilFilterDropdown
+          <FilterDropdown
             id="usuarios-filtro-perfil"
             label="Perfil"
             value={filterPerfil}
-            onChange={setFilterPerfil}
+            options={perfilFilterOptions}
+            onChange={handlePerfilFilterChange}
+          />
+
+          <FilterDropdown
+            id="usuarios-filtro-origem"
+            label="Origem"
+            value={filterOrigem}
+            options={origemFilterOptions}
+            onChange={handleOrigemFilterChange}
           />
         </div>
       </section>
@@ -1017,27 +1100,30 @@ export default function Usuarios() {
 
         {loading ? (
           <div className="py-12 text-center text-sm text-gray-500">Carregando usuários...</div>
-        ) : !hasUsuarios ? (
-          <div className="py-12 text-center text-sm text-gray-500">Nenhum usuário cadastrado ainda.</div>
-        ) : !hasFilteredUsuarios ? (
-          <div className="py-12 text-center text-sm text-gray-500">Nenhum usuário encontrado com os filtros aplicados.</div>
+        ) : noResults ? (
+          <div className="py-12 text-center text-sm text-gray-500">
+            {hasUserFilters
+              ? "Nenhum usuário encontrado com os filtros aplicados."
+              : "Nenhum usuário cadastrado ainda."}
+          </div>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-gray-100">
-            <table className="min-w-[1100px] divide-y divide-gray-200 text-sm">
-              <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                <tr>
-                  <th className="px-4 py-3">Nome</th>
-                  <th className="px-4 py-3">E-mail</th>
-                  <th className="px-4 py-3">Origem</th>
-                  <th className="px-4 py-3">CPF</th>
-                  <th className="px-4 py-3 text-center">ADM</th>
-                  <th className="px-4 py-3 text-center">Ativo</th>
-                  <th className="px-4 py-3">Atualizado em</th>
-                  <th className="px-4 py-3 text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {filteredUsuarios.map((usuario) => {
+          <>
+            <div className="overflow-x-auto rounded-xl border border-gray-100">
+              <table className="min-w-[1100px] divide-y divide-gray-200 text-sm">
+                <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  <tr>
+                    <th className="px-4 py-3">Nome</th>
+                    <th className="px-4 py-3">E-mail</th>
+                    <th className="px-4 py-3">Origem</th>
+                    <th className="px-4 py-3">CPF</th>
+                    <th className="px-4 py-3 text-center">ADM</th>
+                    <th className="px-4 py-3 text-center">Ativo</th>
+                    <th className="px-4 py-3">Atualizado em</th>
+                    <th className="px-4 py-3 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {usuarios.map((usuario) => {
                   const isAdminOriginal = usuario.roles.includes("Admin");
                   const isAdminDraft = draftAdmins[usuario.id] ?? isAdminOriginal;
                   const draftCpf = draftCpfs[usuario.id] ?? "";
@@ -1176,6 +1262,47 @@ export default function Usuarios() {
               </tbody>
             </table>
           </div>
+            {hasUsuarios && (
+              <nav
+                className="flex flex-col gap-3 border-t border-gray-100 bg-gray-50/80 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
+                aria-label="Paginação da lista de usuários"
+              >
+                <p className="text-sm text-gray-600">
+                  Mostrando{" "}
+                  <span className="font-semibold text-gray-900">
+                    {showingStart}-{showingEnd}
+                  </span>{" "}
+                  de{" "}
+                  <span className="font-semibold text-gray-900">{safeTotalItems}</span>{" "}
+                  usuários
+                  {reloading && (
+                    <span className="ml-2 text-xs font-semibold uppercase tracking-wide text-indigo-500">Atualizando...</span>
+                  )}
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                    disabled={!canGoPrev}
+                    className="inline-flex items-center gap-2 rounded-full border border-indigo-200 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-indigo-600 transition hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400 disabled:hover:bg-transparent"
+                  >
+                    Anterior
+                  </button>
+                  <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    Página {safePage} de {displayTotalPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPage((prev) => Math.min(displayTotalPages, prev + 1))}
+                    disabled={!canGoNext}
+                    className="inline-flex items-center gap-2 rounded-full border border-indigo-200 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-indigo-600 transition hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400 disabled:hover:bg-transparent"
+                  >
+                    Próxima
+                  </button>
+                </div>
+              </nav>
+            )}
+          </>
         )}
       </section>
     </div>

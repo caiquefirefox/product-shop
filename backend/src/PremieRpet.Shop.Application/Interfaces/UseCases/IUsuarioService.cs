@@ -8,7 +8,7 @@ public interface IUsuarioService
     Task<UsuarioDto> ObterOuCriarAsync(string email, string? microsoftId, string? nome, CancellationToken ct);
     Task<UsuarioDto> RegistrarCpfAsync(string email, string? microsoftId, string cpf, string? nome, CancellationToken ct);
     Task<UsuarioDto> GarantirCpfAsync(string email, string? microsoftId, string? cpf, string? nome, CancellationToken ct);
-    Task<IReadOnlyCollection<UsuarioDto>> ListAsync(CancellationToken ct);
+    Task<PagedResultDto<UsuarioDto>> ListAsync(UsuarioFiltroDto filtro, CancellationToken ct);
     Task<UsuarioDto> UpsertAsync(string email, string? cpf, string? nome, IEnumerable<string>? roles, CancellationToken ct);
     Task<UsuarioDto> CriarLocalAsync(string cpf, string senha, IEnumerable<string>? roles, string? email, string? nome, CancellationToken ct);
     Task<UsuarioDto> AutenticarLocalAsync(string cpf, string senha, CancellationToken ct);
