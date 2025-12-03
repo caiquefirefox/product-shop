@@ -405,6 +405,84 @@ public sealed class UsuarioService : IUsuarioService
         return ToDto(usuario);
     }
 
+    public async Task<IReadOnlyList<UsuarioDto>> UpsertEmLoteAsync(IEnumerable<UsuarioUpsertBatchDto> usuarios, CancellationToken ct)
+    {
+        if (usuarios is null)
+            throw new InvalidOperationException("Nenhuma alteração recebida.");
+
+        var alteracoes = usuarios.ToList();
+        if (alteracoes.Count == 0)
+            return Array.Empty<UsuarioDto>();
+
+        var ids = new HashSet<Guid>();
+
+        foreach (var alteracao in alteracoes)
+        {
+            if (alteracao.Id == Guid.Empty)
+                throw new InvalidOperationException("Id do usuário obrigatório.");
+
+            if (!alteracao.AtualizarPerfil && !alteracao.AtualizarStatus)
+                throw new InvalidOperationException("Nenhuma alteração informada para o usuário.");
+
+            if (!ids.Add(alteracao.Id))
+                throw new InvalidOperationException("Usuário duplicado na lista de alterações.");
+        }
+
+        await _usuarios.ExecuteInTransactionAsync(async innerCt =>
+        {
+            foreach (var alteracao in alteracoes)
+            {
+                var usuario = await _usuarios.GetByIdAsync(alteracao.Id, innerCt)
+                    ?? throw new InvalidOperationException("Usuário não encontrado.");
+
+                if (alteracao.AtualizarPerfil)
+                {
+                    var roles = alteracao.Roles ?? usuario.Roles.Select(r => r.Role);
+                    var nome = alteracao.Nome ?? usuario.Nome;
+                    var email = alteracao.Email ?? usuario.Email;
+                    var cpf = alteracao.Cpf ?? usuario.Cpf;
+
+                    if (string.IsNullOrWhiteSpace(usuario.MicrosoftId))
+                    {
+                        var emailParaAtualizar = email ?? throw new InvalidOperationException("E-mail do usuário obrigatório.");
+                        await AtualizarLocalAsync(usuario.Id, emailParaAtualizar, cpf, nome, roles, innerCt);
+                    }
+                    else
+                    {
+                        var emailParaAtualizar = email ?? usuario.Email ?? throw new InvalidOperationException("E-mail do usuário obrigatório.");
+                        await UpsertAsync(emailParaAtualizar, cpf, nome, roles, innerCt);
+                    }
+
+                    usuario = await _usuarios.GetByIdAsync(alteracao.Id, innerCt)
+                        ?? throw new InvalidOperationException("Usuário não encontrado após atualização de perfil.");
+                }
+
+                if (alteracao.AtualizarStatus)
+                {
+                    if (!alteracao.Ativo.HasValue)
+                        throw new InvalidOperationException("Status do usuário obrigatório para atualização.");
+
+                    if (usuario.Ativo != alteracao.Ativo.Value)
+                    {
+                        await AtualizarStatusAsync(usuario.Id, alteracao.Ativo.Value, innerCt);
+                    }
+                }
+            }
+        }, ct);
+
+        var atualizados = new List<UsuarioDto>(ids.Count);
+        foreach (var id in ids)
+        {
+            var usuario = await _usuarios.GetByIdAsync(id, ct)
+                ?? throw new InvalidOperationException("Usuário não encontrado após atualização.");
+
+            var ensured = await EnsureRolesAsync(usuario, ct);
+            atualizados.Add(ToDto(ensured));
+        }
+
+        return atualizados;
+    }
+
     public async Task<UsuarioDto> AutenticarLocalAsync(string cpf, string senha, CancellationToken ct)
     {
         var sanitizedCpf = SanitizeCpfOrNull(cpf) ?? throw new InvalidOperationException("CPF obrigatório.");

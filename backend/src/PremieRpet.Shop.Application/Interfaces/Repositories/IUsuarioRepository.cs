@@ -18,4 +18,5 @@ public interface IUsuarioRepository
     Task UpdateAsync(Usuario usuario, CancellationToken ct);
     Task UpdateRangeAsync(IEnumerable<Usuario> usuarios, CancellationToken ct);
     Task ReplaceRolesAsync(Guid usuarioId, IEnumerable<string> roles, CancellationToken ct);
+    Task ExecuteInTransactionAsync(Func<CancellationToken, Task> action, CancellationToken ct);
 }

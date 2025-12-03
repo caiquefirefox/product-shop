@@ -71,6 +71,21 @@ public sealed class UsuariosController(IUsuarioService usuarios) : ControllerBas
         }
     }
 
+    [HttpPost("lote")]
+    [Authorize("Admin")]
+    public async Task<IActionResult> UpsertLote([FromBody] UsuarioUpsertBatchRequest request, CancellationToken ct)
+    {
+        try
+        {
+            var resultado = await usuarios.UpsertEmLoteAsync(request.ToDto(), ct);
+            return Ok(resultado);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Problem(detail: ex.Message, statusCode: StatusCodes.Status400BadRequest);
+        }
+    }
+
     [HttpPost("local")]
     [Authorize("Admin")]
     public async Task<IActionResult> CriarLocal([FromBody] UsuarioLocalRequest request, CancellationToken ct)

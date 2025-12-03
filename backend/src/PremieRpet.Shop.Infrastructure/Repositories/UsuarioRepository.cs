@@ -129,4 +129,27 @@ public sealed class UsuarioRepository : IUsuarioRepository
 
         await _db.SaveChangesAsync(ct);
     }
+
+    public async Task ExecuteInTransactionAsync(Func<CancellationToken, Task> action, CancellationToken ct)
+    {
+        if (action is null)
+            throw new ArgumentNullException(nameof(action));
+
+        var strategy = _db.Database.CreateExecutionStrategy();
+
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await _db.Database.BeginTransactionAsync(ct);
+            try
+            {
+                await action(ct);
+                await transaction.CommitAsync(ct);
+            }
+            catch
+            {
+                await transaction.RollbackAsync(ct);
+                throw;
+            }
+        });
+    }
 }
