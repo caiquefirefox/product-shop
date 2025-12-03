@@ -1010,7 +1010,7 @@ export default function Usuarios() {
       )}
 
       <section className="rounded-2xl border border-indigo-100 bg-white p-5 shadow-sm">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 md:items-end md:[grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
           <div className="flex flex-col gap-2 text-left">
             <label htmlFor="usuarios-filtro-email" className={filterLabelClasses}>
               E-mail ou nome
@@ -1060,7 +1060,7 @@ export default function Usuarios() {
           />
 
           {hasUserFilters && (
-            <div className="md:col-span-2 xl:col-span-4 flex justify-end">
+            <div className="flex justify-end md:justify-self-end">
               <button type="button" onClick={handleClearUserFilters} className={clearFiltersButtonClasses}>
                 Limpar filtros
               </button>
