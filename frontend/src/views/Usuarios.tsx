@@ -1010,14 +1010,6 @@ export default function Usuarios() {
       )}
 
       <section className="rounded-2xl border border-indigo-100 bg-white p-5 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          {hasUserFilters && (
-            <button type="button" onClick={handleClearUserFilters} className={clearFiltersButtonClasses}>
-              Limpar filtros
-            </button>
-          )}
-        </div>
-
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="flex flex-col gap-2 text-left">
             <label htmlFor="usuarios-filtro-email" className={filterLabelClasses}>
@@ -1066,6 +1058,14 @@ export default function Usuarios() {
             options={origemFilterOptions}
             onChange={handleOrigemFilterChange}
           />
+
+          {hasUserFilters && (
+            <div className="md:col-span-2 xl:col-span-4 flex justify-end">
+              <button type="button" onClick={handleClearUserFilters} className={clearFiltersButtonClasses}>
+                Limpar filtros
+              </button>
+            </div>
+          )}
         </div>
       </section>
 
