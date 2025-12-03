@@ -1298,7 +1298,7 @@ export default function Usuarios() {
                     hasChanges,
                     changeDescriptions,
                   } = draftInfo;
-                  const canEditCpf = !isLocal || !usuario.cpf;
+                  const canEditCpf = true;
 
                   const displayEmail = usuario.email || "—";
                   const displayNome = usuario.nome || "—";
