@@ -9,6 +9,7 @@ import Relatorios from "../views/Relatorios";
 import Usuarios from "../views/Usuarios";
 import Pedidos from "../views/Pedidos";
 import Login from "../views/Login";
+import TrocarSenha from "../views/TrocarSenha";
 import Protected from "../auth/Protected";
 import { useUser } from "../auth/useUser";
 import { useCart } from "../cart/CartContext";
@@ -28,7 +29,9 @@ export default function App() {
   const location = useLocation();
   const { account, profile, isAdmin, isLoading, clearRolesCache } = useUser();
   const { totalUnidades, totalPesoKg, totalValor } = useCart();
-  const isLoginRoute = location.pathname.startsWith("/login");
+  const isAuthRoute = ["/login", "/trocar-senha"].some(route =>
+    location.pathname.startsWith(route)
+  );
   const isCatalogActive =
     location.pathname === "/" || location.pathname.startsWith("/checkout");
   const [isScrolled, setIsScrolled] = useState(false);
@@ -36,7 +39,7 @@ export default function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
 
   useEffect(() => {
-    if (isLoginRoute) {
+    if (isAuthRoute) {
       setIsScrolled(false);
       return;
     }
@@ -48,7 +51,7 @@ export default function App() {
     onScroll();
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
-  }, [isLoginRoute]);
+  }, [isAuthRoute]);
   useEffect(() => {
     setIsMenuOpen(false);
   }, [location.pathname]);
@@ -77,7 +80,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen">
-      {!isLoginRoute && !isLoading && (
+      {!isAuthRoute && !isLoading && (
         <header
           className={`fixed top-0 left-0 right-0 bg-white border-b transition-all duration-300 ${
             isScrolled ? "shadow-sm" : ""
@@ -217,7 +220,7 @@ export default function App() {
         </header>
       )}
 
-      {!isLoginRoute && !isLoading && (
+      {!isAuthRoute && !isLoading && (
         <div
           className={`transition-all duration-300 ${
             isScrolled ? "h-[68px] md:h-[60px]" : "h-[76px] md:h-16"
@@ -226,9 +229,10 @@ export default function App() {
         />
       )}
 
-      <main className={isLoginRoute ? "" : "max-w-7xl mx-auto p-4"}>
+      <main className={isAuthRoute ? "" : "max-w-7xl mx-auto p-4"}>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/trocar-senha" element={<TrocarSenha />} />
           <Route path="/" element={<Protected><Catalogo/></Protected>} />
           <Route path="/pedidos" element={<Protected><Pedidos/></Protected>} />
           <Route path="/checkout" element={<Protected><Checkout/></Protected>} />

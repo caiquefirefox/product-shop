@@ -41,10 +41,6 @@ export default function Login() {
   const [senha, setSenha] = useState("");
   const [localErr, setLocalErr] = useState<string | null>(null);
   const [localLoading, setLocalLoading] = useState(false);
-  const [novaSenha, setNovaSenha] = useState("");
-  const [confirmarSenha, setConfirmarSenha] = useState("");
-  const [trocarSenha, setTrocarSenha] = useState(false);
-  const [trocandoSenha, setTrocandoSenha] = useState(false);
   const SCOPE = requireEnv('VITE_API_SCOPE', import.meta.env.VITE_API_SCOPE);
   const isLocalAuth = hasLocalToken();
 
@@ -107,7 +103,6 @@ export default function Login() {
   const doLocalLogin = async (event: FormEvent) => {
     event.preventDefault();
     setLocalErr(null);
-    setTrocarSenha(false);
     const sanitizedCpf = sanitizeCpf(cpf);
 
     if (sanitizedCpf.length !== 11) {
@@ -137,67 +132,20 @@ export default function Login() {
       const type = error?.response?.data?.type as string | undefined;
 
       if (type === PASSWORD_CHANGE_REQUIRED_TYPE) {
-        setTrocarSenha(true);
-        setLocalErr(detail ?? "Você precisa trocar a senha antes de continuar.");
+        navigate("/trocar-senha", {
+          replace: true,
+          state: {
+            cpf: sanitizedCpf,
+            returnTo,
+            mensagem: detail ?? "Você precisa trocar a senha antes de continuar.",
+          },
+        });
         return;
       }
 
-      setTrocarSenha(false);
       setLocalErr(detail ?? "Não foi possível entrar com CPF e senha.");
     } finally {
       setLocalLoading(false);
-    }
-  };
-
-  const doTrocaSenha = async (event: FormEvent) => {
-    event.preventDefault();
-    setLocalErr(null);
-
-    const sanitizedCpf = sanitizeCpf(cpf);
-
-    if (sanitizedCpf.length !== 11) {
-      setLocalErr("CPF inválido.");
-      return;
-    }
-
-    if (!senha.trim()) {
-      setLocalErr("Informe a senha atual.");
-      return;
-    }
-
-    if (!novaSenha.trim()) {
-      setLocalErr("Informe a nova senha.");
-      return;
-    }
-
-    if (novaSenha === senha) {
-      setLocalErr("A nova senha deve ser diferente da atual.");
-      return;
-    }
-
-    if (novaSenha !== confirmarSenha) {
-      setLocalErr("A confirmação da nova senha não confere.");
-      return;
-    }
-
-    setTrocandoSenha(true);
-    try {
-      const { data } = await api.post<LocalLoginResponse>("/auth/alterar-senha", {
-        cpf: sanitizedCpf,
-        senhaAtual: senha,
-        novaSenha,
-      });
-
-      if (data?.token) {
-        setLocalToken(data.token);
-      }
-
-      navigate(returnTo, { replace: true });
-    } catch (error: any) {
-      const detail = error?.response?.data?.detail as string | undefined;
-      setLocalErr(detail ?? "Não foi possível alterar a senha.");
-    } finally {
-      setTrocandoSenha(false);
     }
   };
 
@@ -261,51 +209,6 @@ export default function Login() {
               </button>
             </form>
           </div>
-
-          {trocarSenha && (
-            <div className="mt-4 flex w-full flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-left">
-              <div className="space-y-2">
-                <h3 className="text-lg font-semibold text-amber-900">Troque sua senha para continuar</h3>
-                <p className="text-sm text-amber-800">Por segurança, altere a senha inicial antes de acessar o portal.</p>
-              </div>
-
-              <form className="space-y-3" onSubmit={doTrocaSenha}>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-amber-900" htmlFor="nova-senha">Nova senha</label>
-                  <input
-                    id="nova-senha"
-                    type="password"
-                    value={novaSenha}
-                    onChange={(e) => setNovaSenha(e.target.value)}
-                    className="w-full rounded-xl border border-amber-200 px-3 py-2 text-base focus:border-[#FF6900] focus:outline-none focus:ring-2 focus:ring-[#FF6900]/20"
-                    placeholder="Digite a nova senha"
-                    autoComplete="new-password"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-amber-900" htmlFor="confirmar-senha">Confirme a nova senha</label>
-                  <input
-                    id="confirmar-senha"
-                    type="password"
-                    value={confirmarSenha}
-                    onChange={(e) => setConfirmarSenha(e.target.value)}
-                    className="w-full rounded-xl border border-amber-200 px-3 py-2 text-base focus:border-[#FF6900] focus:outline-none focus:ring-2 focus:ring-[#FF6900]/20"
-                    placeholder="Repita a nova senha"
-                    autoComplete="new-password"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={trocandoSenha}
-                  className="flex w-full items-center justify-center rounded-full bg-amber-600 px-6 py-3 text-base font-semibold text-white transition-colors duration-200 hover:bg-amber-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-700/40 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {trocandoSenha ? "Alterando..." : "Salvar nova senha"}
-                </button>
-              </form>
-            </div>
-          )}
 
           <button
             onClick={doLogin}
