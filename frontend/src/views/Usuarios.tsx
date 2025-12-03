@@ -202,6 +202,7 @@ export default function Usuarios() {
   const [draftEmails, setDraftEmails] = useState<Record<string, string>>({});
   const [draftNomes, setDraftNomes] = useState<Record<string, string>>({});
   const [draftAtivos, setDraftAtivos] = useState<Record<string, boolean>>({});
+  const [draftBases, setDraftBases] = useState<Record<string, UsuarioPerfil>>({});
   const [syncing, setSyncing] = useState(false);
   const [confirmChangesOpen, setConfirmChangesOpen] = useState(false);
   const [savingAll, setSavingAll] = useState(false);
@@ -310,12 +311,6 @@ export default function Usuarios() {
         setPageSize(safePageSize);
         setTotalItems(safeTotalItems);
         setTotalPages(normalizedTotalPages);
-
-        setDraftAdmins({});
-        setDraftCpfs({});
-        setDraftEmails({});
-        setDraftNomes({});
-        setDraftAtivos({});
 
         if (safePageFromResponse !== page) {
           setPage(safePageFromResponse);
@@ -529,7 +524,17 @@ export default function Usuarios() {
     }
   };
 
+  const rememberDraftBase = useCallback((usuario: UsuarioPerfil) => {
+    setDraftBases((prev) => {
+      if (prev[usuario.id]) {
+        return prev;
+      }
+      return { ...prev, [usuario.id]: usuario };
+    });
+  }, []);
+
   const toggleAdmin = (usuario: UsuarioPerfil) => {
+    rememberDraftBase(usuario);
     setDraftAdmins((prev) => {
       const current = prev[usuario.id] ?? usuario.roles.includes("Admin");
       return { ...prev, [usuario.id]: !current };
@@ -537,6 +542,7 @@ export default function Usuarios() {
   };
 
   const toggleAtivo = (usuario: UsuarioPerfil) => {
+    rememberDraftBase(usuario);
     setDraftAtivos((prev) => {
       const current = prev[usuario.id] ?? usuario.ativo;
       return { ...prev, [usuario.id]: !current };
@@ -544,14 +550,17 @@ export default function Usuarios() {
   };
 
   const handleDraftEmailChange = (usuario: UsuarioPerfil, value: string) => {
+    rememberDraftBase(usuario);
     setDraftEmails((prev) => ({ ...prev, [usuario.id]: value }));
   };
 
   const handleDraftNomeChange = (usuario: UsuarioPerfil, value: string) => {
+    rememberDraftBase(usuario);
     setDraftNomes((prev) => ({ ...prev, [usuario.id]: value }));
   };
 
   const handleDraftCpfChange = (usuario: UsuarioPerfil, value: string) => {
+    rememberDraftBase(usuario);
     const sanitized = sanitizeCpf(value);
     setDraftCpfs((prev) => ({ ...prev, [usuario.id]: sanitized }));
   };
@@ -603,6 +612,11 @@ export default function Usuarios() {
       return next;
     });
     setDraftAtivos((prev) => {
+      const next = { ...prev };
+      delete next[usuarioId];
+      return next;
+    });
+    setDraftBases((prev) => {
       const next = { ...prev };
       delete next[usuarioId];
       return next;
@@ -684,8 +698,31 @@ export default function Usuarios() {
   );
 
   const pendingChanges = useMemo(
-    () => usuarios.map((usuario) => getUsuarioDraftInfo(usuario)).filter((info) => info.hasChanges),
-    [getUsuarioDraftInfo, usuarios],
+    () => {
+      const ids = new Set<string>([
+        ...Object.keys(draftAdmins),
+        ...Object.keys(draftAtivos),
+        ...Object.keys(draftCpfs),
+        ...Object.keys(draftEmails),
+        ...Object.keys(draftNomes),
+      ]);
+
+      const byId: Record<string, UsuarioPerfil> = {};
+      usuarios.forEach((usuario) => {
+        byId[usuario.id] = usuario;
+      });
+
+      return Array.from(ids)
+        .map((usuarioId) => {
+          const baseUsuario = byId[usuarioId] ?? draftBases[usuarioId];
+          if (!baseUsuario) {
+            return null;
+          }
+          return getUsuarioDraftInfo(baseUsuario);
+        })
+        .filter((info): info is UsuarioDraftInfo => Boolean(info?.hasChanges));
+    },
+    [draftAdmins, draftAtivos, draftBases, draftCpfs, draftEmails, draftNomes, getUsuarioDraftInfo, usuarios],
   );
 
   const hasPendingErrors = useMemo(
