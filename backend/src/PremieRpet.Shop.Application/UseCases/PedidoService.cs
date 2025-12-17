@@ -611,7 +611,8 @@ public sealed class PedidoService : IPedidoService
             pedido.UnidadeEntrega = new UnidadeEntrega
             {
                 Id = novaUnidade.Id,
-                Nome = novaUnidade.Nome
+                Nome = novaUnidade.Nome,
+                EmpresaId = novaUnidade.EmpresaId
             };
         }
         else if (pedido.UnidadeEntrega is not null)

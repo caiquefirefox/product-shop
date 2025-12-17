@@ -92,6 +92,16 @@ public sealed class PedidoRepository : IPedidoRepository
                 entry.Entity.Id = Guid.NewGuid();
         }
 
+        if (pedido.UnidadeEntrega is not null)
+        {
+            var unidadeEntry = _db.Entry(pedido.UnidadeEntrega);
+
+            if (unidadeEntry.State == EntityState.Detached)
+                _db.UnidadesEntrega.Attach(pedido.UnidadeEntrega);
+
+            unidadeEntry.State = EntityState.Unchanged;
+        }
+
         await _db.SaveChangesAsync(ct);
     }
 
