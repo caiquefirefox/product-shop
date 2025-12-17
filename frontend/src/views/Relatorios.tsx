@@ -12,6 +12,8 @@ import { DateUserFilters, type SimpleOption } from "../components/DateUserFilter
 import { formatCpf } from "../lib/cpf";
 import { getStatusBadgeStyle } from "../pedidos/statusStyles";
 
+type EmpresaOption = { id: string; nome: string };
+
 // ---------------------- Component ---------------------- //
 export default function Relatorios() {
   // filtros
@@ -24,6 +26,14 @@ export default function Relatorios() {
   const [statusId, setStatusId] = useState<string>("");
   const [statusOptions, setStatusOptions] = useState<SimpleOption[]>([]);
   const [statusLoading, setStatusLoading] = useState(false);
+  const empresaOptions = useMemo(
+    () => empresas.map((empresa) => ({ value: empresa.id, label: empresa.nome })),
+    [empresas],
+  );
+  const [empresaId, setEmpresaId] = useState<string>("");
+  const [empresas, setEmpresas] = useState<EmpresaOption[]>([]);
+  const [empresasLoading, setEmpresasLoading] = useState(false);
+  const [empresasErro, setEmpresasErro] = useState<string | null>(null);
 
   // dados & estados
   const [pedidos, setPedidos] = useState<PedidoDetalhe[]>([]);
@@ -54,6 +64,10 @@ export default function Relatorios() {
         params.statusId = statusId;
       }
 
+      if (empresaId) {
+        params.empresaId = empresaId;
+      }
+
       const r = await api.get<PedidoDetalhe[]>("/relatorios/pedidos/detalhes", { params });
       setPedidos(r.data);
     } catch (e: any) {
@@ -63,7 +77,7 @@ export default function Relatorios() {
     } finally {
       setLoading(false);
     }
-  }, [de, ate, statusId]);
+  }, [ate, de, empresaId, statusId]);
 
   useEffect(() => {
     // carrega ao montar
@@ -93,6 +107,33 @@ export default function Relatorios() {
       .finally(() => {
         if (!vivo) return;
         setStatusLoading(false);
+      });
+
+    return () => {
+      vivo = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let vivo = true;
+    setEmpresasLoading(true);
+    setEmpresasErro(null);
+
+    api
+      .get<EmpresaOption[]>("/empresas")
+      .then((response) => {
+        if (!vivo) return;
+        setEmpresas(response.data || []);
+      })
+      .catch((error: any) => {
+        if (!vivo) return;
+        const msg = error?.response?.data?.detail || error?.message || "Falha ao carregar empresas";
+        setEmpresasErro(msg);
+        setEmpresas([]);
+      })
+      .finally(() => {
+        if (!vivo) return;
+        setEmpresasLoading(false);
       });
 
     return () => {
@@ -158,6 +199,10 @@ export default function Relatorios() {
       params.statusId = statusId;
     }
 
+    if (empresaId) {
+      params.empresaId = empresaId;
+    }
+
     setExportando(true);
     setError(null);
 
@@ -183,7 +228,7 @@ export default function Relatorios() {
     } finally {
       setExportando(false);
     }
-  }, [de, ate, statusId]);
+  }, [ate, de, empresaId, statusId]);
 
   return (
     <div className="space-y-4">
@@ -201,9 +246,12 @@ export default function Relatorios() {
         statusId={statusId}
         onChangeStatusId={setStatusId}
         statusOptions={statusOptions}
+        empresaId={empresaId}
+        onChangeEmpresaId={setEmpresaId}
+        empresaOptions={empresaOptions}
         onApply={carregar}
         applyLabel={loading ? "Carregando..." : "Buscar"}
-        disabled={loading || statusLoading}
+        disabled={loading || statusLoading || empresasLoading}
       >
         <button
           type="button"
@@ -214,6 +262,12 @@ export default function Relatorios() {
           {exportando ? "Exportando..." : "Exportar Excel"}
         </button>
       </DateUserFilters>
+
+      {empresasErro && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+          {empresasErro}
+        </div>
+      )}
 
       {error && <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700">{error}</div>}
 
@@ -249,7 +303,7 @@ export default function Relatorios() {
 
               {/* Tabela de pedidos do usuário */}
               <div className="overflow-auto bg-white">
-                <table className="min-w-[900px] w-full bg-white">
+                <table className="min-w-[960px] w-full bg-white">
                   <tbody className="divide-y divide-gray-100">
                     {g.lista.map((p) => {
                       const itensCount = p.itens.length;
@@ -262,6 +316,7 @@ export default function Relatorios() {
                               {formatDateBR(new Date(p.dataHora))}
                             </td>
                             <td className="px-5 py-4 text-sm font-semibold text-gray-900">{p.unidadeEntregaNome}</td>
+                            <td className="px-5 py-4 text-sm font-semibold text-gray-900">{p.empresaNome}</td>
                             <td className="px-5 py-4 text-sm">
                               <span
                                 className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
@@ -291,7 +346,7 @@ export default function Relatorios() {
                           </tr>
                           {expand[p.id] && (
                             <tr id={`itens-${p.id}`} className="bg-white">
-                              <td colSpan={7} className="px-0">
+                              <td colSpan={8} className="px-0">
                                 <div className="bg-white px-5 py-4">
                                   <table className="min-w-[860px] w-full text-sm">
                                     <thead>

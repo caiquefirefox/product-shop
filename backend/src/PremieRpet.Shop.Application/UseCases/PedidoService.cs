@@ -118,6 +118,8 @@ public sealed class PedidoService : IPedidoService
         var pesoTotal = itens.Sum(i => i.PesoTotalKg);
         var statusNome = ObterNomeStatus(pedido);
         var unidadeNome = pedido.UnidadeEntrega?.Nome ?? string.Empty;
+        var empresaId = pedido.UnidadeEntrega?.EmpresaId ?? Guid.Empty;
+        var empresaNome = pedido.UnidadeEntrega?.Empresa?.Nome ?? string.Empty;
 
         return new PedidoDetalheDto(
             pedido.Id,
@@ -126,6 +128,8 @@ public sealed class PedidoService : IPedidoService
             pedido.UsuarioCpf,
             pedido.UnidadeEntregaId,
             unidadeNome,
+            empresaId,
+            empresaNome,
             pedido.StatusId,
             statusNome,
             pedido.DataHora,
@@ -300,12 +304,17 @@ public sealed class PedidoService : IPedidoService
 
         await _pedidos.AddAsync(pedido, ct);
 
+        var empresaId = unidadeEntrega.EmpresaId;
+        var empresaNome = unidadeEntrega.Empresa?.Nome ?? string.Empty;
+
         return new PedidoResumoDto(
             pedido.Id,
             pedido.UsuarioNome,
             pedido.UsuarioCpf,
             pedido.UnidadeEntregaId,
             unidadeEntrega.Nome,
+            empresaId,
+            empresaNome,
             pedido.StatusId,
             "Solicitado",
             pedido.DataHora,
@@ -327,11 +336,12 @@ public sealed class PedidoService : IPedidoService
             .SumAsync(ct);
     }
 
-    public async Task<IReadOnlyList<PedidoResumoDto>> ListarPedidosAsync(DateTimeOffset? de, DateTimeOffset? ate, CancellationToken ct)
+    public async Task<IReadOnlyList<PedidoResumoDto>> ListarPedidosAsync(DateTimeOffset? de, DateTimeOffset? ate, Guid? empresaId, CancellationToken ct)
     {
         var q = _pedidos.Query();
         if (de is not null) q = q.Where(p => p.DataHora >= de);
         if (ate is not null) q = q.Where(p => p.DataHora <= ate);
+        if (empresaId is Guid empresa && empresa != Guid.Empty) q = q.Where(p => p.UnidadeEntrega != null && p.UnidadeEntrega.EmpresaId == empresa);
 
         return await q.AsNoTracking()
             .OrderByDescending(p => p.DataHora)
@@ -341,6 +351,10 @@ public sealed class PedidoService : IPedidoService
                 p.UsuarioCpf,
                 p.UnidadeEntregaId,
                 p.UnidadeEntrega != null ? p.UnidadeEntrega.Nome : string.Empty,
+                p.UnidadeEntrega != null ? p.UnidadeEntrega.EmpresaId : Guid.Empty,
+                p.UnidadeEntrega != null && p.UnidadeEntrega.Empresa != null
+                    ? p.UnidadeEntrega.Empresa.Nome
+                    : string.Empty,
                 p.StatusId,
                 p.Status != null && p.Status.Nome != null
                     ? p.Status.Nome
@@ -358,7 +372,7 @@ public sealed class PedidoService : IPedidoService
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<PedidoDetalheDto>> ListarPedidosDetalhadosAsync(DateTimeOffset? de, DateTimeOffset? ate, Guid? usuarioId, int? statusId, CancellationToken ct)
+    public async Task<IReadOnlyList<PedidoDetalheDto>> ListarPedidosDetalhadosAsync(DateTimeOffset? de, DateTimeOffset? ate, Guid? usuarioId, int? statusId, Guid? empresaId, CancellationToken ct)
     {
         var q = _pedidos.Query();
 
@@ -366,6 +380,7 @@ public sealed class PedidoService : IPedidoService
         if (ate is not null) q = q.Where(p => p.DataHora <= ate);
         if (usuarioId is not null) q = q.Where(p => p.UsuarioId == usuarioId);
         if (statusId is int status && status > 0) q = q.Where(p => p.StatusId == status);
+        if (empresaId is Guid empresa && empresa != Guid.Empty) q = q.Where(p => p.UnidadeEntrega != null && p.UnidadeEntrega.EmpresaId == empresa);
 
         var pedidos = await q.AsNoTracking()
             .OrderByDescending(p => p.DataHora)
@@ -387,6 +402,8 @@ public sealed class PedidoService : IPedidoService
             query = query.Where(p => p.DataHora <= ate);
         if (filtro.StatusId is int status && status > 0)
             query = query.Where(p => p.StatusId == status);
+        if (filtro.EmpresaId is Guid empresa && empresa != Guid.Empty)
+            query = query.Where(p => p.UnidadeEntrega != null && p.UnidadeEntrega.EmpresaId == empresa);
 
         if (isAdmin)
         {
@@ -639,13 +656,16 @@ public sealed class PedidoService : IPedidoService
         return MapToDetalhe(pedido);
     }
 
-    public async Task<PedidoResumoMensalDto> ObterResumoAsync(DateTimeOffset de, DateTimeOffset ate, Guid usuarioAtualId, bool isAdmin, Guid? usuarioFiltroId, int? statusFiltroId, CancellationToken ct)
+    public async Task<PedidoResumoMensalDto> ObterResumoAsync(DateTimeOffset de, DateTimeOffset ate, Guid usuarioAtualId, bool isAdmin, Guid? usuarioFiltroId, int? statusFiltroId, Guid? empresaId, CancellationToken ct)
     {
         if (ate < de)
             (de, ate) = (ate, de);
 
         var query = _pedidos.Query().AsNoTracking()
             .Where(p => p.DataHora >= de && p.DataHora <= ate);
+
+        if (empresaId is Guid empresa && empresa != Guid.Empty)
+            query = query.Where(p => p.UnidadeEntrega != null && p.UnidadeEntrega.EmpresaId == empresa);
 
         if (statusFiltroId is int statusFiltro && statusFiltro > 0)
         {
@@ -671,6 +691,9 @@ public sealed class PedidoService : IPedidoService
         var limiteQuery = _pedidos.Query().AsNoTracking()
             .Where(p => p.DataHora >= de && p.DataHora <= ate)
             .Where(p => PedidoStatusIds.ContaParaLimite.Contains(p.StatusId));
+
+        if (empresaId is Guid empresaFiltro && empresaFiltro != Guid.Empty)
+            limiteQuery = limiteQuery.Where(p => p.UnidadeEntrega != null && p.UnidadeEntrega.EmpresaId == empresaFiltro);
 
         if (isAdmin)
         {

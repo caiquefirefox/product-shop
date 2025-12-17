@@ -33,5 +33,6 @@ public sealed class UnidadeEntregaRepository : IUnidadeEntregaRepository
     public async Task<UnidadeEntrega?> ObterPorIdAsync(Guid id, CancellationToken ct)
         => await _db.UnidadesEntrega
             .AsNoTracking()
+            .Include(u => u.Empresa)
             .FirstOrDefaultAsync(u => u.Id == id, ct);
 }

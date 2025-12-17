@@ -25,6 +25,9 @@ export type DateUserFiltersProps = {
   statusId?: string;
   onChangeStatusId?: (value: string) => void;
   statusOptions?: SimpleOption[];
+  empresaId?: string;
+  onChangeEmpresaId?: (value: string) => void;
+  empresaOptions?: SimpleOption[];
   onApply?: () => void;
   applyLabel?: string;
   className?: string;
@@ -32,13 +35,14 @@ export type DateUserFiltersProps = {
   children?: ReactNode;
 };
 
-type StatusDropdownProps = {
+type FilterDropdownProps = {
   id: string;
   label: string;
   options: SimpleOption[];
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  placeholderLabel?: string;
 };
 
 const filterLabelClasses = "text-xs font-semibold uppercase tracking-wide text-slate-500";
@@ -57,14 +61,14 @@ const dropdownListClasses =
 const dropdownOptionClasses =
   "flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-600";
 
-function StatusDropdown({ id, label, options, value, onChange, disabled }: StatusDropdownProps) {
+function FilterDropdown({ id, label, options, value, onChange, disabled, placeholderLabel = "Todos" }: FilterDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   const optionsWithPlaceholder = useMemo(
-    () => [{ value: "", label: "Todos" }, ...options],
-    [options],
+    () => [{ value: "", label: placeholderLabel }, ...options],
+    [options, placeholderLabel],
   );
 
   const selectedOption = useMemo(
@@ -193,6 +197,9 @@ export function DateUserFilters({
   statusId = "",
   onChangeStatusId,
   statusOptions,
+  empresaId = "",
+  onChangeEmpresaId,
+  empresaOptions,
   onApply,
   applyLabel = "Buscar",
   className = "",
@@ -220,6 +227,7 @@ export function DateUserFilters({
     .join(" ");
 
   const showStatus = Boolean(statusOptions?.length && onChangeStatusId);
+  const showEmpresa = Boolean(onChangeEmpresaId);
 
   const filters = (
     <>
@@ -247,13 +255,25 @@ export function DateUserFilters({
       )}
 
       {showStatus && statusOptions && onChangeStatusId ? (
-        <StatusDropdown
+        <FilterDropdown
           id="filtro-status"
           label="Status"
           options={statusOptions}
           value={statusId}
           onChange={onChangeStatusId}
           disabled={disabled}
+        />
+      ) : null}
+
+      {showEmpresa ? (
+        <FilterDropdown
+          id="filtro-empresa"
+          label="Empresa"
+          options={empresaOptions ?? []}
+          value={empresaId}
+          onChange={onChangeEmpresaId!}
+          disabled={disabled}
+          placeholderLabel="Todas"
         />
       ) : null}
 

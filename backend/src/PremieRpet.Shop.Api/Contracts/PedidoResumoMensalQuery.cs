@@ -8,8 +8,9 @@ public sealed class PedidoResumoMensalQuery
     public DateTimeOffset? Ate { get; set; }
     public Guid? UsuarioId { get; set; }
     public int? StatusId { get; set; }
+    public Guid? EmpresaId { get; set; }
 
-    public (DateTimeOffset De, DateTimeOffset Ate, Guid? UsuarioId, int? StatusId) Normalize(DateTimeOffset referencia)
+    public (DateTimeOffset De, DateTimeOffset Ate, Guid? UsuarioId, int? StatusId, Guid? EmpresaId) Normalize(DateTimeOffset referencia)
     {
         var inicioReferencia = new DateTimeOffset(new DateTime(referencia.Year, referencia.Month, 1, 0, 0, 0, DateTimeKind.Utc));
         var inicio = De ?? inicioReferencia;
@@ -20,6 +21,6 @@ public sealed class PedidoResumoMensalQuery
 
         int? status = StatusId is int valor && valor > 0 ? valor : (int?)null;
 
-        return (inicio, fim, UsuarioId, status);
+        return (inicio, fim, UsuarioId, status, EmpresaId);
     }
 }

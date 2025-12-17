@@ -16,6 +16,8 @@ type PedidoDetalhe = {
   usuarioCpf: string | null;
   unidadeEntregaId: string;
   unidadeEntregaNome: string;
+  empresaId: string;
+  empresaNome: string;
   statusId: number;
   statusNome: string;
   dataHora: string;
