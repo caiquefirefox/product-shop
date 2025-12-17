@@ -329,7 +329,7 @@ export function DateUserFilters({
 
   return (
     <div className={containerClasses}>
-      <div className="flex min-w-0 flex-1 flex-wrap items-end gap-4">{filters}</div>
+      <div className="flex min-w-0 flex-1 flex-wrap items-end gap-4 md:flex-nowrap">{filters}</div>
 
       {(onApply || children) && (
         <div className="flex shrink-0 items-center gap-3 self-end whitespace-nowrap lg:self-auto">
