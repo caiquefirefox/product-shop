@@ -26,14 +26,14 @@ export default function Relatorios() {
   const [statusId, setStatusId] = useState<string>("");
   const [statusOptions, setStatusOptions] = useState<SimpleOption[]>([]);
   const [statusLoading, setStatusLoading] = useState(false);
-  const empresaOptions = useMemo(
-    () => empresas.map((empresa) => ({ value: empresa.id, label: empresa.nome })),
-    [empresas],
-  );
   const [empresaId, setEmpresaId] = useState<string>("");
   const [empresas, setEmpresas] = useState<EmpresaOption[]>([]);
   const [empresasLoading, setEmpresasLoading] = useState(false);
   const [empresasErro, setEmpresasErro] = useState<string | null>(null);
+  const empresaOptions = useMemo(
+    () => empresas.map((empresa) => ({ value: empresa.id, label: empresa.nome })),
+    [empresas],
+  );
 
   // dados & estados
   const [pedidos, setPedidos] = useState<PedidoDetalhe[]>([]);
