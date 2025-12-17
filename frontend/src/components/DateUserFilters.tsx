@@ -220,7 +220,7 @@ export function DateUserFilters({
   };
 
   const containerClasses = [
-    "flex flex-col gap-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-100 lg:flex-row lg:items-end lg:gap-6",
+    "flex flex-col gap-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-100 lg:gap-6",
     className,
   ]
     .filter(Boolean)
@@ -329,10 +329,10 @@ export function DateUserFilters({
 
   return (
     <div className={containerClasses}>
-      <div className="flex min-w-0 flex-1 flex-wrap items-end gap-4">{filters}</div>
+      <div className="flex min-w-0 flex-1 flex-wrap items-end gap-4 md:flex-nowrap">{filters}</div>
 
       {(onApply || children) && (
-        <div className="flex shrink-0 items-center gap-3 self-end whitespace-nowrap lg:self-auto">
+        <div className="flex w-full shrink-0 flex-wrap items-center gap-3 self-start whitespace-nowrap lg:justify-end lg:self-auto">
           {onApply && (
             <button
               type="button"
