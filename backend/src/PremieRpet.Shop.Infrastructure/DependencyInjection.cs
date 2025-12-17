@@ -17,6 +17,7 @@ public static class DependencyInjection
             o.UseNpgsql(configuration.GetConnectionString("Postgres")));
         services.AddScoped<IProdutoRepository, ProdutoRepository>();
         services.AddScoped<IPedidoRepository, PedidoRepository>();
+        services.AddScoped<IEmpresaRepository, EmpresaRepository>();
         services.AddScoped<IUnidadeEntregaRepository, UnidadeEntregaRepository>();
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
         services.AddHttpClient();

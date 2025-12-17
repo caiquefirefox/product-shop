@@ -14,8 +14,8 @@ public class RelatoriosController(IPedidoService svc) : ControllerBase
 {
     [HttpGet("pedidos")]
     [Authorize("Admin")]
-    public Task<IReadOnlyList<PedidoResumoDto>> Pedidos([FromQuery] DateTimeOffset? de, [FromQuery] DateTimeOffset? ate, CancellationToken ct)
-        => svc.ListarPedidosAsync(de, ate, ct);
+    public Task<IReadOnlyList<PedidoResumoDto>> Pedidos([FromQuery] DateTimeOffset? de, [FromQuery] DateTimeOffset? ate, [FromQuery] Guid? empresaId, CancellationToken ct)
+        => svc.ListarPedidosAsync(de, ate, empresaId, ct);
 
     [HttpGet("pedidos/detalhes")]
     [Authorize("Admin")]
@@ -24,8 +24,9 @@ public class RelatoriosController(IPedidoService svc) : ControllerBase
         [FromQuery] DateTimeOffset? ate,
         [FromQuery] Guid? usuarioId,
         [FromQuery] int? statusId,
+        [FromQuery] Guid? empresaId,
         CancellationToken ct)
-        => svc.ListarPedidosDetalhadosAsync(de, ate, usuarioId, statusId, ct);
+        => svc.ListarPedidosDetalhadosAsync(de, ate, usuarioId, statusId, empresaId, ct);
 
     [HttpGet("pedidos/excel")]
     [Authorize("Admin")]
@@ -33,9 +34,10 @@ public class RelatoriosController(IPedidoService svc) : ControllerBase
         [FromQuery] DateTimeOffset? de,
         [FromQuery] DateTimeOffset? ate,
         [FromQuery] Guid? usuarioId,
+        [FromQuery] Guid? empresaId,
         CancellationToken ct)
     {
-        var pedidos = await svc.ListarPedidosDetalhadosAsync(de, ate, usuarioId, PedidoStatusIds.Aprovado, ct);
+        var pedidos = await svc.ListarPedidosDetalhadosAsync(de, ate, usuarioId, PedidoStatusIds.Aprovado, empresaId, ct);
         var arquivo = PedidosExcelExporter.Gerar(pedidos);
         var nomeArquivo = $"relatorio-pedidos-{DateTimeOffset.UtcNow:yyyyMMddHHmmss}.xlsx";
         return new FileContentResult(arquivo, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")

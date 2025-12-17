@@ -13,6 +13,7 @@ public sealed class ShopDbContext : DbContext
     public DbSet<PedidoStatus> PedidoStatus => Set<PedidoStatus>();
     public DbSet<PedidoHistorico> PedidoHistoricos => Set<PedidoHistorico>();
     public DbSet<UnidadeEntrega> UnidadesEntrega => Set<UnidadeEntrega>();
+    public DbSet<Empresa> Empresas => Set<Empresa>();
     public DbSet<ProdutoEspecieOpcao> ProdutoEspecieOpcoes => Set<ProdutoEspecieOpcao>();
     public DbSet<ProdutoPorteOpcao> ProdutoPorteOpcoes => Set<ProdutoPorteOpcao>();
     public DbSet<ProdutoTipoOpcao> ProdutoTipoOpcoes => Set<ProdutoTipoOpcao>();
@@ -25,6 +26,9 @@ public sealed class ShopDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder b)
     {
+        var premierEmpresaId = Guid.Parse("f6413e92-bc2f-4baf-881c-d1ec6f6c0a4e");
+        var eucatexEmpresaId = Guid.Parse("6f9502b1-5ba6-4f4b-920a-66a79ab41c45");
+
         b.Entity<Produto>(e =>
         {
             e.HasKey(p => p.Id);
@@ -74,34 +78,59 @@ public sealed class ShopDbContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
+        b.Entity<Empresa>(e =>
+        {
+            e.HasKey(emp => emp.Id);
+            e.Property(emp => emp.Nome).HasMaxLength(200).IsRequired();
+            e.HasIndex(emp => emp.Nome).IsUnique();
+
+            e.HasData(
+                new Empresa { Id = premierEmpresaId, Nome = "PremieRpet" },
+                new Empresa { Id = eucatexEmpresaId, Nome = "Eucatex" }
+            );
+        });
+
         b.Entity<UnidadeEntrega>(e =>
         {
             e.HasKey(u => u.Id);
             e.Property(u => u.Nome).HasMaxLength(200).IsRequired();
-            e.HasIndex(u => u.Nome).IsUnique();
+            e.Property(u => u.EmpresaId).IsRequired();
+            e.HasIndex(u => new { u.EmpresaId, u.Nome }).IsUnique();
+
+            e.HasOne(u => u.Empresa)
+                .WithMany(emp => emp.UnidadesEntrega)
+                .HasForeignKey(u => u.EmpresaId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_UnidadesEntrega_Empresas_EmpresaId");
 
             e.HasData(
-                new UnidadeEntrega { Id = Guid.Parse("f828a309-3b7a-55bb-9921-a4b3640e180b"), Nome = "BAHIA" },
-                new UnidadeEntrega { Id = Guid.Parse("1401ae7a-fd5d-5fea-978d-4b7ee0350748"), Nome = "BRASCORP" },
-                new UnidadeEntrega { Id = Guid.Parse("7f6ab4ca-bf95-569b-a9f7-c24f46ac09e2"), Nome = "CD SANTANA DE PARNAÍBA" },
-                new UnidadeEntrega { Id = Guid.Parse("9b216587-cea4-5f99-a123-d519be4b6925"), Nome = "DISTRITO FEDERAL" },
-                new UnidadeEntrega { Id = Guid.Parse("4e2c96fa-585a-5d39-9bf3-39b3ef473e7b"), Nome = "GOIÁS" },
-                new UnidadeEntrega { Id = Guid.Parse("083eb7fc-8fa1-517f-8aec-1e20b779cdb2"), Nome = "PARANÁ" },
-                new UnidadeEntrega { Id = Guid.Parse("c30f2dd6-8741-58e2-a65b-881435ff701f"), Nome = "PERNAMBUCO" },
-                new UnidadeEntrega { Id = Guid.Parse("41f894cd-6c17-566f-bd08-6ad8eb97e9d9"), Nome = "PREMIER ESCRITÓRIO - SP" },
-                new UnidadeEntrega { Id = Guid.Parse("06fd3c2b-6c72-5f94-893d-e63466d0e34d"), Nome = "PREMIER INTERIOR - SP" },
-                new UnidadeEntrega { Id = Guid.Parse("784332e4-5052-5314-b7c2-4e6fd7f20255"), Nome = "PREMIER LITORAL - SP" },
-                new UnidadeEntrega { Id = Guid.Parse("595407a3-c4f7-5639-aa7c-a1befb4d6e70"), Nome = "RIO DE JANEIRO" },
-                new UnidadeEntrega { Id = Guid.Parse("6f208b53-e62b-576a-8de4-fbf673db66aa"), Nome = "RIO GRANDE DO SUL" },
-                new UnidadeEntrega { Id = Guid.Parse("e1f1e75f-3818-5022-b0f8-3b2060ca2ac1"), Nome = "SANTA CATARINA" },
-                new UnidadeEntrega { Id = Guid.Parse("737aed3e-dc2e-5534-9456-986f1b7db715"), Nome = "CD BETIM - MG" },
-                new UnidadeEntrega { Id = Guid.Parse("0c63cefe-5b6b-57f9-b073-a035d292d864"), Nome = "RIO GRANDE DO NORTE" },
-                new UnidadeEntrega { Id = Guid.Parse("bcb84da6-c993-54e7-8c14-665f89d70433"), Nome = "CD EXTREMA - MG" },
-                new UnidadeEntrega { Id = Guid.Parse("a1e08cc1-1962-4e30-a9a1-f899176d71a3"), Nome = "CD HORTOLÂNDIA" },
-                new UnidadeEntrega { Id = Guid.Parse("c3f7f6a1-b95b-4ec4-a8ce-bb3aa3cbd48c"), Nome = "CD BARUERI" },
-                new UnidadeEntrega { Id = Guid.Parse("1acb4bc4-8c07-5aea-895d-5a8657ae8dbb"), Nome = "CEARÁ" },
-                new UnidadeEntrega { Id = Guid.Parse("dce4840f-14c4-59d0-8a23-a03df0705d3c"), Nome = "FÁBRICA PARANÁ" },
-                new UnidadeEntrega { Id = Guid.Parse("1d7f3994-a00a-56a6-aa07-09b593ede157"), Nome = "FÁBRICA DOURADO" }
+                new UnidadeEntrega { Id = Guid.Parse("f828a309-3b7a-55bb-9921-a4b3640e180b"), Nome = "BAHIA", EmpresaId = premierEmpresaId },
+                new UnidadeEntrega { Id = Guid.Parse("1401ae7a-fd5d-5fea-978d-4b7ee0350748"), Nome = "BRASCORP", EmpresaId = premierEmpresaId },
+                new UnidadeEntrega { Id = Guid.Parse("7f6ab4ca-bf95-569b-a9f7-c24f46ac09e2"), Nome = "CD SANTANA DE PARNAÍBA", EmpresaId = premierEmpresaId },
+                new UnidadeEntrega { Id = Guid.Parse("9b216587-cea4-5f99-a123-d519be4b6925"), Nome = "DISTRITO FEDERAL", EmpresaId = premierEmpresaId },
+                new UnidadeEntrega { Id = Guid.Parse("4e2c96fa-585a-5d39-9bf3-39b3ef473e7b"), Nome = "GOIÁS", EmpresaId = premierEmpresaId },
+                new UnidadeEntrega { Id = Guid.Parse("083eb7fc-8fa1-517f-8aec-1e20b779cdb2"), Nome = "PARANÁ", EmpresaId = premierEmpresaId },
+                new UnidadeEntrega { Id = Guid.Parse("c30f2dd6-8741-58e2-a65b-881435ff701f"), Nome = "PERNAMBUCO", EmpresaId = premierEmpresaId },
+                new UnidadeEntrega { Id = Guid.Parse("41f894cd-6c17-566f-bd08-6ad8eb97e9d9"), Nome = "PREMIER ESCRITÓRIO - SP", EmpresaId = premierEmpresaId },
+                new UnidadeEntrega { Id = Guid.Parse("06fd3c2b-6c72-5f94-893d-e63466d0e34d"), Nome = "PREMIER INTERIOR - SP", EmpresaId = premierEmpresaId },
+                new UnidadeEntrega { Id = Guid.Parse("784332e4-5052-5314-b7c2-4e6fd7f20255"), Nome = "PREMIER LITORAL - SP", EmpresaId = premierEmpresaId },
+                new UnidadeEntrega { Id = Guid.Parse("595407a3-c4f7-5639-aa7c-a1befb4d6e70"), Nome = "RIO DE JANEIRO", EmpresaId = premierEmpresaId },
+                new UnidadeEntrega { Id = Guid.Parse("6f208b53-e62b-576a-8de4-fbf673db66aa"), Nome = "RIO GRANDE DO SUL", EmpresaId = premierEmpresaId },
+                new UnidadeEntrega { Id = Guid.Parse("e1f1e75f-3818-5022-b0f8-3b2060ca2ac1"), Nome = "SANTA CATARINA", EmpresaId = premierEmpresaId },
+                new UnidadeEntrega { Id = Guid.Parse("737aed3e-dc2e-5534-9456-986f1b7db715"), Nome = "CD BETIM - MG", EmpresaId = premierEmpresaId },
+                new UnidadeEntrega { Id = Guid.Parse("0c63cefe-5b6b-57f9-b073-a035d292d864"), Nome = "RIO GRANDE DO NORTE", EmpresaId = premierEmpresaId },
+                new UnidadeEntrega { Id = Guid.Parse("bcb84da6-c993-54e7-8c14-665f89d70433"), Nome = "CD EXTREMA - MG", EmpresaId = premierEmpresaId },
+                new UnidadeEntrega { Id = Guid.Parse("a1e08cc1-1962-4e30-a9a1-f899176d71a3"), Nome = "CD HORTOLÂNDIA", EmpresaId = premierEmpresaId },
+                new UnidadeEntrega { Id = Guid.Parse("c3f7f6a1-b95b-4ec4-a8ce-bb3aa3cbd48c"), Nome = "CD BARUERI", EmpresaId = premierEmpresaId },
+                new UnidadeEntrega { Id = Guid.Parse("1acb4bc4-8c07-5aea-895d-5a8657ae8dbb"), Nome = "CEARÁ", EmpresaId = premierEmpresaId },
+                new UnidadeEntrega { Id = Guid.Parse("dce4840f-14c4-59d0-8a23-a03df0705d3c"), Nome = "FÁBRICA PARANÁ", EmpresaId = premierEmpresaId },
+                new UnidadeEntrega { Id = Guid.Parse("1d7f3994-a00a-56a6-aa07-09b593ede157"), Nome = "FÁBRICA DOURADO", EmpresaId = premierEmpresaId },
+                new UnidadeEntrega { Id = Guid.Parse("5f933992-bd8c-4bb0-9b9d-3b40dc8b32c0"), Nome = "BOTUCATU FIBRAS", EmpresaId = eucatexEmpresaId },
+                new UnidadeEntrega { Id = Guid.Parse("d8b7ebae-858f-4f9d-8d76-2c7f0f5a6f1b"), Nome = "BOTUCATU MDP", EmpresaId = eucatexEmpresaId },
+                new UnidadeEntrega { Id = Guid.Parse("c1eb6c4f-884b-4f59-9bb5-361b5c7235a0"), Nome = "COSTA RICA", EmpresaId = eucatexEmpresaId },
+                new UnidadeEntrega { Id = Guid.Parse("a2e3b2f4-22b2-4f30-a47f-b17bbd89f640"), Nome = "EUCATEX ESCRITÓRIO - SP", EmpresaId = eucatexEmpresaId },
+                new UnidadeEntrega { Id = Guid.Parse("c3a7853a-10a0-4b34-9c63-63e7d69fdd59"), Nome = "SALTO", EmpresaId = eucatexEmpresaId },
+                new UnidadeEntrega { Id = Guid.Parse("0d7a7a3c-c1f5-4bc3-9e1b-df7d21b34cc1"), Nome = "PERNAMBUCO", EmpresaId = eucatexEmpresaId }
             );
         });
 

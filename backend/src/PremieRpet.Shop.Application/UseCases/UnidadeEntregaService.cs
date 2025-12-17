@@ -16,17 +16,17 @@ public sealed class UnidadeEntregaService : IUnidadeEntregaService
     public UnidadeEntregaService(IUnidadeEntregaRepository repo)
         => _repo = repo;
 
-    public async Task<IReadOnlyList<UnidadeEntregaDto>> ListarAsync(CancellationToken ct)
+    public async Task<IReadOnlyList<UnidadeEntregaDto>> ListarAsync(Guid? empresaId, CancellationToken ct)
     {
-        var unidades = await _repo.ListarAsync(ct);
+        var unidades = await _repo.ListarAsync(empresaId, ct);
         return unidades
-            .Select(u => new UnidadeEntregaDto(u.Id, u.Nome))
+            .Select(u => new UnidadeEntregaDto(u.Id, u.Nome, u.EmpresaId))
             .ToList();
     }
 
     public async Task<UnidadeEntregaDto?> ObterAsync(Guid id, CancellationToken ct)
     {
         var unidade = await _repo.ObterPorIdAsync(id, ct);
-        return unidade is null ? null : new UnidadeEntregaDto(unidade.Id, unidade.Nome);
+        return unidade is null ? null : new UnidadeEntregaDto(unidade.Id, unidade.Nome, unidade.EmpresaId);
     }
 }

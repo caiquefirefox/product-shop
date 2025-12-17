@@ -6,8 +6,8 @@ using PremieRpet.Shop.Domain.Entities;
 
 namespace PremieRpet.Shop.Application.Interfaces.Repositories;
 
-public interface IUnidadeEntregaRepository
+public interface IEmpresaRepository
 {
-    Task<IReadOnlyList<UnidadeEntrega>> ListarAsync(Guid? empresaId, CancellationToken ct);
-    Task<UnidadeEntrega?> ObterPorIdAsync(Guid id, CancellationToken ct);
+    Task<IReadOnlyList<Empresa>> ListarAsync(CancellationToken ct);
+    Task<Empresa?> ObterPorIdAsync(Guid id, CancellationToken ct);
 }

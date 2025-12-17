@@ -98,12 +98,14 @@ public sealed class PedidoRepository : IPedidoRepository
     public async Task<Pedido?> GetByIdAsync(Guid id, CancellationToken ct)
         => await _db.Pedidos
             .Include(p => p.UnidadeEntrega)
+                .ThenInclude(u => u!.Empresa)
             .FirstOrDefaultAsync(p => p.Id == id, ct);
 
     public async Task<Pedido?> GetWithItensAsync(Guid id, CancellationToken ct)
         => await _db.Pedidos
             .Include(p => p.Status)
             .Include(p => p.UnidadeEntrega)
+                .ThenInclude(u => u!.Empresa)
             .Include(p => p.Itens)
                 .ThenInclude(i => i.Produto)
             .Include(p => p.Historicos)
@@ -119,6 +121,7 @@ public sealed class PedidoRepository : IPedidoRepository
     public IQueryable<Pedido> Query() => _db.Pedidos
         .Include(p => p.Status)
         .Include(p => p.UnidadeEntrega)
+            .ThenInclude(u => u!.Empresa)
         .Include(p => p.Itens)
             .ThenInclude(i => i.Produto)
         .AsQueryable();

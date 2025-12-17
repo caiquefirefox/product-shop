@@ -14,6 +14,11 @@ type UnidadeEntrega = {
   nome: string;
 };
 
+type Empresa = {
+  id: string;
+  nome: string;
+};
+
 type DeliveryDropdownProps = {
   id: string;
   label: string;
@@ -177,11 +182,15 @@ export default function Checkout() {
   const limiteMensalFormatado = limiteMensalKg > 0
     ? formatPeso(limiteMensalKg, "kg", { unit: "kg" })
     : "Não configurado";
+  const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [empresaId, setEmpresaId] = useState<string>("");
   const [unidades, setUnidades] = useState<UnidadeEntrega[]>([]);
   const [unidadeId, setUnidadeId] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [loadingEmpresas, setLoadingEmpresas] = useState(true);
   const [loadingUnidades, setLoadingUnidades] = useState(true);
   const [loadingPerfil, setLoadingPerfil] = useState(true);
+  const [empresasErro, setEmpresasErro] = useState<string | null>(null);
   const [perfilErro, setPerfilErro] = useState<string | null>(null);
   const [cpf, setCpf] = useState<string>("");
   const [cpfBloqueado, setCpfBloqueado] = useState(false);
@@ -190,24 +199,48 @@ export default function Checkout() {
   const navigate = useNavigate();
   const { success, error: toastError } = useToast();
 
+  useEffect(() => {
+    let alive = true;
+    setLoadingEmpresas(true);
+    setEmpresasErro(null);
+
+    api.get<Empresa[]>("/empresas")
+      .then(r => {
+        if (!alive) return;
+        setEmpresas(r.data || []);
+      })
+      .catch(e => {
+        if (!alive) return;
+        setEmpresasErro(e?.response?.data?.title ?? "Falha ao carregar empresas.");
+      })
+      .finally(() => { if (!alive) return; setLoadingEmpresas(false); });
+
+    return () => { alive = false; };
+  }, []);
+
   // Busca unidades do backend
   useEffect(() => {
     let alive = true;
     setLoadingUnidades(true);
-    api.get<UnidadeEntrega[]>("/unidades-entrega")
+
+    if (!empresaId) {
+      setUnidades([]);
+      setUnidadeId("");
+      setLoadingUnidades(false);
+      return () => { alive = false; };
+    }
+
+    api.get<UnidadeEntrega[]>(`/unidades-entrega?empresaId=${empresaId}`)
       .then(r => {
         if (!alive) return;
         const lista = r.data || [];
         setUnidades(lista);
-        setUnidadeId((current) => {
-          if (current) return current;
-          return lista.length > 0 ? lista[0].id : "";
-        });
+        setUnidadeId(lista.length > 0 ? lista[0].id : "");
       })
       .catch(e => { if (!alive) return; setErr(e?.response?.data?.title ?? "Falha ao carregar unidades de entrega."); })
       .finally(() => { if (!alive) return; setLoadingUnidades(false); });
     return () => { alive = false; };
-  }, []);
+  }, [empresaId]);
 
   useEffect(() => {
     let alive = true;
@@ -288,8 +321,10 @@ export default function Checkout() {
 
   const disableFinalize =
     loading ||
+    loadingEmpresas ||
     loadingUnidades ||
     loadingPerfil ||
+    !empresaId ||
     !unidadeId ||
     anyBelowMinimum ||
     (!cpfBloqueado && !isValidCpf(cpf));
@@ -341,10 +376,49 @@ export default function Checkout() {
             )}
 
             <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium text-gray-700">Empresa</span>
+              {loadingEmpresas ? (
+                <div className="text-sm text-gray-600">Carregando empresas...</div>
+              ) : empresasErro ? (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{empresasErro}</div>
+              ) : empresas.length ? (
+                <div className="grid gap-2">
+                  {empresas.map(empresa => (
+                    <label
+                      key={empresa.id}
+                      className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 px-3 py-2 text-sm shadow-sm transition hover:border-indigo-200 hover:text-indigo-600"
+                    >
+                      <input
+                        type="radio"
+                        name="empresa"
+                        value={empresa.id}
+                        checked={empresaId === empresa.id}
+                        onChange={() => setEmpresaId(empresa.id)}
+                        className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span className="text-gray-700">{empresa.nome}</span>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  Nenhuma empresa disponível. Entre em contato com o suporte.
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2">
               {loadingUnidades ? (
                 <>
                   <span className="text-sm font-medium text-gray-700">Entrega</span>
                   <div className="text-sm text-gray-600">Carregando unidades...</div>
+                </>
+              ) : !empresaId ? (
+                <>
+                  <span className="text-sm font-medium text-gray-700">Entrega</span>
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                    Selecione uma empresa para listar as unidades de entrega.
+                  </div>
                 </>
               ) : unidades.length ? (
                 <DeliveryDropdown

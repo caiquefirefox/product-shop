@@ -45,6 +45,11 @@ type UnidadeEntregaOption = {
   nome: string;
 };
 
+type EmpresaOption = {
+  id: string;
+  nome: string;
+};
+
 type DetailMode = "edit" | "view";
 
 function formatDateTimePtBr(iso: string) {
@@ -84,6 +89,11 @@ export default function Pedidos() {
   const [appliedStatusFiltro, setAppliedStatusFiltro] = useState("");
   const [statusOptions, setStatusOptions] = useState<SimpleOption[]>([]);
   const [statusLoading, setStatusLoading] = useState(false);
+  const [empresaFiltro, setEmpresaFiltro] = useState("");
+  const [appliedEmpresaFiltro, setAppliedEmpresaFiltro] = useState("");
+  const [empresas, setEmpresas] = useState<EmpresaOption[]>([]);
+  const [empresasLoading, setEmpresasLoading] = useState(false);
+  const [empresasError, setEmpresasError] = useState<string | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancelConfirmPedido, setCancelConfirmPedido] = useState<PedidoDetalhe | null>(null);
@@ -111,6 +121,7 @@ export default function Pedidos() {
   const editorRef = useRef<HTMLDivElement | null>(null);
 
   const [editorItens, setEditorItens] = useState<EditorItem[]>([]);
+  const [empresaIdEditor, setEmpresaIdEditor] = useState("");
   const [unidadeEntregaId, setUnidadeEntregaId] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -204,11 +215,23 @@ export default function Pedidos() {
     return "";
   }, [unidadeSelecionadaOption, pedidoSelecionado, unidadeEntregaId]);
 
+  const empresaSelecionadaNome = useMemo(() => {
+    const selecionada = empresas.find((empresa) => empresa.id === empresaIdEditor);
+    if (selecionada) return selecionada.nome;
+    return pedidoSelecionado?.empresaNome || "";
+  }, [empresaIdEditor, empresas, pedidoSelecionado]);
+
+  const empresaOptions = useMemo(
+    () => empresas.map((empresa) => ({ value: empresa.id, label: empresa.nome })),
+    [empresas]
+  );
+
   const hasActiveFilters = useMemo(() => {
     const status = appliedStatusFiltro.trim();
     const usuario = appliedUsuarioFiltro.trim();
-    return status || usuario || appliedDe !== defaultDe || appliedAte !== defaultAte;
-  }, [appliedAte, appliedDe, appliedStatusFiltro, appliedUsuarioFiltro, defaultAte, defaultDe]);
+    const empresa = appliedEmpresaFiltro.trim();
+    return status || usuario || empresa || appliedDe !== defaultDe || appliedAte !== defaultAte;
+  }, [appliedAte, appliedDe, appliedEmpresaFiltro, appliedStatusFiltro, appliedUsuarioFiltro, defaultAte, defaultDe]);
 
   const isSingleUserList = useMemo(() => {
     if (!isAdmin) return true;
@@ -285,6 +308,10 @@ export default function Pedidos() {
         params.statusId = appliedStatusFiltro;
       }
 
+      if (appliedEmpresaFiltro.trim()) {
+        params.empresaId = appliedEmpresaFiltro.trim();
+      }
+
       if (isAdmin && appliedUsuarioFiltro.trim()) {
         params.usuarioBusca = appliedUsuarioFiltro.trim();
       }
@@ -303,7 +330,7 @@ export default function Pedidos() {
     } finally {
       setListLoading(false);
     }
-  }, [appliedDe, appliedAte, appliedStatusFiltro, appliedUsuarioFiltro, isAdmin, page, pageSize]);
+  }, [appliedAte, appliedDe, appliedEmpresaFiltro, appliedStatusFiltro, appliedUsuarioFiltro, isAdmin, page, pageSize]);
 
   const loadResumo = useCallback(async () => {
     const requestId = resumoRequestIdRef.current + 1;
@@ -343,6 +370,10 @@ export default function Pedidos() {
         params.statusId = appliedStatusFiltro;
       }
 
+      if (appliedEmpresaFiltro.trim()) {
+        params.empresaId = appliedEmpresaFiltro.trim();
+      }
+
       if (isAdmin && resumoUsuarioId) {
         params.usuarioId = resumoUsuarioId;
       }
@@ -359,7 +390,7 @@ export default function Pedidos() {
       if (requestId !== resumoRequestIdRef.current) return;
       setResumoLoading(false);
     }
-  }, [appliedDe, appliedAte, appliedStatusFiltro, isAdmin, resumoUsuarioId]);
+  }, [appliedAte, appliedDe, appliedEmpresaFiltro, appliedStatusFiltro, isAdmin, resumoUsuarioId]);
 
   const aplicarFiltros = useCallback(() => {
     setListError(null);
@@ -369,18 +400,21 @@ export default function Pedidos() {
     setAppliedAte(ate);
     setAppliedUsuarioFiltro(usuarioFiltro);
     setAppliedStatusFiltro(statusFiltro);
-  }, [ate, de, statusFiltro, usuarioFiltro]);
+    setAppliedEmpresaFiltro(empresaFiltro);
+  }, [ate, de, empresaFiltro, statusFiltro, usuarioFiltro]);
 
   const limparFiltros = useCallback(() => {
     setDe(defaultDe);
     setAte(defaultAte);
     setUsuarioFiltro("");
     setStatusFiltro("");
+    setEmpresaFiltro("");
     setPage(1);
     setAppliedDe(defaultDe);
     setAppliedAte(defaultAte);
     setAppliedUsuarioFiltro("");
     setAppliedStatusFiltro("");
+    setAppliedEmpresaFiltro("");
     setListError(null);
     setResumoError(null);
   }, [defaultAte, defaultDe]);
@@ -464,21 +498,59 @@ export default function Pedidos() {
 
   useEffect(() => {
     let alive = true;
-    setUnidadesLoading(true);
+    setEmpresasLoading(true);
+    setEmpresasError(null);
+
     api
-      .get<UnidadeEntregaOption[]>("/unidades-entrega")
+      .get<EmpresaOption[]>("/empresas")
+      .then((response) => {
+        if (!alive) return;
+        setEmpresas(response.data || []);
+      })
+      .catch((error: any) => {
+        if (!alive) return;
+        const msg = error?.response?.data?.detail || error?.message || "Não foi possível carregar empresas.";
+        setEmpresasError(msg);
+        setEmpresas([]);
+      })
+      .finally(() => {
+        if (!alive) return;
+        setEmpresasLoading(false);
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    setUnidadesLoading(true);
+
+    if (!empresaIdEditor) {
+      setUnidadesEntrega([]);
+      setUnidadeEntregaId("");
+      setUnidadesLoading(false);
+      return () => {
+        alive = false;
+      };
+    }
+
+    api
+      .get<UnidadeEntregaOption[]>("/unidades-entrega", { params: { empresaId: empresaIdEditor } })
       .then((response) => {
         if (!alive) return;
         const lista = response.data || [];
         setUnidadesEntrega(lista);
         setUnidadeEntregaId((current) => {
-          if (current) return current;
+          if (current && lista.some((unidade) => unidade.id === current)) return current;
           return lista.length > 0 ? lista[0].id : "";
         });
       })
       .catch(() => {
         if (!alive) return;
         setUnidadesEntrega([]);
+        setUnidadeEntregaId("");
       })
       .finally(() => {
         if (!alive) return;
@@ -488,7 +560,7 @@ export default function Pedidos() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [empresaIdEditor]);
 
   useEffect(() => {
     let alive = true;
@@ -539,6 +611,7 @@ export default function Pedidos() {
           minQty: resolveMinQty(item.quantidadeMinima, minQtyPadrao),
         }))
       );
+      setEmpresaIdEditor(data.pedido.empresaId);
       setUnidadeEntregaId(data.pedido.unidadeEntregaId);
     } catch (error: any) {
       const msg = error?.response?.data?.detail || error?.message || "Não foi possível carregar os detalhes do pedido.";
@@ -546,6 +619,8 @@ export default function Pedidos() {
       setDetalhe(null);
       setEditorItens([]);
       setSelectedPedidoId(null);
+      setEmpresaIdEditor("");
+      setUnidadeEntregaId("");
     } finally {
       setDetailLoading(false);
       setLoadingPedidoId((current) => (current === id ? null : current));
@@ -996,9 +1071,12 @@ export default function Pedidos() {
         statusId={statusFiltro}
         onChangeStatusId={setStatusFiltro}
         statusOptions={statusOptions}
+        empresaId={empresaFiltro}
+        onChangeEmpresaId={setEmpresaFiltro}
+        empresaOptions={empresaOptions}
         onApply={aplicarFiltros}
         applyLabel={listLoading ? "Buscando..." : "Buscar"}
-        disabled={listLoading || statusLoading}
+        disabled={listLoading || statusLoading || empresasLoading}
       >
         {hasActiveFilters ? (
           <button
@@ -1215,6 +1293,7 @@ export default function Pedidos() {
                     </p>
                     <p>
                       Pedido realizado em {formatDateTimePtBr(pedidoSelecionado.dataHora)} · Unidade atual: {pedidoSelecionado.unidadeEntregaNome}
+                      {pedidoSelecionado.empresaNome ? ` · Empresa: ${pedidoSelecionado.empresaNome}` : ""}
                     </p>
                   </div>
                 )}
@@ -1239,12 +1318,42 @@ export default function Pedidos() {
               <div className={`grid gap-6 ${effectiveCanEdit ? "lg:grid-cols-2" : ""}`}>
                 <div className="space-y-4">
                   <div className="space-y-2">
+                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Empresa</label>
+                    {effectiveCanEdit ? (
+                      <select
+                        value={empresaIdEditor}
+                        onChange={(event) => {
+                          setEmpresaIdEditor(event.target.value);
+                          setUnidadeEntregaId("");
+                        }}
+                        disabled={empresasLoading || !effectiveCanEdit || saving}
+                        className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      >
+                        <option value="">Selecione</option>
+                        {empresas.map((empresa) => (
+                          <option key={empresa.id} value={empresa.id}>{empresa.nome}</option>
+                        ))}
+                        {!empresas.find((empresa) => empresa.id === empresaIdEditor) && empresaIdEditor && (
+                          <option value={empresaIdEditor}>{empresaSelecionadaNome || empresaIdEditor}</option>
+                        )}
+                      </select>
+                    ) : (
+                      <div className="mt-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700">
+                        {empresaSelecionadaNome || "Não informado"}
+                      </div>
+                    )}
+                    {empresasError && (
+                      <p className="text-xs text-red-600">{empresasError}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
                     <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Unidade de entrega</label>
                     {effectiveCanEdit ? (
                       <select
                         value={unidadeEntregaId}
                         onChange={(event) => setUnidadeEntregaId(event.target.value)}
-                        disabled={unidadesLoading || !effectiveCanEdit || saving}
+                        disabled={unidadesLoading || !effectiveCanEdit || saving || !empresaIdEditor}
                         className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
                       >
                         {unidadesEntrega.map((unidade) => (
@@ -1425,7 +1534,7 @@ export default function Pedidos() {
                           type="button"
                           className="w-full rounded-full bg-[#FF6900] px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#FF6900]/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6900]/40 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                           onClick={salvarAlteracoes}
-                          disabled={!effectiveCanEdit || saving || editorItens.length === 0 || !unidadeEntregaId}
+                          disabled={!effectiveCanEdit || saving || editorItens.length === 0 || !empresaIdEditor || !unidadeEntregaId}
                         >
                           {saving ? "Salvando..." : "Salvar alterações"}
                         </button>
