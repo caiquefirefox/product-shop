@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,14 +9,14 @@ using PremieRpet.Shop.Application.Interfaces.UseCases;
 namespace PremieRpet.Shop.Api.Controllers;
 
 [ApiController]
-[Route("api/unidades-entrega")]
-public class UnidadesEntregaController(IUnidadeEntregaService unidades) : ControllerBase
+[Route("api/empresas")]
+public class EmpresasController(IEmpresaService empresas) : ControllerBase
 {
     [HttpGet]
     [Authorize]
-    public async Task<ActionResult<IReadOnlyList<UnidadeEntregaDto>>> Get([FromQuery] Guid? empresaId, CancellationToken ct)
+    public async Task<ActionResult<IReadOnlyList<EmpresaDto>>> Get(CancellationToken ct)
     {
-        var lista = await unidades.ListarAsync(empresaId, ct);
+        var lista = await empresas.ListarAsync(ct);
         return Ok(lista);
     }
 }

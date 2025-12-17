@@ -6,8 +6,8 @@ using PremieRpet.Shop.Application.DTOs;
 
 namespace PremieRpet.Shop.Application.Interfaces.UseCases;
 
-public interface IUnidadeEntregaService
+public interface IEmpresaService
 {
-    Task<IReadOnlyList<UnidadeEntregaDto>> ListarAsync(Guid? empresaId, CancellationToken ct);
-    Task<UnidadeEntregaDto?> ObterAsync(Guid id, CancellationToken ct);
+    Task<IReadOnlyList<EmpresaDto>> ListarAsync(CancellationToken ct);
+    Task<EmpresaDto?> ObterAsync(Guid id, CancellationToken ct);
 }
