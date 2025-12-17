@@ -585,8 +585,22 @@ public sealed class PedidoService : IPedidoService
 
         var unidadeAnteriorId = pedido.UnidadeEntregaId;
         var unidadeAnteriorNome = pedido.UnidadeEntrega?.Nome;
+        var houveAlteracaoUnidade = unidadeAnteriorId != novaUnidade.Id;
+
         pedido.UnidadeEntregaId = novaUnidade.Id;
-        pedido.UnidadeEntrega = null;
+
+        if (houveAlteracaoUnidade)
+        {
+            pedido.UnidadeEntrega = new UnidadeEntrega
+            {
+                Id = novaUnidade.Id,
+                Nome = novaUnidade.Nome
+            };
+        }
+        else if (pedido.UnidadeEntrega is not null)
+        {
+            pedido.UnidadeEntrega.Nome = novaUnidade.Nome;
+        }
         pedido.AtualizadoEm = agora;
         pedido.AtualizadoPorUsuarioId = usuarioAtualId;
 
@@ -596,7 +610,6 @@ public sealed class PedidoService : IPedidoService
         }
 
         PedidoHistorico? historicoRegistro = null;
-        var houveAlteracaoUnidade = unidadeAnteriorId != novaUnidade.Id;
         if (historicoAlteracoes.Count > 0 || houveAlteracaoUnidade)
         {
             var detalhes = new PedidoHistoricoDetalhesDto(
@@ -622,12 +635,6 @@ public sealed class PedidoService : IPedidoService
         }
 
         await _pedidos.UpdateAsync(pedido, ct);
-
-        pedido.UnidadeEntrega = new UnidadeEntrega
-        {
-            Id = novaUnidade.Id,
-            Nome = novaUnidade.Nome
-        };
 
         return MapToDetalhe(pedido);
     }
