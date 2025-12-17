@@ -586,7 +586,11 @@ public sealed class PedidoService : IPedidoService
         var unidadeAnteriorId = pedido.UnidadeEntregaId;
         var unidadeAnteriorNome = pedido.UnidadeEntrega?.Nome;
         pedido.UnidadeEntregaId = novaUnidade.Id;
-        pedido.UnidadeEntrega = null;
+        pedido.UnidadeEntrega = new UnidadeEntrega
+        {
+            Id = novaUnidade.Id,
+            Nome = novaUnidade.Nome
+        };
         pedido.AtualizadoEm = agora;
         pedido.AtualizadoPorUsuarioId = usuarioAtualId;
 
@@ -622,12 +626,6 @@ public sealed class PedidoService : IPedidoService
         }
 
         await _pedidos.UpdateAsync(pedido, ct);
-
-        pedido.UnidadeEntrega = new UnidadeEntrega
-        {
-            Id = novaUnidade.Id,
-            Nome = novaUnidade.Nome
-        };
 
         return MapToDetalhe(pedido);
     }

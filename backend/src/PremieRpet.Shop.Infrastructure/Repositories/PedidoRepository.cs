@@ -29,6 +29,9 @@ public sealed class PedidoRepository : IPedidoRepository
                     case Pedido:
                         node.Entry.State = EntityState.Modified;
                         break;
+                    case UnidadeEntrega:
+                        node.Entry.State = EntityState.Unchanged;
+                        break;
                     case PedidoItem item:
                         node.Entry.State = item.Id == Guid.Empty
                             ? EntityState.Added
