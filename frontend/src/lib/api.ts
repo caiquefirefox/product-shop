@@ -5,8 +5,15 @@ import { clearLocalToken, getLocalToken } from "../auth/localAuth";
 const api = axios.create({ baseURL: import.meta.env.VITE_API_BASE_URL });
 
 const INACTIVE_USER_PROBLEM_TYPE = "https://pedido-interno.premierpet.com.br/problems/user-inactive";
-const SESSION_EXPIRED_MARKERS = ["interaction_required", "aadsts160021"];
+const SESSION_EXPIRED_MARKERS = ["interaction_required", "aadsts160021", "login_required"];
 const ROLE_CACHE_PREFIX = "premier:roles:v2";
+
+function hasSessionExpiredMarker(value: string | undefined) {
+  return (
+    typeof value === "string" &&
+    SESSION_EXPIRED_MARKERS.some((marker) => value.toLowerCase().includes(marker))
+  );
+}
 
 function clearRoleCache() {
   Object.keys(localStorage)
@@ -31,10 +38,6 @@ async function redirectToLogin() {
 }
 
 function isSessionExpired(status: number | undefined, data: unknown, wwwAuthenticateHeader: string | undefined) {
-  const matchesMarker = (value: string | undefined) =>
-    typeof value === "string" &&
-    SESSION_EXPIRED_MARKERS.some((marker) => value.toLowerCase().includes(marker));
-
   const messageFromData =
     typeof data === "string"
       ? data
@@ -47,7 +50,8 @@ function isSessionExpired(status: number | undefined, data: unknown, wwwAuthenti
 
   return (
     status === 401 &&
-    (matchesMarker(wwwAuthenticateHeader) || matchesMarker(typeof messageFromData === "string" ? messageFromData : undefined))
+    (hasSessionExpiredMarker(wwwAuthenticateHeader) ||
+      hasSessionExpiredMarker(typeof messageFromData === "string" ? messageFromData : undefined))
   );
 }
 
@@ -61,12 +65,24 @@ api.interceptors.request.use(async (config) => {
 
   const accounts = pca.getAllAccounts();
   if (accounts.length) {
-    const result = await pca.acquireTokenSilent({
-      account: accounts[0],
-      scopes: [import.meta.env.VITE_API_SCOPE as string]
-    });
-    config.headers = config.headers ?? {};
-    (config.headers as any).Authorization = `Bearer ${result.accessToken}`;
+    try {
+      const result = await pca.acquireTokenSilent({
+        account: accounts[0],
+        scopes: [import.meta.env.VITE_API_SCOPE as string]
+      });
+      config.headers = config.headers ?? {};
+      (config.headers as any).Authorization = `Bearer ${result.accessToken}`;
+    } catch (error) {
+      const errorCode = (error as { errorCode?: string } | undefined)?.errorCode;
+      const errorMessage = (error as Error | undefined)?.message;
+
+      if (hasSessionExpiredMarker(errorCode) || hasSessionExpiredMarker(errorMessage)) {
+        await redirectToLogin();
+        return Promise.reject(error);
+      }
+
+      throw error;
+    }
   }
   return config;
 });
