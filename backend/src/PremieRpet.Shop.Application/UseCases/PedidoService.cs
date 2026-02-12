@@ -24,7 +24,6 @@ public sealed class PedidoService : IPedidoService
 
     private readonly IPedidoRepository _pedidos;
     private readonly IProdutoRepository _produtos;
-    private readonly IUnidadeEntregaRepository _unidadesEntrega;
     private readonly IEmpresaRepository _empresas;
     private readonly IUsuarioService _usuarios;
     private readonly IUsuarioRepository _usuariosRepo;
@@ -36,7 +35,6 @@ public sealed class PedidoService : IPedidoService
     public PedidoService(
         IPedidoRepository ped,
         IProdutoRepository prod,
-        IUnidadeEntregaRepository unidadesEntrega,
         IEmpresaRepository empresas,
         IUsuarioService usuarios,
         IUsuarioRepository usuariosRepo,
@@ -44,7 +42,6 @@ public sealed class PedidoService : IPedidoService
     {
         _pedidos = ped;
         _produtos = prod;
-        _unidadesEntrega = unidadesEntrega;
         _empresas = empresas;
         _usuarios = usuarios;
         _usuariosRepo = usuariosRepo;
@@ -123,8 +120,8 @@ public sealed class PedidoService : IPedidoService
         var total = itens.Sum(i => i.Subtotal);
         var pesoTotal = itens.Sum(i => i.PesoTotalKg);
         var statusNome = ObterNomeStatus(pedido);
-        var empresaId = pedido.UnidadeEntrega?.EmpresaId ?? Guid.Empty;
-        var empresaNome = pedido.UnidadeEntrega?.Empresa?.Nome ?? string.Empty;
+        var empresaId = pedido.EmpresaId;
+        var empresaNome = pedido.Empresa?.Nome ?? string.Empty;
 
         return new PedidoDetalheDto(
             pedido.Id,
@@ -251,8 +248,6 @@ public sealed class PedidoService : IPedidoService
         var empresa = await _empresas.ObterPorIdAsync(dto.EmpresaId, ct)
             ?? throw new InvalidOperationException("Empresa inválida.");
 
-        var unidadeEntrega = (await _unidadesEntrega.ListarAsync(dto.EmpresaId, ct)).FirstOrDefault();
-
         var agora = DateTimeOffset.UtcNow;
         var perfil = await _usuarios.GarantirCpfAsync(usuarioEmail, usuarioMicrosoftId, dto.Cpf, usuarioNome, ct);
         var usuarioSemLimite = await UsuarioIgnoraLimitePesoAsync(perfil.Id, ct);
@@ -275,7 +270,7 @@ public sealed class PedidoService : IPedidoService
             UsuarioId = perfil.Id,
             UsuarioNome = usuarioNome,
             UsuarioCpf = perfil.Cpf,
-            UnidadeEntregaId = unidadeEntrega?.Id,
+            EmpresaId = empresa.Id,
             StatusId = _settings.InitialStatusId,
             AtualizadoEm = agora,
             AtualizadoPorUsuarioId = perfil.Id
@@ -354,7 +349,7 @@ public sealed class PedidoService : IPedidoService
         var q = _pedidos.Query();
         if (de is not null) q = q.Where(p => p.DataHora >= de);
         if (ate is not null) q = q.Where(p => p.DataHora <= ate);
-        if (empresaId is Guid empresa && empresa != Guid.Empty) q = q.Where(p => p.UnidadeEntrega != null && p.UnidadeEntrega.EmpresaId == empresa);
+        if (empresaId is Guid empresa && empresa != Guid.Empty) q = q.Where(p => p.EmpresaId == empresa);
 
         return await q.AsNoTracking()
             .OrderByDescending(p => p.DataHora)
@@ -362,10 +357,8 @@ public sealed class PedidoService : IPedidoService
                 p.Id,
                 p.UsuarioNome,
                 p.UsuarioCpf,
-                p.UnidadeEntrega != null ? p.UnidadeEntrega.EmpresaId : Guid.Empty,
-                p.UnidadeEntrega != null && p.UnidadeEntrega.Empresa != null
-                    ? p.UnidadeEntrega.Empresa.Nome
-                    : string.Empty,
+                p.EmpresaId,
+                p.Empresa != null ? p.Empresa.Nome : string.Empty,
                 p.StatusId,
                 p.Status != null && p.Status.Nome != null
                     ? p.Status.Nome
@@ -391,7 +384,7 @@ public sealed class PedidoService : IPedidoService
         if (ate is not null) q = q.Where(p => p.DataHora <= ate);
         if (usuarioId is not null) q = q.Where(p => p.UsuarioId == usuarioId);
         if (statusId is int status && status > 0) q = q.Where(p => p.StatusId == status);
-        if (empresaId is Guid empresa && empresa != Guid.Empty) q = q.Where(p => p.UnidadeEntrega != null && p.UnidadeEntrega.EmpresaId == empresa);
+        if (empresaId is Guid empresa && empresa != Guid.Empty) q = q.Where(p => p.EmpresaId == empresa);
 
         var pedidos = await q.AsNoTracking()
             .OrderByDescending(p => p.DataHora)
@@ -414,7 +407,7 @@ public sealed class PedidoService : IPedidoService
         if (filtro.StatusId is int status && status > 0)
             query = query.Where(p => p.StatusId == status);
         if (filtro.EmpresaId is Guid empresa && empresa != Guid.Empty)
-            query = query.Where(p => p.UnidadeEntrega != null && p.UnidadeEntrega.EmpresaId == empresa);
+            query = query.Where(p => p.EmpresaId == empresa);
 
         if (isAdmin)
         {
@@ -654,7 +647,7 @@ public sealed class PedidoService : IPedidoService
             .Where(p => p.DataHora >= de && p.DataHora <= ate);
 
         if (empresaId is Guid empresa && empresa != Guid.Empty)
-            query = query.Where(p => p.UnidadeEntrega != null && p.UnidadeEntrega.EmpresaId == empresa);
+            query = query.Where(p => p.EmpresaId == empresa);
 
         if (statusFiltroId is int statusFiltro && statusFiltro > 0)
         {
@@ -682,7 +675,7 @@ public sealed class PedidoService : IPedidoService
             .Where(p => PedidoStatusIds.ContaParaLimite.Contains(p.StatusId));
 
         if (empresaId is Guid empresaFiltro && empresaFiltro != Guid.Empty)
-            limiteQuery = limiteQuery.Where(p => p.UnidadeEntrega != null && p.UnidadeEntrega.EmpresaId == empresaFiltro);
+            limiteQuery = limiteQuery.Where(p => p.EmpresaId == empresaFiltro);
 
         if (isAdmin)
         {
