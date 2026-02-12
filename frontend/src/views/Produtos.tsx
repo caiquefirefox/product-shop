@@ -26,6 +26,7 @@ type Produto = {
   preco: number;
   quantidadeMinimaDeCompra: number;
   imagemUrl?: string | null;
+  linkExterno?: string | null;
 };
 
 type ProdutoOpcao = {
@@ -450,6 +451,7 @@ export default function Produtos() {
   const [faixaEtariaId, setFaixaEtariaId] = useState("");
   const [preco, setPreco] = useState("0");
   const [quantidadeMinimaDeCompra, setQuantidadeMinimaDeCompra] = useState("1");
+  const [linkExterno, setLinkExterno] = useState("");
   const [opcoesCarregando, setOpcoesCarregando] = useState(true);
   const [produtoEmEdicao, setProdutoEmEdicao] = useState<Produto | null>(null);
   const [formAberto, setFormAberto] = useState(false);
@@ -679,6 +681,7 @@ export default function Produtos() {
     setFaixaEtariaId("");
     setPreco("0");
     setQuantidadeMinimaDeCompra("1");
+    setLinkExterno("");
     setFormError(null);
     resetImagemCampos();
   };
@@ -739,6 +742,7 @@ export default function Produtos() {
     setFaixaEtariaId(produto.faixaEtariaOpcaoId);
     setPreco(produto.preco.toFixed(2).replace(".", ","));
     setQuantidadeMinimaDeCompra(produto.quantidadeMinimaDeCompra.toString());
+    setLinkExterno(produto.linkExterno ?? "");
     setImagemOriginalUrl(produto.imagemUrl ?? null);
     setImagemSelecionada(null);
     setRemoverImagem(false);
@@ -1017,6 +1021,7 @@ export default function Produtos() {
     formData.append("FaixaEtariaOpcaoId", faixaSelecionada);
     formData.append("Preco", formatDecimalForSubmission(precoNormalizadoNumero, 2, 2));
     formData.append("QuantidadeMinimaDeCompra", quantidadeNormalizada.toString());
+    formData.append("LinkExterno", linkExterno.trim());
     formData.append("ImagemUrl", imagemOriginalUrl ?? "");
     formData.append("RemoverImagem", removerImagem ? "true" : "false");
     if (imagemSelecionada) {
@@ -1204,6 +1209,24 @@ export default function Produtos() {
                   onChange={e => setQuantidadeMinimaDeCompra(e.target.value.replace(/[^0-9]/g, ""))}
                   className={baseInputClasses}
                 />
+              </div>
+
+              <div className="flex flex-col gap-2 md:col-span-2 xl:col-span-2">
+                <label htmlFor="linkExterno" className="text-sm font-medium text-gray-700">
+                  Link externo (mais detalhes)
+                </label>
+                <input
+                  id="linkExterno"
+                  type="url"
+                  inputMode="url"
+                  placeholder="https://exemplo.com/produto"
+                  value={linkExterno}
+                  onChange={e => setLinkExterno(e.target.value)}
+                  className={baseInputClasses}
+                />
+                <span className="text-xs text-gray-500">
+                  Este link aparecerá no catálogo para abrir detalhes do produto em uma nova aba.
+                </span>
               </div>
 
               <div className="flex flex-col gap-2 md:col-span-2 xl:col-span-2">

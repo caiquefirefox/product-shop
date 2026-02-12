@@ -251,6 +251,10 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                         .HasMaxLength(1024)
                         .HasColumnType("character varying(1024)");
 
+                    b.Property<string>("LinkExterno")
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)");
+
                     b.Property<decimal>("Peso")
                         .HasColumnType("decimal(18,4)");
 

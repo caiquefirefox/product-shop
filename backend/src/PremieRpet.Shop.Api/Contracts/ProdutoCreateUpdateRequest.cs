@@ -19,6 +19,7 @@ public sealed class ProdutoCreateUpdateRequest
     public decimal Preco { get; set; }
     public int QuantidadeMinimaDeCompra { get; set; } = 1;
     public string? ImagemUrl { get; set; }
+    public string? LinkExterno { get; set; }
     public bool RemoverImagem { get; set; }
     public IFormFile? Imagem { get; set; }
 
@@ -28,6 +29,7 @@ public sealed class ProdutoCreateUpdateRequest
             ? PorteOpcaoIds.Where(id => id != Guid.Empty).Distinct().ToList()
             : new List<Guid>();
         var imagemNormalizada = string.IsNullOrWhiteSpace(imagemFinal) ? null : imagemFinal;
+        var linkExternoNormalizado = string.IsNullOrWhiteSpace(LinkExterno) ? null : LinkExterno.Trim();
         return new ProdutoCreateUpdateDto(
             Descricao,
             Peso,
@@ -39,6 +41,7 @@ public sealed class ProdutoCreateUpdateRequest
             FaixaEtariaOpcaoId,
             Preco,
             QuantidadeMinimaDeCompra,
-            imagemNormalizada);
+            imagemNormalizada,
+            linkExternoNormalizado);
     }
 }

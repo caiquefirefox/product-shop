@@ -22,6 +22,7 @@ public sealed class Produto
     public required decimal Preco { get; set; }
     public int QuantidadeMinimaDeCompra { get; set; } = 1;
     public string? ImagemUrl { get; set; }
+    public string? LinkExterno { get; set; }
     public DateTimeOffset CriadoEm { get; set; } = DateTimeOffset.UtcNow;
     public Guid? CriadoPorUsuarioId { get; set; }
     public DateTimeOffset? AtualizadoEm { get; set; } = DateTimeOffset.UtcNow;
