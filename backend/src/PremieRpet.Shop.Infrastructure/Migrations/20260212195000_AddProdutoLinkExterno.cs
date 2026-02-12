@@ -1,9 +1,12 @@
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace PremieRpet.Shop.Infrastructure.Migrations
 {
+    [DbContext(typeof(ShopDbContext))]
+    [Migration("20260212195000_AddProdutoLinkExterno")]
     public partial class AddProdutoLinkExterno : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
