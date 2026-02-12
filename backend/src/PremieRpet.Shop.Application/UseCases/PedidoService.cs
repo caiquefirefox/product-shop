@@ -24,7 +24,7 @@ public sealed class PedidoService : IPedidoService
 
     private readonly IPedidoRepository _pedidos;
     private readonly IProdutoRepository _produtos;
-    private readonly IUnidadeEntregaRepository _unidadesEntrega;
+    private readonly IEmpresaRepository _empresas;
     private readonly IUsuarioService _usuarios;
     private readonly IUsuarioRepository _usuariosRepo;
     private readonly PedidoSettings _settings;
@@ -35,14 +35,14 @@ public sealed class PedidoService : IPedidoService
     public PedidoService(
         IPedidoRepository ped,
         IProdutoRepository prod,
-        IUnidadeEntregaRepository unidadesEntrega,
+        IEmpresaRepository empresas,
         IUsuarioService usuarios,
         IUsuarioRepository usuariosRepo,
         IOptions<PedidoSettings> settings)
     {
         _pedidos = ped;
         _produtos = prod;
-        _unidadesEntrega = unidadesEntrega;
+        _empresas = empresas;
         _usuarios = usuarios;
         _usuariosRepo = usuariosRepo;
         _settings = Normalizar(settings?.Value ?? new PedidoSettings());
@@ -120,17 +120,14 @@ public sealed class PedidoService : IPedidoService
         var total = itens.Sum(i => i.Subtotal);
         var pesoTotal = itens.Sum(i => i.PesoTotalKg);
         var statusNome = ObterNomeStatus(pedido);
-        var unidadeNome = pedido.UnidadeEntrega?.Nome ?? string.Empty;
-        var empresaId = pedido.UnidadeEntrega?.EmpresaId ?? Guid.Empty;
-        var empresaNome = pedido.UnidadeEntrega?.Empresa?.Nome ?? string.Empty;
+        var empresaId = pedido.EmpresaId;
+        var empresaNome = pedido.Empresa?.Nome ?? string.Empty;
 
         return new PedidoDetalheDto(
             pedido.Id,
             pedido.UsuarioId,
             pedido.UsuarioNome,
             pedido.UsuarioCpf,
-            pedido.UnidadeEntregaId,
-            unidadeNome,
             empresaId,
             empresaNome,
             pedido.StatusId,
@@ -171,7 +168,7 @@ public sealed class PedidoService : IPedidoService
     }
 
     private static PedidoHistoricoDetalhesDto CriarDetalhesStatus(string? anterior, string? atual)
-        => new(null, null, Array.Empty<PedidoHistoricoAlteracaoItemDto>(), anterior, atual);
+        => new(Array.Empty<PedidoHistoricoAlteracaoItemDto>(), anterior, atual);
 
     private static string ObterNomeStatus(int statusId, PedidoStatus? status = null)
     {
@@ -245,11 +242,11 @@ public sealed class PedidoService : IPedidoService
 
     public async Task<PedidoResumoDto> CriarPedidoAsync(string usuarioEmail, string? usuarioMicrosoftId, string usuarioNome, PedidoCreateDto dto, CancellationToken ct)
     {
-        if (dto.UnidadeEntregaId == Guid.Empty)
-            throw new InvalidOperationException("Unidade de entrega inválida.");
+        if (dto.EmpresaId == Guid.Empty)
+            throw new InvalidOperationException("Empresa inválida.");
 
-        var unidadeEntrega = await _unidadesEntrega.ObterPorIdAsync(dto.UnidadeEntregaId, ct)
-            ?? throw new InvalidOperationException("Unidade de entrega inválida.");
+        var empresa = await _empresas.ObterPorIdAsync(dto.EmpresaId, ct)
+            ?? throw new InvalidOperationException("Empresa inválida.");
 
         var agora = DateTimeOffset.UtcNow;
         var perfil = await _usuarios.GarantirCpfAsync(usuarioEmail, usuarioMicrosoftId, dto.Cpf, usuarioNome, ct);
@@ -273,7 +270,7 @@ public sealed class PedidoService : IPedidoService
             UsuarioId = perfil.Id,
             UsuarioNome = usuarioNome,
             UsuarioCpf = perfil.Cpf,
-            UnidadeEntregaId = unidadeEntrega.Id,
+            EmpresaId = empresa.Id,
             StatusId = _settings.InitialStatusId,
             AtualizadoEm = agora,
             AtualizadoPorUsuarioId = perfil.Id
@@ -317,15 +314,13 @@ public sealed class PedidoService : IPedidoService
 
         await _pedidos.AddAsync(pedido, ct);
 
-        var empresaId = unidadeEntrega.EmpresaId;
-        var empresaNome = unidadeEntrega.Empresa?.Nome ?? string.Empty;
+        var empresaId = empresa.Id;
+        var empresaNome = empresa.Nome;
 
         return new PedidoResumoDto(
             pedido.Id,
             pedido.UsuarioNome,
             pedido.UsuarioCpf,
-            pedido.UnidadeEntregaId,
-            unidadeEntrega.Nome,
             empresaId,
             empresaNome,
             pedido.StatusId,
@@ -354,7 +349,7 @@ public sealed class PedidoService : IPedidoService
         var q = _pedidos.Query();
         if (de is not null) q = q.Where(p => p.DataHora >= de);
         if (ate is not null) q = q.Where(p => p.DataHora <= ate);
-        if (empresaId is Guid empresa && empresa != Guid.Empty) q = q.Where(p => p.UnidadeEntrega != null && p.UnidadeEntrega.EmpresaId == empresa);
+        if (empresaId is Guid empresa && empresa != Guid.Empty) q = q.Where(p => p.EmpresaId == empresa);
 
         return await q.AsNoTracking()
             .OrderByDescending(p => p.DataHora)
@@ -362,12 +357,8 @@ public sealed class PedidoService : IPedidoService
                 p.Id,
                 p.UsuarioNome,
                 p.UsuarioCpf,
-                p.UnidadeEntregaId,
-                p.UnidadeEntrega != null ? p.UnidadeEntrega.Nome : string.Empty,
-                p.UnidadeEntrega != null ? p.UnidadeEntrega.EmpresaId : Guid.Empty,
-                p.UnidadeEntrega != null && p.UnidadeEntrega.Empresa != null
-                    ? p.UnidadeEntrega.Empresa.Nome
-                    : string.Empty,
+                p.EmpresaId,
+                p.Empresa != null ? p.Empresa.Nome : string.Empty,
                 p.StatusId,
                 p.Status != null && p.Status.Nome != null
                     ? p.Status.Nome
@@ -393,7 +384,7 @@ public sealed class PedidoService : IPedidoService
         if (ate is not null) q = q.Where(p => p.DataHora <= ate);
         if (usuarioId is not null) q = q.Where(p => p.UsuarioId == usuarioId);
         if (statusId is int status && status > 0) q = q.Where(p => p.StatusId == status);
-        if (empresaId is Guid empresa && empresa != Guid.Empty) q = q.Where(p => p.UnidadeEntrega != null && p.UnidadeEntrega.EmpresaId == empresa);
+        if (empresaId is Guid empresa && empresa != Guid.Empty) q = q.Where(p => p.EmpresaId == empresa);
 
         var pedidos = await q.AsNoTracking()
             .OrderByDescending(p => p.DataHora)
@@ -416,7 +407,7 @@ public sealed class PedidoService : IPedidoService
         if (filtro.StatusId is int status && status > 0)
             query = query.Where(p => p.StatusId == status);
         if (filtro.EmpresaId is Guid empresa && empresa != Guid.Empty)
-            query = query.Where(p => p.UnidadeEntrega != null && p.UnidadeEntrega.EmpresaId == empresa);
+            query = query.Where(p => p.EmpresaId == empresa);
 
         if (isAdmin)
         {
@@ -506,11 +497,6 @@ public sealed class PedidoService : IPedidoService
         if (!isAdmin && !EstaDentroJanelaEdicao(agora))
             throw new InvalidOperationException($"As edições estão disponíveis apenas entre os dias {_settings.EditWindowOpeningDay} e {_settings.EditWindowClosingDay} de cada mês.");
 
-        if (dto.UnidadeEntregaId == Guid.Empty)
-            throw new InvalidOperationException("Unidade de entrega inválida.");
-
-        var novaUnidade = await _unidadesEntrega.ObterPorIdAsync(dto.UnidadeEntregaId, ct)
-            ?? throw new InvalidOperationException("Unidade de entrega inválida.");
 
         var itensNormalizados = NormalizarItensAtualizacao(dto.Itens);
         if (itensNormalizados.Count == 0)
@@ -614,25 +600,6 @@ public sealed class PedidoService : IPedidoService
         if (!usuarioSemLimite && pesoBase + pesoNovoPedido > _limiteKgMes)
             throw new InvalidOperationException($"Limite mensal de {FormatarLimiteMensal()} kg excedido.");
 
-        var unidadeAnteriorId = pedido.UnidadeEntregaId;
-        var unidadeAnteriorNome = pedido.UnidadeEntrega?.Nome;
-        var houveAlteracaoUnidade = unidadeAnteriorId != novaUnidade.Id;
-
-        pedido.UnidadeEntregaId = novaUnidade.Id;
-
-        if (houveAlteracaoUnidade)
-        {
-            pedido.UnidadeEntrega = new UnidadeEntrega
-            {
-                Id = novaUnidade.Id,
-                Nome = novaUnidade.Nome,
-                EmpresaId = novaUnidade.EmpresaId
-            };
-        }
-        else if (pedido.UnidadeEntrega is not null)
-        {
-            pedido.UnidadeEntrega.Nome = novaUnidade.Nome;
-        }
         pedido.AtualizadoEm = agora;
         pedido.AtualizadoPorUsuarioId = usuarioAtualId;
 
@@ -642,11 +609,9 @@ public sealed class PedidoService : IPedidoService
         }
 
         PedidoHistorico? historicoRegistro = null;
-        if (historicoAlteracoes.Count > 0 || houveAlteracaoUnidade)
+        if (historicoAlteracoes.Count > 0)
         {
             var detalhes = new PedidoHistoricoDetalhesDto(
-                unidadeAnteriorNome,
-                novaUnidade.Nome,
                 historicoAlteracoes,
                 null,
                 null
@@ -680,7 +645,7 @@ public sealed class PedidoService : IPedidoService
             .Where(p => p.DataHora >= de && p.DataHora <= ate);
 
         if (empresaId is Guid empresa && empresa != Guid.Empty)
-            query = query.Where(p => p.UnidadeEntrega != null && p.UnidadeEntrega.EmpresaId == empresa);
+            query = query.Where(p => p.EmpresaId == empresa);
 
         if (statusFiltroId is int statusFiltro && statusFiltro > 0)
         {
@@ -708,7 +673,7 @@ public sealed class PedidoService : IPedidoService
             .Where(p => PedidoStatusIds.ContaParaLimite.Contains(p.StatusId));
 
         if (empresaId is Guid empresaFiltro && empresaFiltro != Guid.Empty)
-            limiteQuery = limiteQuery.Where(p => p.UnidadeEntrega != null && p.UnidadeEntrega.EmpresaId == empresaFiltro);
+            limiteQuery = limiteQuery.Where(p => p.EmpresaId == empresaFiltro);
 
         if (isAdmin)
         {

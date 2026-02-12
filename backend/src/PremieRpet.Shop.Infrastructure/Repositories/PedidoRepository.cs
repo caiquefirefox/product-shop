@@ -29,9 +29,6 @@ public sealed class PedidoRepository : IPedidoRepository
                     case Pedido:
                         node.Entry.State = EntityState.Modified;
                         break;
-                    case UnidadeEntrega:
-                        node.Entry.State = EntityState.Unchanged;
-                        break;
                     case PedidoItem item:
                         node.Entry.State = item.Id == Guid.Empty
                             ? EntityState.Added
@@ -92,30 +89,18 @@ public sealed class PedidoRepository : IPedidoRepository
                 entry.Entity.Id = Guid.NewGuid();
         }
 
-        if (pedido.UnidadeEntrega is not null)
-        {
-            var unidadeEntry = _db.Entry(pedido.UnidadeEntrega);
-
-            if (unidadeEntry.State == EntityState.Detached)
-                _db.UnidadesEntrega.Attach(pedido.UnidadeEntrega);
-
-            unidadeEntry.State = EntityState.Unchanged;
-        }
-
         await _db.SaveChangesAsync(ct);
     }
 
     public async Task<Pedido?> GetByIdAsync(Guid id, CancellationToken ct)
         => await _db.Pedidos
-            .Include(p => p.UnidadeEntrega)
-                .ThenInclude(u => u!.Empresa)
+             .Include(p => p.Empresa)
             .FirstOrDefaultAsync(p => p.Id == id, ct);
 
     public async Task<Pedido?> GetWithItensAsync(Guid id, CancellationToken ct)
         => await _db.Pedidos
             .Include(p => p.Status)
-            .Include(p => p.UnidadeEntrega)
-                .ThenInclude(u => u!.Empresa)
+             .Include(p => p.Empresa)
             .Include(p => p.Itens)
                 .ThenInclude(i => i.Produto)
             .Include(p => p.Historicos)
@@ -130,8 +115,7 @@ public sealed class PedidoRepository : IPedidoRepository
 
     public IQueryable<Pedido> Query() => _db.Pedidos
         .Include(p => p.Status)
-        .Include(p => p.UnidadeEntrega)
-            .ThenInclude(u => u!.Empresa)
+         .Include(p => p.Empresa)
         .Include(p => p.Itens)
             .ThenInclude(i => i.Produto)
         .AsQueryable();

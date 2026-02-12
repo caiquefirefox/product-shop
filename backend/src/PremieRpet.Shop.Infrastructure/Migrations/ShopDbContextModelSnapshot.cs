@@ -73,7 +73,7 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(1);
 
-                    b.Property<Guid>("UnidadeEntregaId")
+                    b.Property<Guid>("EmpresaId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("UsuarioCpf")
@@ -94,7 +94,7 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
 
                     b.HasIndex("StatusId");
 
-                    b.HasIndex("UnidadeEntregaId");
+                    b.HasIndex("EmpresaId");
 
                     b.HasIndex("UsuarioId");
 
@@ -756,12 +756,12 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                         .IsRequired()
                         .HasConstraintName("FK_Pedidos_PedidoStatus_StatusId");
 
-                    b.HasOne("PremieRpet.Shop.Domain.Entities.UnidadeEntrega", "UnidadeEntrega")
-                        .WithMany("Pedidos")
-                        .HasForeignKey("UnidadeEntregaId")
+                    b.HasOne("PremieRpet.Shop.Domain.Entities.Empresa", "Empresa")
+                        .WithMany()
+                        .HasForeignKey("EmpresaId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("FK_Pedidos_UnidadesEntrega_UnidadeEntregaId");
+                        .HasConstraintName("FK_Pedidos_Empresas_EmpresaId");
 
                     b.HasOne("PremieRpet.Shop.Domain.Entities.Usuario", null)
                         .WithMany()
@@ -771,7 +771,7 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
 
                     b.Navigation("Status");
 
-                    b.Navigation("UnidadeEntrega");
+                    b.Navigation("Empresa");
                 });
 
             modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.PedidoHistorico", b =>
@@ -933,11 +933,6 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
             modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.ProdutoTipoOpcao", b =>
                 {
                     b.Navigation("Produtos");
-                });
-
-            modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.UnidadeEntrega", b =>
-                {
-                    b.Navigation("Pedidos");
                 });
 
             modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.Usuario", b =>

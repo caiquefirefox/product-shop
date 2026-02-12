@@ -9,5 +9,4 @@ public sealed class UnidadeEntrega
     public string Nome { get; set; } = string.Empty;
     public Guid EmpresaId { get; set; }
     public Empresa? Empresa { get; set; }
-    public List<Pedido> Pedidos { get; set; } = new();
 }

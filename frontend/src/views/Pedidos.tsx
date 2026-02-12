@@ -40,11 +40,6 @@ type CatalogoResponse = {
   totalPages: number;
 };
 
-type UnidadeEntregaOption = {
-  id: string;
-  nome: string;
-};
-
 type EmpresaOption = {
   id: string;
   nome: string;
@@ -123,12 +118,9 @@ export default function Pedidos() {
 
   const [editorItens, setEditorItens] = useState<EditorItem[]>([]);
   const [empresaIdEditor, setEmpresaIdEditor] = useState("");
-  const [unidadeEntregaId, setUnidadeEntregaId] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const [unidadesEntrega, setUnidadesEntrega] = useState<UnidadeEntregaOption[]>([]);
-  const [unidadesLoading, setUnidadesLoading] = useState(false);
 
   const [catalogProducts, setCatalogProducts] = useState<Produto[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
@@ -203,18 +195,6 @@ export default function Pedidos() {
   const effectiveCanEdit = !isViewMode && canEditPedido;
   const painelTitulo = isViewMode ? "Detalhes do pedido" : "Editar pedido";
 
-  const unidadeSelecionadaOption = useMemo(
-    () => unidadesEntrega.find((unidade) => unidade.id === unidadeEntregaId) || null,
-    [unidadesEntrega, unidadeEntregaId]
-  );
-
-  const unidadeSelecionadaNome = useMemo(() => {
-    if (unidadeSelecionadaOption) return unidadeSelecionadaOption.nome;
-    if (pedidoSelecionado && pedidoSelecionado.unidadeEntregaId === unidadeEntregaId) {
-      return pedidoSelecionado.unidadeEntregaNome;
-    }
-    return "";
-  }, [unidadeSelecionadaOption, pedidoSelecionado, unidadeEntregaId]);
 
   const empresaSelecionadaNome = useMemo(() => {
     const selecionada = empresas.find((empresa) => empresa.id === empresaIdEditor);
@@ -526,45 +506,6 @@ export default function Pedidos() {
 
   useEffect(() => {
     let alive = true;
-    setUnidadesLoading(true);
-
-    if (!empresaIdEditor) {
-      setUnidadesEntrega([]);
-      setUnidadeEntregaId("");
-      setUnidadesLoading(false);
-      return () => {
-        alive = false;
-      };
-    }
-
-    api
-      .get<UnidadeEntregaOption[]>("/unidades-entrega", { params: { empresaId: empresaIdEditor } })
-      .then((response) => {
-        if (!alive) return;
-        const lista = response.data || [];
-        setUnidadesEntrega(lista);
-        setUnidadeEntregaId((current) => {
-          if (current && lista.some((unidade) => unidade.id === current)) return current;
-          return lista.length > 0 ? lista[0].id : "";
-        });
-      })
-      .catch(() => {
-        if (!alive) return;
-        setUnidadesEntrega([]);
-        setUnidadeEntregaId("");
-      })
-      .finally(() => {
-        if (!alive) return;
-        setUnidadesLoading(false);
-      });
-
-    return () => {
-      alive = false;
-    };
-  }, [empresaIdEditor]);
-
-  useEffect(() => {
-    let alive = true;
 
     const loadOptions = async () => {
       try {
@@ -613,7 +554,6 @@ export default function Pedidos() {
         }))
       );
       setEmpresaIdEditor(data.pedido.empresaId);
-      setUnidadeEntregaId(data.pedido.unidadeEntregaId);
     } catch (error: any) {
       const msg = error?.response?.data?.detail || error?.message || "Não foi possível carregar os detalhes do pedido.";
       setDetailError(msg);
@@ -621,7 +561,6 @@ export default function Pedidos() {
       setEditorItens([]);
       setSelectedPedidoId(null);
       setEmpresaIdEditor("");
-      setUnidadeEntregaId("");
     } finally {
       setDetailLoading(false);
       setLoadingPedidoId((current) => (current === id ? null : current));
@@ -851,7 +790,6 @@ export default function Pedidos() {
     setSaveError(null);
     try {
       const payload = {
-        unidadeEntregaId,
         itens: editorItens.map((item) => ({
           produtoCodigo: item.codigo,
           quantidade: item.quantidade,
@@ -968,11 +906,6 @@ export default function Pedidos() {
             </div>
             {h.detalhes && (
               <div className="mt-2 space-y-2 text-sm text-gray-700">
-                {h.detalhes.unidadeEntregaAnterior !== h.detalhes.unidadeEntregaAtual && (
-                  <div>
-                    Unidade de entrega: <strong>{h.detalhes.unidadeEntregaAnterior || "—"}</strong> → <strong>{h.detalhes.unidadeEntregaAtual || "—"}</strong>
-                  </div>
-                )}
                 {h.detalhes.statusAnterior !== h.detalhes.statusAtual && (
                   <div>
                     Status: <strong>{h.detalhes.statusAnterior || "—"}</strong> → <strong>{h.detalhes.statusAtual || "—"}</strong>
@@ -1295,7 +1228,7 @@ export default function Pedidos() {
                       <span className="text-gray-700">{pedidoSelecionado.usuarioNome}</span>
                     </p>
                     <p>
-                      Pedido realizado em {formatDateTimePtBr(pedidoSelecionado.dataHora)} · Unidade atual: {pedidoSelecionado.unidadeEntregaNome}
+                      Pedido realizado em {formatDateTimePtBr(pedidoSelecionado.dataHora)}
                       {pedidoSelecionado.empresaNome ? ` · Empresa: ${pedidoSelecionado.empresaNome}` : ""}
                     </p>
                   </div>
@@ -1327,8 +1260,7 @@ export default function Pedidos() {
                         value={empresaIdEditor}
                         onChange={(event) => {
                           setEmpresaIdEditor(event.target.value);
-                          setUnidadeEntregaId("");
-                        }}
+                                            }}
                         disabled={empresasLoading || !effectiveCanEdit || saving}
                         className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
                       >
@@ -1347,29 +1279,6 @@ export default function Pedidos() {
                     )}
                     {empresasError && (
                       <p className="text-xs text-red-600">{empresasError}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Unidade de entrega</label>
-                    {effectiveCanEdit ? (
-                      <select
-                        value={unidadeEntregaId}
-                        onChange={(event) => setUnidadeEntregaId(event.target.value)}
-                        disabled={unidadesLoading || !effectiveCanEdit || saving || !empresaIdEditor}
-                        className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                      >
-                        {unidadesEntrega.map((unidade) => (
-                          <option key={unidade.id} value={unidade.id}>{unidade.nome}</option>
-                        ))}
-                        {!unidadeSelecionadaOption && unidadeEntregaId && (
-                          <option value={unidadeEntregaId}>{unidadeSelecionadaNome || unidadeEntregaId}</option>
-                        )}
-                      </select>
-                    ) : (
-                      <div className="mt-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700">
-                        {unidadeSelecionadaNome || pedidoSelecionado.unidadeEntregaNome || "Não informado"}
-                      </div>
                     )}
                   </div>
 
@@ -1537,7 +1446,7 @@ export default function Pedidos() {
                           type="button"
                           className="w-full rounded-full bg-[#FF6900] px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#FF6900]/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6900]/40 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                           onClick={salvarAlteracoes}
-                          disabled={!effectiveCanEdit || saving || editorItens.length === 0 || !empresaIdEditor || !unidadeEntregaId}
+                          disabled={!effectiveCanEdit || saving || editorItens.length === 0 || !empresaIdEditor}
                         >
                           {saving ? "Salvando..." : "Salvar alterações"}
                         </button>

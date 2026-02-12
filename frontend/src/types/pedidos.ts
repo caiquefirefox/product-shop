@@ -14,8 +14,6 @@ type PedidoDetalhe = {
   usuarioId: string;
   usuarioNome: string;
   usuarioCpf: string | null;
-  unidadeEntregaId: string;
-  unidadeEntregaNome: string;
   empresaId: string;
   empresaNome: string;
   statusId: number;
@@ -34,8 +32,6 @@ type PedidoHistoricoAlteracao = {
 };
 
 type PedidoHistoricoDetalhes = {
-  unidadeEntregaAnterior: string | null;
-  unidadeEntregaAtual: string | null;
   itens: PedidoHistoricoAlteracao[];
   statusAnterior: string | null;
   statusAtual: string | null;

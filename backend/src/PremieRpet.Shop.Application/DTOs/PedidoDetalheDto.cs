@@ -8,8 +8,6 @@ public sealed record PedidoDetalheDto(
     Guid UsuarioId,
     string UsuarioNome,
     string? UsuarioCpf,
-    Guid UnidadeEntregaId,
-    string UnidadeEntregaNome,
     Guid EmpresaId,
     string EmpresaNome,
     int StatusId,

@@ -315,8 +315,7 @@ export default function Relatorios() {
                             <td className="whitespace-nowrap px-5 py-4 text-sm font-semibold text-gray-900">
                               {formatDateBR(new Date(p.dataHora))}
                             </td>
-                            <td className="px-5 py-4 text-sm font-semibold text-gray-900">{p.unidadeEntregaNome}</td>
-                            <td className="px-5 py-4 text-sm font-semibold text-gray-900">{p.empresaNome}</td>
+                                                        <td className="px-5 py-4 text-sm font-semibold text-gray-900">{p.empresaNome}</td>
                             <td className="px-5 py-4 text-sm">
                               <span
                                 className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"
@@ -346,7 +345,7 @@ export default function Relatorios() {
                           </tr>
                           {expand[p.id] && (
                             <tr id={`itens-${p.id}`} className="bg-white">
-                              <td colSpan={8} className="px-0">
+                              <td colSpan={7} className="px-0">
                                 <div className="bg-white px-5 py-4">
                                   <table className="min-w-[860px] w-full text-sm">
                                     <thead>

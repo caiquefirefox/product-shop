@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import api from "../lib/api";
 import { useCart } from "../cart/CartContext";
 import { useNavigate } from "react-router-dom";
@@ -7,174 +7,12 @@ import { formatCurrencyBRL, formatPeso } from "../lib/format";
 import { sanitizeCpf, isValidCpf, formatCpf } from "../lib/cpf";
 import type { UsuarioPerfil } from "../types/user";
 import { usePedidosConfig } from "../hooks/usePedidosConfig";
-import { Check, ChevronDown } from "lucide-react";
 import { useUser } from "../auth/useUser";
-
-type UnidadeEntrega = {
-  id: string;
-  nome: string;
-};
 
 type Empresa = {
   id: string;
   nome: string;
 };
-
-type DeliveryDropdownProps = {
-  id: string;
-  label: string;
-  options: UnidadeEntrega[];
-  value: string;
-  onChange: (value: string) => void;
-  disabled?: boolean;
-  placeholder?: string;
-};
-
-const dropdownButtonBaseClasses =
-  "inline-flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-indigo-200 hover:text-indigo-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
-
-const dropdownButtonActiveClasses = "border-indigo-300 bg-indigo-50 text-indigo-600";
-
-const dropdownListClasses =
-  "absolute left-0 top-full z-10 mt-2 w-full min-w-[200px] origin-top-left rounded-xl border border-slate-200 bg-white p-2 shadow-xl";
-
-const dropdownOptionClasses =
-  "flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-600";
-
-function DeliveryDropdown({
-  id,
-  label,
-  options,
-  value,
-  onChange,
-  disabled,
-  placeholder = "Selecione uma unidade",
-}: DeliveryDropdownProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const buttonRef = useRef<HTMLButtonElement | null>(null);
-  const menuRef = useRef<HTMLDivElement | null>(null);
-
-  const optionsWithFallback = useMemo(() => {
-    if (value && !options.some(option => option.id === value)) {
-      return [...options, { id: value, nome: value }];
-    }
-    return options;
-  }, [options, value]);
-
-  const selectedOption = useMemo(
-    () => optionsWithFallback.find(option => option.id === value) ?? null,
-    [optionsWithFallback, value],
-  );
-
-  const displayLabel = selectedOption?.nome ?? placeholder;
-  const isPlaceholder = !selectedOption;
-
-  const closeMenu = useCallback(() => setIsOpen(false), []);
-
-  useEffect(() => {
-    if (!isOpen) return undefined;
-
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (
-        menuRef.current &&
-        !menuRef.current.contains(target) &&
-        buttonRef.current &&
-        !buttonRef.current.contains(target)
-      ) {
-        closeMenu();
-      }
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        closeMenu();
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [closeMenu, isOpen]);
-
-  const handleToggle = () => {
-    if (disabled) return;
-    setIsOpen(prev => !prev);
-  };
-
-  const handleSelect = (nextValue: string) => {
-    onChange(nextValue);
-    closeMenu();
-  };
-
-  return (
-    <div className="flex flex-col gap-2 text-left">
-      {label ? (
-        <label htmlFor={id} className="text-sm font-medium text-gray-700">
-          {label}
-        </label>
-      ) : null}
-      <div className="relative">
-        <button
-          type="button"
-          id={id}
-          ref={buttonRef}
-          onClick={handleToggle}
-          aria-haspopup="listbox"
-          aria-expanded={isOpen}
-          disabled={disabled}
-          className={`${dropdownButtonBaseClasses} ${
-            isPlaceholder ? "text-slate-500" : dropdownButtonActiveClasses
-          }`}
-        >
-          <span className="truncate">{displayLabel}</span>
-          <ChevronDown className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-        </button>
-        {isOpen && (
-          <div
-            ref={menuRef}
-            className={dropdownListClasses}
-            role="listbox"
-            aria-activedescendant={selectedOption?.id ?? ""}
-          >
-            <div className="max-h-64 overflow-y-auto">
-              {optionsWithFallback.length ? (
-                optionsWithFallback.map(option => {
-                  const isSelected = option.id === value;
-                  return (
-                    <button
-                      key={option.id}
-                      type="button"
-                      role="option"
-                      aria-selected={isSelected}
-                      onClick={() => handleSelect(option.id)}
-                      className={`${dropdownOptionClasses} ${
-                        isSelected ? "bg-indigo-50 text-indigo-600" : ""
-                      }`}
-                    >
-                      <span className="truncate">{option.nome}</span>
-                      {isSelected && (
-                        <Check className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-                      )}
-                    </button>
-                  );
-                })
-              ) : (
-                <div className="px-3 py-2 text-sm text-slate-500">
-                  Nenhuma unidade disponível.
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 export default function Checkout() {
   const { items, totalValor, totalPesoKg, clear, anyBelowMinimum } = useCart();
@@ -182,11 +20,8 @@ export default function Checkout() {
   const { limitKg: limiteMensalKg, loading: limiteLoading, error: limiteErro } = usePedidosConfig();
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [empresaId, setEmpresaId] = useState<string>("");
-  const [unidades, setUnidades] = useState<UnidadeEntrega[]>([]);
-  const [unidadeId, setUnidadeId] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [loadingEmpresas, setLoadingEmpresas] = useState(true);
-  const [loadingUnidades, setLoadingUnidades] = useState(true);
   const [loadingPerfil, setLoadingPerfil] = useState(true);
   const [empresasErro, setEmpresasErro] = useState<string | null>(null);
   const [perfilErro, setPerfilErro] = useState<string | null>(null);
@@ -221,29 +56,6 @@ export default function Checkout() {
     return () => { alive = false; };
   }, []);
 
-  // Busca unidades do backend
-  useEffect(() => {
-    let alive = true;
-    setLoadingUnidades(true);
-
-    if (!empresaId) {
-      setUnidades([]);
-      setUnidadeId("");
-      setLoadingUnidades(false);
-      return () => { alive = false; };
-    }
-
-    api.get<UnidadeEntrega[]>(`/unidades-entrega?empresaId=${empresaId}`)
-      .then(r => {
-        if (!alive) return;
-        const lista = r.data || [];
-        setUnidades(lista);
-        setUnidadeId(lista.length > 0 ? lista[0].id : "");
-      })
-      .catch(e => { if (!alive) return; setErr(e?.response?.data?.title ?? "Falha ao carregar unidades de entrega."); })
-      .finally(() => { if (!alive) return; setLoadingUnidades(false); });
-    return () => { alive = false; };
-  }, [empresaId]);
 
   useEffect(() => {
     let alive = true;
@@ -287,7 +99,7 @@ export default function Checkout() {
     try {
       const cpfDigits = sanitizeCpf(cpf);
       const dto = {
-        unidadeEntregaId: unidadeId,
+        empresaId,
         itens: items.map(i => ({ produtoCodigo: i.codigo, quantidade: i.quantidade })),
         cpf: cpfDigits || undefined,
       };
@@ -325,10 +137,8 @@ export default function Checkout() {
   const disableFinalize =
     loading ||
     loadingEmpresas ||
-    loadingUnidades ||
     loadingPerfil ||
     !empresaId ||
-    !unidadeId ||
     anyBelowMinimum ||
     (!cpfBloqueado && !isValidCpf(cpf));
 
@@ -410,36 +220,6 @@ export default function Checkout() {
               )}
             </div>
 
-            <div className="flex flex-col gap-2">
-              {loadingUnidades ? (
-                <>
-                  <span className="text-sm font-medium text-gray-700">Entrega</span>
-                  <div className="text-sm text-gray-600">Carregando unidades...</div>
-                </>
-              ) : !empresaId ? (
-                <>
-                  <span className="text-sm font-medium text-gray-700">Entrega</span>
-                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                    Selecione uma empresa para listar as unidades de entrega.
-                  </div>
-                </>
-              ) : unidades.length ? (
-                <DeliveryDropdown
-                  id="entrega-select"
-                  label="Entrega"
-                  options={unidades}
-                  value={unidadeId}
-                  onChange={setUnidadeId}
-                />
-              ) : (
-                <>
-                  <span className="text-sm font-medium text-gray-700">Entrega</span>
-                  <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                    Não foi possível carregar as unidades de entrega. Tente novamente mais tarde.
-                  </div>
-                </>
-              )}
-            </div>
           </div>
         </section>
 

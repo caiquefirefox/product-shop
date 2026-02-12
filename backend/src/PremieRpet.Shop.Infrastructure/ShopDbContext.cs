@@ -140,7 +140,7 @@ public sealed class ShopDbContext : DbContext
             e.Property(p => p.UsuarioId).IsRequired();
             e.Property(p => p.UsuarioNome).HasMaxLength(200).IsRequired();
             e.Property(p => p.UsuarioCpf).HasMaxLength(11);
-            e.Property(p => p.UnidadeEntregaId).IsRequired();
+            e.Property(p => p.EmpresaId).IsRequired();
             e.Property(p => p.DataHora);
             e.Property(p => p.AtualizadoEm);
             e.Property(p => p.AtualizadoPorUsuarioId);
@@ -150,7 +150,7 @@ public sealed class ShopDbContext : DbContext
 
             e.HasIndex(p => p.AtualizadoPorUsuarioId);
             e.HasIndex(p => p.StatusId);
-            e.HasIndex(p => p.UnidadeEntregaId);
+            e.HasIndex(p => p.EmpresaId);
 
             e.HasOne<Usuario>()
                 .WithMany()
@@ -169,11 +169,11 @@ public sealed class ShopDbContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("FK_Pedidos_PedidoStatus_StatusId");
 
-            e.HasOne(p => p.UnidadeEntrega)
-                .WithMany(u => u.Pedidos)
-                .HasForeignKey(p => p.UnidadeEntregaId)
+            e.HasOne(p => p.Empresa)
+                .WithMany()
+                .HasForeignKey(p => p.EmpresaId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("FK_Pedidos_UnidadesEntrega_UnidadeEntregaId");
+                .HasConstraintName("FK_Pedidos_Empresas_EmpresaId");
         });
 
         b.Entity<PedidoHistorico>(e =>
