@@ -10,6 +10,7 @@ public sealed record UsuarioDto(
     string Email,
     bool Ativo,
     bool DeveTrocarSenha,
+    bool SemLimite,
     string? Cpf,
     IReadOnlyCollection<string> Roles,
     DateTimeOffset CriadoEm,

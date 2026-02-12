@@ -62,7 +62,7 @@ public sealed class UsuariosController(IUsuarioService usuarios) : ControllerBas
     {
         try
         {
-            var resultado = await usuarios.UpsertAsync(request.Email, request.Cpf, request.Nome, request.Roles, ct);
+            var resultado = await usuarios.UpsertAsync(request.Email, request.Cpf, request.Nome, request.Roles, request.SemLimite, ct);
             return Ok(resultado);
         }
         catch (InvalidOperationException ex)
@@ -92,7 +92,7 @@ public sealed class UsuariosController(IUsuarioService usuarios) : ControllerBas
     {
         try
         {
-            var resultado = await usuarios.CriarLocalAsync(request.Cpf, request.Senha, request.Roles, request.Email, request.Nome, ct);
+            var resultado = await usuarios.CriarLocalAsync(request.Cpf, request.Senha, request.Roles, request.Email, request.Nome, request.SemLimite, ct);
             return Ok(resultado);
         }
         catch (InvalidOperationException ex)
@@ -107,7 +107,7 @@ public sealed class UsuariosController(IUsuarioService usuarios) : ControllerBas
     {
         try
         {
-            var resultado = await usuarios.AtualizarLocalAsync(id, request.Email, request.Cpf, request.Nome, request.Roles, ct);
+            var resultado = await usuarios.AtualizarLocalAsync(id, request.Email, request.Cpf, request.Nome, request.Roles, request.SemLimite, ct);
             return Ok(resultado);
         }
         catch (InvalidOperationException ex)

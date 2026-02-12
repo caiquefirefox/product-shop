@@ -7,4 +7,5 @@ public sealed record UsuarioLocalRequest
     public IReadOnlyCollection<string>? Roles { get; init; }
     public string? Email { get; init; }
     public string? Nome { get; init; }
+    public bool SemLimite { get; init; }
 }

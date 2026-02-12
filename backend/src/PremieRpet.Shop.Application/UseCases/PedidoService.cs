@@ -26,6 +26,7 @@ public sealed class PedidoService : IPedidoService
     private readonly IProdutoRepository _produtos;
     private readonly IUnidadeEntregaRepository _unidadesEntrega;
     private readonly IUsuarioService _usuarios;
+    private readonly IUsuarioRepository _usuariosRepo;
     private readonly PedidoSettings _settings;
     private readonly decimal _limiteKgMes;
     private readonly int _quantidadeMinimaPadrao;
@@ -36,12 +37,14 @@ public sealed class PedidoService : IPedidoService
         IProdutoRepository prod,
         IUnidadeEntregaRepository unidadesEntrega,
         IUsuarioService usuarios,
+        IUsuarioRepository usuariosRepo,
         IOptions<PedidoSettings> settings)
     {
         _pedidos = ped;
         _produtos = prod;
         _unidadesEntrega = unidadesEntrega;
         _usuarios = usuarios;
+        _usuariosRepo = usuariosRepo;
         _settings = Normalizar(settings?.Value ?? new PedidoSettings());
         _limiteKgMes = _settings.LimitKgPerUserPerMonth;
         _quantidadeMinimaPadrao = _settings.DefaultMinQuantity;
@@ -230,6 +233,15 @@ public sealed class PedidoService : IPedidoService
         mes = Math.Clamp(mes, 1, 12);
         return new DateTimeOffset(new DateTime(ano, mes, 1, 0, 0, 0, DateTimeKind.Utc));
     }
+    private async Task<bool> UsuarioIgnoraLimitePesoAsync(Guid usuarioId, CancellationToken ct)
+    {
+        if (usuarioId == Guid.Empty)
+            return false;
+
+        var usuario = await _usuariosRepo.GetByIdAsync(usuarioId, ct);
+        return usuario?.SemLimite ?? false;
+    }
+
 
     public async Task<PedidoResumoDto> CriarPedidoAsync(string usuarioEmail, string? usuarioMicrosoftId, string usuarioNome, PedidoCreateDto dto, CancellationToken ct)
     {
@@ -241,6 +253,7 @@ public sealed class PedidoService : IPedidoService
 
         var agora = DateTimeOffset.UtcNow;
         var perfil = await _usuarios.GarantirCpfAsync(usuarioEmail, usuarioMicrosoftId, dto.Cpf, usuarioNome, ct);
+        var usuarioSemLimite = await UsuarioIgnoraLimitePesoAsync(perfil.Id, ct);
         var pesoAcumulado = await PesoAcumuladoMesEmKgAsync(perfil.Id, agora, ct);
 
         var inicioMes = InicioMesUtc(agora.Year, agora.Month);
@@ -285,7 +298,7 @@ public sealed class PedidoService : IPedidoService
             var pesoUnitKg = PesoRules.ToKg(pesoOriginal, tipoPesoOriginal);
             var pesoNovo = pesoAcumulado + (pesoUnitKg * item.Quantidade);
 
-            if (pesoNovo > _limiteKgMes)
+            if (!usuarioSemLimite && pesoNovo > _limiteKgMes)
                 throw new InvalidOperationException($"Limite mensal de {FormatarLimiteMensal()} kg excedido.");
 
             pesoAcumulado = pesoNovo;
@@ -514,6 +527,7 @@ public sealed class PedidoService : IPedidoService
             throw new InvalidOperationException($"Produto(s) não encontrado(s): {string.Join(", ", inexistentes)}");
         }
 
+        var usuarioSemLimite = await UsuarioIgnoraLimitePesoAsync(pedido.UsuarioId, ct);
         var pesoMesAtual = await PesoAcumuladoMesEmKgAsync(pedido.UsuarioId, pedido.DataHora, ct);
         var pesoPedidoAtual = pedido.PesoTotalKg();
         var pesoBase = Math.Max(0, pesoMesAtual - pesoPedidoAtual);
@@ -597,7 +611,7 @@ public sealed class PedidoService : IPedidoService
             }
         }
 
-        if (pesoBase + pesoNovoPedido > _limiteKgMes)
+        if (!usuarioSemLimite && pesoBase + pesoNovoPedido > _limiteKgMes)
             throw new InvalidOperationException($"Limite mensal de {FormatarLimiteMensal()} kg excedido.");
 
         var unidadeAnteriorId = pedido.UnidadeEntregaId;
@@ -713,8 +727,23 @@ public sealed class PedidoService : IPedidoService
         var totalPedidos = pedidos.Count;
         var totalKg = pedidos.Sum(p => PesoRules.SumTotalKg(p.Itens));
 
+        Guid? usuarioResumoId = null;
+        if (isAdmin)
+        {
+            if (usuarioFiltroId is Guid filtroUsuario && filtroUsuario != Guid.Empty)
+                usuarioResumoId = filtroUsuario;
+        }
+        else
+        {
+            usuarioResumoId = usuarioAtualId;
+        }
+
+        var usuarioSemLimite = usuarioResumoId.HasValue
+            ? await UsuarioIgnoraLimitePesoAsync(usuarioResumoId.Value, ct)
+            : false;
+
         return new PedidoResumoMensalDto(
-            _limiteKgMes,
+            usuarioSemLimite ? 0 : _limiteKgMes,
             totalKg,
             totalValor,
             totalItens,

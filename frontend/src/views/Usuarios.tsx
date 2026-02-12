@@ -184,12 +184,14 @@ export default function Usuarios() {
   const [newEmail, setNewEmail] = useState("");
   const [newCpf, setNewCpf] = useState("");
   const [newIsAdmin, setNewIsAdmin] = useState(false);
+  const [newSemLimite, setNewSemLimite] = useState(false);
   const [creating, setCreating] = useState(false);
   const [localCpf, setLocalCpf] = useState("");
   const [localSenha, setLocalSenha] = useState("");
   const [localNome, setLocalNome] = useState("");
   const [localEmail, setLocalEmail] = useState("");
   const [localIsAdmin, setLocalIsAdmin] = useState(false);
+  const [localSemLimite, setLocalSemLimite] = useState(false);
   const [creatingLocal, setCreatingLocal] = useState(false);
 
   const [searchResults, setSearchResults] = useState<UsuarioLookup[]>([]);
@@ -202,6 +204,7 @@ export default function Usuarios() {
   const [draftEmails, setDraftEmails] = useState<Record<string, string>>({});
   const [draftNomes, setDraftNomes] = useState<Record<string, string>>({});
   const [draftAtivos, setDraftAtivos] = useState<Record<string, boolean>>({});
+  const [draftSemLimites, setDraftSemLimites] = useState<Record<string, boolean>>({});
   const [draftBases, setDraftBases] = useState<Record<string, UsuarioPerfil>>({});
   const [syncing, setSyncing] = useState(false);
   const [confirmChangesOpen, setConfirmChangesOpen] = useState(false);
@@ -227,6 +230,7 @@ export default function Usuarios() {
     setNewEmail("");
     setNewCpf("");
     setNewIsAdmin(false);
+    setNewSemLimite(false);
     setSelectedSuggestion(null);
     setSearchResults([]);
     setSearchError(null);
@@ -249,6 +253,7 @@ export default function Usuarios() {
     setLocalSenha("");
     setLocalEmail("");
     setLocalIsAdmin(false);
+    setLocalSemLimite(false);
   };
 
   const handleOpenLocalPanel = () => {
@@ -438,9 +443,10 @@ export default function Usuarios() {
     }
 
     const roles = buildRoles(newIsAdmin);
-    const payload: { email: string; cpf?: string; roles: string[]; nome?: string } = {
+    const payload: { email: string; cpf?: string; roles: string[]; nome?: string; semLimite: boolean } = {
       email,
       roles,
+      semLimite: newSemLimite,
     };
     const nome = chosenUser.displayName?.trim();
     if (nome) {
@@ -457,6 +463,7 @@ export default function Usuarios() {
       setNewEmail("");
       setNewCpf("");
       setNewIsAdmin(false);
+    setNewSemLimite(false);
       setSelectedSuggestion(null);
       setSearchResults([]);
       setSearchError(null);
@@ -492,11 +499,12 @@ export default function Usuarios() {
     }
 
     const roles = buildRoles(localIsAdmin);
-    const payload: { cpf: string; senha: string; roles: string[]; email?: string; nome: string } = {
+    const payload: { cpf: string; senha: string; roles: string[]; email?: string; nome: string; semLimite: boolean } = {
       cpf: sanitized,
       senha: localSenha,
       roles,
       nome: trimmedLocalNome,
+      semLimite: localSemLimite,
     };
 
     const trimmedLocalEmail = localEmail.trim();
@@ -513,6 +521,7 @@ export default function Usuarios() {
       setLocalNome("");
       setLocalEmail("");
       setLocalIsAdmin(false);
+    setLocalSemLimite(false);
       await fetchUsuarios(page);
       await refreshRoles();
     } catch (error: any) {
@@ -549,6 +558,14 @@ export default function Usuarios() {
     });
   };
 
+  const toggleSemLimite = (usuario: UsuarioPerfil) => {
+    rememberDraftBase(usuario);
+    setDraftSemLimites((prev) => {
+      const current = prev[usuario.id] ?? usuario.semLimite;
+      return { ...prev, [usuario.id]: !current };
+    });
+  };
+
   const handleDraftEmailChange = (usuario: UsuarioPerfil, value: string) => {
     rememberDraftBase(usuario);
     setDraftEmails((prev) => ({ ...prev, [usuario.id]: value }));
@@ -580,6 +597,7 @@ export default function Usuarios() {
     rawDraftEmail: string;
     rawDraftNome: string;
     draftAtivo: boolean;
+    draftSemLimite: boolean;
     cpfHasError: boolean;
     nomeHasError: boolean;
     emailHasError: boolean;
@@ -638,6 +656,7 @@ export default function Usuarios() {
       const draftEmail = draftEmails[usuario.id] ?? usuario.email ?? "";
       const draftNome = draftNomes[usuario.id] ?? usuario.nome ?? "";
       const draftAtivo = draftAtivos[usuario.id] ?? usuario.ativo;
+      const draftSemLimite = draftSemLimites[usuario.id] ?? usuario.semLimite;
       const isLocal = !usuario.microsoftId;
       const trimmedDraftEmail = draftEmail.trim();
       const trimmedDraftNome = draftNome.trim();
@@ -646,7 +665,8 @@ export default function Usuarios() {
       const emailChanged = isLocal && trimmedDraftEmail && trimmedDraftEmail !== (usuario.email ?? "");
       const nomeChanged = isLocal && trimmedDraftNome && trimmedDraftNome !== (usuario.nome ?? "");
     const cpfChanged = cpfComplete && draftCpf !== originalCpf && !cpfHasError;
-      const hasProfileChanges = isAdminDraft !== isAdminOriginal || cpfChanged || emailChanged || nomeChanged;
+      const semLimiteChanged = draftSemLimite !== usuario.semLimite;
+      const hasProfileChanges = isAdminDraft !== isAdminOriginal || cpfChanged || emailChanged || nomeChanged || semLimiteChanged;
       const statusChanged = draftAtivo !== usuario.ativo;
       const hasChanges = hasProfileChanges || statusChanged;
       const hasError = cpfHasError || nomeHasError || emailHasError;
@@ -660,6 +680,9 @@ export default function Usuarios() {
       }
       if (cpfChanged && cpfToSend) {
         changeDescriptions.push(`CPF: ${originalCpf ? formatCpf(originalCpf) : "—"} → ${formatCpf(cpfToSend)}`);
+      }
+      if (semLimiteChanged) {
+        changeDescriptions.push(`Sem limite: ${usuario.semLimite ? "Sim" : "Não"} → ${draftSemLimite ? "Sim" : "Não"}`);
       }
       if (isAdminDraft !== isAdminOriginal) {
         changeDescriptions.push(
@@ -685,6 +708,7 @@ export default function Usuarios() {
         rawDraftNome: draftNome,
         draftNome: trimmedDraftNome,
         draftAtivo,
+        draftSemLimite,
         cpfHasError,
         nomeHasError,
         emailHasError,
@@ -695,7 +719,7 @@ export default function Usuarios() {
         changeDescriptions,
       };
     },
-    [draftAdmins, draftAtivos, draftCpfs, draftEmails, draftNomes],
+    [draftAdmins, draftAtivos, draftCpfs, draftEmails, draftNomes, draftSemLimites],
   );
 
   const pendingChanges = useMemo(
@@ -706,6 +730,7 @@ export default function Usuarios() {
         ...Object.keys(draftCpfs),
         ...Object.keys(draftEmails),
         ...Object.keys(draftNomes),
+        ...Object.keys(draftSemLimites),
       ]);
 
       const byId: Record<string, UsuarioPerfil> = {};
@@ -723,7 +748,7 @@ export default function Usuarios() {
         })
         .filter((info): info is UsuarioDraftInfo => Boolean(info?.hasChanges));
     },
-    [draftAdmins, draftAtivos, draftBases, draftCpfs, draftEmails, draftNomes, getUsuarioDraftInfo, usuarios],
+    [draftAdmins, draftAtivos, draftBases, draftCpfs, draftEmails, draftNomes, draftSemLimites, getUsuarioDraftInfo, usuarios],
   );
 
   const hasPendingErrors = useMemo(
@@ -773,6 +798,7 @@ export default function Usuarios() {
         nome: change.hasProfileChanges ? change.draftNome || change.usuario.nome : undefined,
         roles: change.hasProfileChanges ? change.roles : undefined,
         ativo: change.statusChanged ? change.draftAtivo : undefined,
+        semLimite: change.hasProfileChanges ? change.draftSemLimite : undefined,
       }));
 
       await api.post<UsuarioPerfil[]>("/usuarios/lote", { usuarios: payload });
@@ -1005,15 +1031,26 @@ export default function Usuarios() {
               <div className="text-sm font-medium text-gray-700">Perfis</div>
               <div className="text-xs text-gray-500">Todo usuário é Colaborador. Marque para conceder acesso de Administrador.</div>
             </div>
-            <label className="flex items-center gap-2 text-sm text-gray-700">
-              <input
-                type="checkbox"
-                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                checked={newIsAdmin}
-                onChange={(event) => setNewIsAdmin(event.target.checked)}
-              />
-              Administrador
-            </label>
+            <div className="flex flex-col items-end gap-2">
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  checked={newIsAdmin}
+                  onChange={(event) => setNewIsAdmin(event.target.checked)}
+                />
+                Administrador
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  checked={newSemLimite}
+                  onChange={(event) => setNewSemLimite(event.target.checked)}
+                />
+                Sem limite de peso mensal
+              </label>
+            </div>
           </div>
 
           <div className="md:col-span-2 flex justify-end gap-3">
@@ -1114,15 +1151,26 @@ export default function Usuarios() {
                 <div className="text-sm font-medium text-gray-700">Perfis</div>
                 <div className="text-xs text-gray-500">Todo usuário é Colaborador. Marque para conceder acesso de Administrador.</div>
               </div>
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  checked={localIsAdmin}
-                  onChange={(event) => setLocalIsAdmin(event.target.checked)}
-                />
-                Administrador
-              </label>
+              <div className="flex flex-col items-end gap-2">
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    checked={localIsAdmin}
+                    onChange={(event) => setLocalIsAdmin(event.target.checked)}
+                  />
+                  Administrador
+                </label>
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    checked={localSemLimite}
+                    onChange={(event) => setLocalSemLimite(event.target.checked)}
+                  />
+                  Sem limite de peso mensal
+                </label>
+              </div>
             </div>
 
             <div className="md:col-span-2 flex justify-end gap-3">
@@ -1275,6 +1323,7 @@ export default function Usuarios() {
                     <th className="px-4 py-3">Origem</th>
                     <th className="px-4 py-3">CPF</th>
                     <th className="px-4 py-3 text-center">ADM</th>
+                    <th className="px-4 py-3 text-center">Sem limite</th>
                     <th className="px-4 py-3 text-center">Ativo</th>
                     <th className="px-4 py-3">Atualizado em</th>
                     <th className="px-4 py-3 text-right">Pendências</th>
@@ -1293,6 +1342,7 @@ export default function Usuarios() {
                     rawDraftEmail,
                     rawDraftNome,
                     draftAtivo,
+                    draftSemLimite,
                     nomeHasError,
                     emailHasError,
                     hasChanges,
@@ -1378,6 +1428,20 @@ export default function Usuarios() {
                               checked={isAdminDraft}
                               onChange={() => toggleAdmin(usuario)}
                               title={isAdminDraft ? "Administrador" : "Colaborador"}
+                            />
+                          </label>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex justify-center">
+                          <label className="inline-flex items-center justify-center">
+                            <span className="sr-only">{draftSemLimite ? "Usuário sem limite" : "Usuário com limite"}</span>
+                            <input
+                              type="checkbox"
+                              className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                              checked={draftSemLimite}
+                              onChange={() => toggleSemLimite(usuario)}
+                              title={draftSemLimite ? "Sem limite" : "Com limite"}
                             />
                           </label>
                         </div>
