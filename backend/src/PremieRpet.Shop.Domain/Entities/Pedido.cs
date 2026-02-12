@@ -11,7 +11,7 @@ public sealed class Pedido
     public Guid UsuarioId { get; set; }
     public required string UsuarioNome { get; set; }
     public string? UsuarioCpf { get; set; }
-    public Guid UnidadeEntregaId { get; set; }
+    public Guid? UnidadeEntregaId { get; set; }
     public UnidadeEntrega? UnidadeEntrega { get; set; }
     public int StatusId { get; set; } = PedidoStatusIds.Solicitado;
     public PedidoStatus? Status { get; set; }

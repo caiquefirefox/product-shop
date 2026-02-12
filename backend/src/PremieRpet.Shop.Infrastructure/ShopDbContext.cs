@@ -140,7 +140,7 @@ public sealed class ShopDbContext : DbContext
             e.Property(p => p.UsuarioId).IsRequired();
             e.Property(p => p.UsuarioNome).HasMaxLength(200).IsRequired();
             e.Property(p => p.UsuarioCpf).HasMaxLength(11);
-            e.Property(p => p.UnidadeEntregaId).IsRequired();
+            e.Property(p => p.UnidadeEntregaId);
             e.Property(p => p.DataHora);
             e.Property(p => p.AtualizadoEm);
             e.Property(p => p.AtualizadoPorUsuarioId);
@@ -172,7 +172,7 @@ public sealed class ShopDbContext : DbContext
             e.HasOne(p => p.UnidadeEntrega)
                 .WithMany(u => u.Pedidos)
                 .HasForeignKey(p => p.UnidadeEntregaId)
-                .OnDelete(DeleteBehavior.Restrict)
+                .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("FK_Pedidos_UnidadesEntrega_UnidadeEntregaId");
         });
 

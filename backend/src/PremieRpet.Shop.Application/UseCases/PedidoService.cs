@@ -25,6 +25,7 @@ public sealed class PedidoService : IPedidoService
     private readonly IPedidoRepository _pedidos;
     private readonly IProdutoRepository _produtos;
     private readonly IUnidadeEntregaRepository _unidadesEntrega;
+    private readonly IEmpresaRepository _empresas;
     private readonly IUsuarioService _usuarios;
     private readonly IUsuarioRepository _usuariosRepo;
     private readonly PedidoSettings _settings;
@@ -36,6 +37,7 @@ public sealed class PedidoService : IPedidoService
         IPedidoRepository ped,
         IProdutoRepository prod,
         IUnidadeEntregaRepository unidadesEntrega,
+        IEmpresaRepository empresas,
         IUsuarioService usuarios,
         IUsuarioRepository usuariosRepo,
         IOptions<PedidoSettings> settings)
@@ -43,6 +45,7 @@ public sealed class PedidoService : IPedidoService
         _pedidos = ped;
         _produtos = prod;
         _unidadesEntrega = unidadesEntrega;
+        _empresas = empresas;
         _usuarios = usuarios;
         _usuariosRepo = usuariosRepo;
         _settings = Normalizar(settings?.Value ?? new PedidoSettings());
@@ -245,8 +248,10 @@ public sealed class PedidoService : IPedidoService
         if (dto.EmpresaId == Guid.Empty)
             throw new InvalidOperationException("Empresa inválida.");
 
-        var unidadeEntrega = (await _unidadesEntrega.ListarAsync(dto.EmpresaId, ct)).FirstOrDefault()
-            ?? throw new InvalidOperationException("Empresa sem unidade de entrega configurada.");
+        var empresa = await _empresas.ObterPorIdAsync(dto.EmpresaId, ct)
+            ?? throw new InvalidOperationException("Empresa inválida.");
+
+        var unidadeEntrega = (await _unidadesEntrega.ListarAsync(dto.EmpresaId, ct)).FirstOrDefault();
 
         var agora = DateTimeOffset.UtcNow;
         var perfil = await _usuarios.GarantirCpfAsync(usuarioEmail, usuarioMicrosoftId, dto.Cpf, usuarioNome, ct);
@@ -270,7 +275,7 @@ public sealed class PedidoService : IPedidoService
             UsuarioId = perfil.Id,
             UsuarioNome = usuarioNome,
             UsuarioCpf = perfil.Cpf,
-            UnidadeEntregaId = unidadeEntrega.Id,
+            UnidadeEntregaId = unidadeEntrega?.Id,
             StatusId = _settings.InitialStatusId,
             AtualizadoEm = agora,
             AtualizadoPorUsuarioId = perfil.Id
@@ -314,8 +319,8 @@ public sealed class PedidoService : IPedidoService
 
         await _pedidos.AddAsync(pedido, ct);
 
-        var empresaId = unidadeEntrega.EmpresaId;
-        var empresaNome = unidadeEntrega.Empresa?.Nome ?? string.Empty;
+        var empresaId = empresa.Id;
+        var empresaNome = empresa.Nome;
 
         return new PedidoResumoDto(
             pedido.Id,
