@@ -1444,6 +1444,16 @@ export default function Produtos() {
                           <p className="text-sm text-[#878787]">
                             {formattedSabores || "Nenhum sabor informado"}
                           </p>
+                          {p.linkExterno && (
+                            <a
+                              href={p.linkExterno}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="w-fit text-sm font-semibold text-indigo-700 underline decoration-indigo-300 underline-offset-4 transition hover:text-indigo-800 hover:decoration-indigo-500"
+                            >
+                              Ver mais detalhes
+                            </a>
+                          )}
                         </div>
 
                         <div className="px-1">

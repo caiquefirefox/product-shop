@@ -4,7 +4,7 @@ import {
   useState,
   type MouseEvent as ReactMouseEvent,
 } from "react";
-import { CheckCircle2, ExternalLink, ShoppingCart, X } from "lucide-react";
+import { CheckCircle2, ShoppingCart, X } from "lucide-react";
 import api from "../lib/api";
 import { useCart } from "../cart/CartContext";
 import type { Produto } from "../cart/types";
@@ -487,10 +487,9 @@ export default function Catalogo() {
                               href={p.linkExterno}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex w-fit items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 transition hover:border-indigo-300 hover:bg-indigo-100"
+                              className="w-fit text-sm font-semibold text-indigo-700 underline decoration-indigo-300 underline-offset-4 transition hover:text-indigo-800 hover:decoration-indigo-500"
                             >
                               Ver mais detalhes
-                              <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                             </a>
                           )}
                         </div>
