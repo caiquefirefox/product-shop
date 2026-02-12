@@ -25,6 +25,7 @@ public sealed class UsuarioUpsertBatchRequest
                 u.Nome,
                 u.Cpf,
                 u.Roles,
+                u.SemLimite,
                 u.Ativo))
             .ToArray();
     }
@@ -46,6 +47,8 @@ public sealed record UsuarioUpsertBatchItem
     public string? Cpf { get; init; }
 
     public IEnumerable<string>? Roles { get; init; }
+
+    public bool? SemLimite { get; init; }
 
     public bool? Ativo { get; init; }
 }

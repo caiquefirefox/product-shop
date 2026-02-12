@@ -685,6 +685,11 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<bool>("SemLimite")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("MicrosoftId")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");

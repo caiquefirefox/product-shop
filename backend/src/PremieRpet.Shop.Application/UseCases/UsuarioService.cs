@@ -307,7 +307,7 @@ public sealed class UsuarioService : IUsuarioService
         return new PagedResultDto<UsuarioDto>(resultados, page, pageSize, totalItems, totalPages);
     }
 
-    public async Task<UsuarioDto> UpsertAsync(string email, string? cpf, string? nome, IEnumerable<string>? roles, CancellationToken ct)
+    public async Task<UsuarioDto> UpsertAsync(string email, string? cpf, string? nome, IEnumerable<string>? roles, bool semLimite, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(email))
             throw new InvalidOperationException("E-mail do usuário obrigatório.");
@@ -331,6 +331,7 @@ public sealed class UsuarioService : IUsuarioService
                 MicrosoftId = microsoftId,
                 Email = normalizedEmail,
                 Cpf = sanitizedCpf,
+                SemLimite = semLimite,
                 Ativo = true,
                 CriadoEm = agora,
                 AtualizadoEm = agora,
@@ -361,6 +362,7 @@ public sealed class UsuarioService : IUsuarioService
             usuario.Email = normalizedEmail;
         }
 
+        usuario.SemLimite = semLimite;
         usuario.AtualizadoEm = agora;
         await _usuarios.UpdateAsync(usuario, ct);
         await _usuarios.ReplaceRolesAsync(usuario.Id, normalizedRoles, ct);
@@ -372,7 +374,7 @@ public sealed class UsuarioService : IUsuarioService
         return ToDto(atualizado);
     }
 
-    public async Task<UsuarioDto> CriarLocalAsync(string cpf, string senha, IEnumerable<string>? roles, string? email, string? nome, CancellationToken ct)
+    public async Task<UsuarioDto> CriarLocalAsync(string cpf, string senha, IEnumerable<string>? roles, string? email, string? nome, bool semLimite, CancellationToken ct)
     {
         var sanitizedCpf = SanitizeCpfOrNull(cpf) ?? throw new InvalidOperationException("CPF obrigatório.");
         if (string.IsNullOrWhiteSpace(senha))
@@ -399,6 +401,7 @@ public sealed class UsuarioService : IUsuarioService
             Email = normalizedEmail ?? $"{sanitizedCpf}@local",
             PasswordHash = HashPassword(senha),
             DeveTrocarSenha = true,
+            SemLimite = semLimite,
             Ativo = true,
             CriadoEm = agora,
             AtualizadoEm = agora,
@@ -445,16 +448,17 @@ public sealed class UsuarioService : IUsuarioService
                     var nome = alteracao.Nome ?? usuario.Nome;
                     var email = alteracao.Email ?? usuario.Email;
                     var cpf = alteracao.Cpf ?? usuario.Cpf;
+                    var semLimite = alteracao.SemLimite ?? usuario.SemLimite;
 
                     if (string.IsNullOrWhiteSpace(usuario.MicrosoftId))
                     {
                         var emailParaAtualizar = email ?? throw new InvalidOperationException("E-mail do usuário obrigatório.");
-                        await AtualizarLocalAsync(usuario.Id, emailParaAtualizar, cpf, nome, roles, innerCt);
+                        await AtualizarLocalAsync(usuario.Id, emailParaAtualizar, cpf, nome, roles, semLimite, innerCt);
                     }
                     else
                     {
                         var emailParaAtualizar = email ?? usuario.Email ?? throw new InvalidOperationException("E-mail do usuário obrigatório.");
-                        await UpsertAsync(emailParaAtualizar, cpf, nome, roles, innerCt);
+                        await UpsertAsync(emailParaAtualizar, cpf, nome, roles, semLimite, innerCt);
                     }
 
                     usuario = await _usuarios.GetByIdAsync(alteracao.Id, innerCt)
@@ -570,7 +574,7 @@ public sealed class UsuarioService : IUsuarioService
         return ToDto(usuario);
     }
 
-    public async Task<UsuarioDto> AtualizarLocalAsync(Guid usuarioId, string email, string? cpf, string? nome, IEnumerable<string>? roles, CancellationToken ct)
+    public async Task<UsuarioDto> AtualizarLocalAsync(Guid usuarioId, string email, string? cpf, string? nome, IEnumerable<string>? roles, bool semLimite, CancellationToken ct)
     {
         if (usuarioId == Guid.Empty)
             throw new InvalidOperationException("Identificador do usuário obrigatório.");
@@ -609,6 +613,7 @@ public sealed class UsuarioService : IUsuarioService
         }
 
         usuario.Email = normalizedEmail;
+        usuario.SemLimite = semLimite;
         usuario.AtualizadoEm = DateTimeOffset.UtcNow;
 
         await _usuarios.UpdateAsync(usuario, ct);
@@ -1065,7 +1070,7 @@ public sealed class UsuarioService : IUsuarioService
 
         var email = usuario.Email ?? string.Empty;
 
-        return new UsuarioDto(usuario.Id, usuario.Nome, microsoftId, email, usuario.Ativo, usuario.DeveTrocarSenha, usuario.Cpf, roles, usuario.CriadoEm, usuario.AtualizadoEm);
+        return new UsuarioDto(usuario.Id, usuario.Nome, microsoftId, email, usuario.Ativo, usuario.DeveTrocarSenha, usuario.SemLimite, usuario.Cpf, roles, usuario.CriadoEm, usuario.AtualizadoEm);
     }
 
     private static string? TryNormalizeEmail(string? email)

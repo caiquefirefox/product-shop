@@ -8,4 +8,5 @@ public sealed record UsuarioUpsertRequest
     public string? Cpf { get; init; }
     public string? Nome { get; init; }
     public IReadOnlyCollection<string>? Roles { get; init; }
+    public bool SemLimite { get; init; }
 }
