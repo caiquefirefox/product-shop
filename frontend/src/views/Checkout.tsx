@@ -8,6 +8,7 @@ import { sanitizeCpf, isValidCpf, formatCpf } from "../lib/cpf";
 import type { UsuarioPerfil } from "../types/user";
 import { usePedidosConfig } from "../hooks/usePedidosConfig";
 import { Check, ChevronDown } from "lucide-react";
+import { useUser } from "../auth/useUser";
 
 type UnidadeEntrega = {
   id: string;
@@ -179,9 +180,6 @@ export default function Checkout() {
   const { items, totalValor, totalPesoKg, clear, anyBelowMinimum } = useCart();
   const pesoTotalFormatado = formatPeso(totalPesoKg, "kg", { unit: "kg" });
   const { limitKg: limiteMensalKg, loading: limiteLoading, error: limiteErro } = usePedidosConfig();
-  const limiteMensalFormatado = limiteMensalKg > 0
-    ? formatPeso(limiteMensalKg, "kg", { unit: "kg" })
-    : "Não configurado";
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [empresaId, setEmpresaId] = useState<string>("");
   const [unidades, setUnidades] = useState<UnidadeEntrega[]>([]);
@@ -198,6 +196,11 @@ export default function Checkout() {
   const [err, setErr] = useState<string | null>(null);
   const navigate = useNavigate();
   const { success, error: toastError } = useToast();
+  const { profile } = useUser();
+  const usuarioSemLimite = profile?.semLimite ?? false;
+  const limiteMensalFormatado = usuarioSemLimite
+    ? "Sem limite"
+    : (limiteMensalKg > 0 ? formatPeso(limiteMensalKg, "kg", { unit: "kg" }) : "Não configurado");
 
   useEffect(() => {
     let alive = true;
@@ -474,7 +477,7 @@ export default function Checkout() {
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{limiteErro}</div>
             )}
 
-            {limiteMensalKg > 0 && totalPesoKg > limiteMensalKg && (
+            {!usuarioSemLimite && limiteMensalKg > 0 && totalPesoKg > limiteMensalKg && (
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
                 Atenção: seu carrinho tem {pesoTotalFormatado}. O limite mensal é {limiteMensalFormatado}.
               </div>

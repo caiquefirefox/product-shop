@@ -65,7 +65,8 @@ function formatDateTimePtBr(iso: string) {
 }
 
 export default function Pedidos() {
-  const { isAdmin } = useUser();
+  const { isAdmin, profile } = useUser();
+  const usuarioSemLimite = profile?.semLimite ?? false;
   const { success, error: toastError } = useToast();
   const { minQtyPadrao } = usePedidosConfig();
 
@@ -895,9 +896,11 @@ export default function Pedidos() {
     const consumoPesoFormatado = formatPeso(resumo.totalConsumidoKg, "kg", { unit: "kg" });
     const pedidosUtilizados = Math.max(0, Math.min(resumo.pedidosUtilizados, resumo.limitePedidos));
     const pedidosDisponiveis = Math.max(0, resumo.limitePedidos - pedidosUtilizados);
-    const limiteInfoText = limiteMensalKg > 0
-      ? `${pesoProgressPerc}% do limite mensal de ${limitePesoFormatado}`
-      : "Limite mensal não configurado.";
+    const limiteInfoText = usuarioSemLimite
+      ? "Usuário sem limite de peso mensal."
+      : (limiteMensalKg > 0
+        ? `${pesoProgressPerc}% do limite mensal de ${limitePesoFormatado}`
+        : "Limite mensal não configurado.");
 
     return (
       <div className="grid gap-4 md:grid-cols-2">

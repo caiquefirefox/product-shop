@@ -4,6 +4,7 @@ import { useCart } from "../cart/CartContext";
 import { isBelowMin, itemSubtotal, resolveMinQty } from "../cart/calc";
 import { formatCurrencyBRL, formatPeso } from "../lib/format";
 import { usePedidosConfig } from "../hooks/usePedidosConfig";
+import { useUser } from "../auth/useUser";
 
 export type CartSidebarProps = {
   open: boolean;
@@ -22,14 +23,17 @@ export default function CartSidebar({ open, onClose, onCheckout }: CartSidebarPr
     anyBelowMinimum,
   } = useCart();
   const { limitKg: limiteMensalKg, loading: limiteLoading, error: limiteErro, minQtyPadrao } = usePedidosConfig();
-  const passouLimite = limiteMensalKg > 0 && totalPesoKg > limiteMensalKg;
+  const { profile } = useUser();
+  const usuarioSemLimite = profile?.semLimite ?? false;
+  const passouLimite = !usuarioSemLimite && limiteMensalKg > 0 && totalPesoKg > limiteMensalKg;
   const totalPesoFormatado = formatPeso(totalPesoKg, "kg", {
     unit: "kg",
     minimumFractionDigits: 3,
     maximumFractionDigits: 3,
   });
-  const limiteMensalFormatado =
-    limiteMensalKg > 0 ? formatPeso(limiteMensalKg, "kg", { unit: "kg" }) : "Não configurado";
+  const limiteMensalFormatado = usuarioSemLimite
+    ? "Sem limite"
+    : (limiteMensalKg > 0 ? formatPeso(limiteMensalKg, "kg", { unit: "kg" }) : "Não configurado");
 
   useEffect(() => {
     if (!open) return;
@@ -221,7 +225,7 @@ export default function CartSidebar({ open, onClose, onCheckout }: CartSidebarPr
           <div className="mt-auto border-t border-gray-200 px-6 py-5">
             {passouLimite && (
               <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                Atenção: seu carrinho tem {totalPesoFormatado}. O limite mensal é {limiteMensalFormatado} por colaborador.
+                Atenção: seu carrinho tem {totalPesoFormatado}. O limite mensal é {limiteMensalFormatado}.
               </div>
             )}
             <div className="grid grid-cols-[repeat(3,minmax(0,1fr))] items-center gap-4">
