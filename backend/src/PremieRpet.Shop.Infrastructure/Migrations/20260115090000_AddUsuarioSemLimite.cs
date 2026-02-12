@@ -1,9 +1,13 @@
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
+using PremieRpet.Shop.Infrastructure;
 
 #nullable disable
 
 namespace PremieRpet.Shop.Infrastructure.Migrations
 {
+    [DbContext(typeof(ShopDbContext))]
+    [Migration("20260115090000_AddUsuarioSemLimite")]
     public partial class AddUsuarioSemLimite : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
