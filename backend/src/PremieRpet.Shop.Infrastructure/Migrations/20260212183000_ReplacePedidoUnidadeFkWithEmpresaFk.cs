@@ -16,20 +16,20 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                 nullable: true);
 
             migrationBuilder.Sql(@"
-UPDATE \"Pedidos\" p
-SET \"EmpresaId\" = u.\"EmpresaId\"
-FROM \"UnidadesEntrega\" u
-WHERE p.\"UnidadeEntregaId\" = u.\"Id\";");
+UPDATE ""Pedidos"" p
+SET ""EmpresaId"" = u.""EmpresaId""
+FROM ""UnidadesEntrega"" u
+WHERE p.""UnidadeEntregaId"" = u.""Id"";");
 
             migrationBuilder.Sql(@"
-UPDATE \"Pedidos\" p
-SET \"EmpresaId\" = (
-    SELECT e.\"Id\"
-    FROM \"Empresas\" e
-    ORDER BY e.\"Nome\"
+UPDATE ""Pedidos"" p
+SET ""EmpresaId"" = (
+    SELECT e.""Id""
+    FROM ""Empresas"" e
+    ORDER BY e.""Nome""
     LIMIT 1
 )
-WHERE p.\"EmpresaId\" IS NULL;");
+WHERE p.""EmpresaId"" IS NULL;");
 
             migrationBuilder.AlterColumn<Guid>(
                 name: "EmpresaId",
@@ -75,15 +75,15 @@ WHERE p.\"EmpresaId\" IS NULL;");
                 nullable: true);
 
             migrationBuilder.Sql(@"
-UPDATE \"Pedidos\" p
-SET \"UnidadeEntregaId\" = (
-    SELECT u.\"Id\"
-    FROM \"UnidadesEntrega\" u
-    WHERE u.\"EmpresaId\" = p.\"EmpresaId\"
-    ORDER BY u.\"Nome\"
+UPDATE ""Pedidos"" p
+SET ""UnidadeEntregaId"" = (
+    SELECT u.""Id""
+    FROM ""UnidadesEntrega"" u
+    WHERE u.""EmpresaId"" = p.""EmpresaId""
+    ORDER BY u.""Nome""
     LIMIT 1
 )
-WHERE p.\"UnidadeEntregaId\" IS NULL;");
+WHERE p.""UnidadeEntregaId"" IS NULL;");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Pedidos_UnidadeEntregaId",
