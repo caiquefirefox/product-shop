@@ -935,11 +935,6 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                     b.Navigation("Produtos");
                 });
 
-            modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.UnidadeEntrega", b =>
-                {
-                    b.Navigation("Pedidos");
-                });
-
             modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.Usuario", b =>
                 {
                     b.Navigation("Roles");
