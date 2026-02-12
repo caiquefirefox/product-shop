@@ -168,7 +168,7 @@ public sealed class PedidoService : IPedidoService
     }
 
     private static PedidoHistoricoDetalhesDto CriarDetalhesStatus(string? anterior, string? atual)
-        => new(null, null, Array.Empty<PedidoHistoricoAlteracaoItemDto>(), anterior, atual);
+        => new(Array.Empty<PedidoHistoricoAlteracaoItemDto>(), anterior, atual);
 
     private static string ObterNomeStatus(int statusId, PedidoStatus? status = null)
     {
@@ -612,8 +612,6 @@ public sealed class PedidoService : IPedidoService
         if (historicoAlteracoes.Count > 0)
         {
             var detalhes = new PedidoHistoricoDetalhesDto(
-                null,
-                null,
                 historicoAlteracoes,
                 null,
                 null
