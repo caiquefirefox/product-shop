@@ -1,10 +1,14 @@
 using System;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
+using PremieRpet.Shop.Infrastructure;
 
 #nullable disable
 
 namespace PremieRpet.Shop.Infrastructure.Migrations
 {
+    [DbContext(typeof(ShopDbContext))]
+    [Migration("20260212183000_ReplacePedidoUnidadeFkWithEmpresaFk")]
     public partial class ReplacePedidoUnidadeFkWithEmpresaFk : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
