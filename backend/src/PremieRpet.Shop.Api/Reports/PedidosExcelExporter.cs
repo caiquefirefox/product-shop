@@ -14,7 +14,6 @@ internal static class PedidosExcelExporter
         "NOME",
         "CPF",
         "EMPRESA",
-        "UNIDADE",
         "CODIGO",
         "ITEM",
         "QUANTIDADE",
@@ -70,23 +69,22 @@ internal static class PedidosExcelExporter
                 row.Cell(2).Value = pedido.UsuarioNome;
                 row.Cell(3).Value = FormatarCpf(pedido.UsuarioCpf);
                 row.Cell(4).Value = pedido.EmpresaNome;
-                row.Cell(5).Value = pedido.UnidadeEntregaNome;
-                row.Cell(6).Value = item.ProdutoCodigo;
-                row.Cell(7).Value = item.Descricao;
+                row.Cell(5).Value = item.ProdutoCodigo;
+                row.Cell(6).Value = item.Descricao;
 
-                var quantidadeCell = row.Cell(8);
+                var quantidadeCell = row.Cell(7);
                 quantidadeCell.Value = item.Quantidade;
                 quantidadeCell.Style.NumberFormat.Format = "0";
 
-                var precoUnitCell = row.Cell(9);
+                var precoUnitCell = row.Cell(8);
                 precoUnitCell.Value = item.Preco;
                 precoUnitCell.Style.NumberFormat.Format = "R$ #,##0.00";
 
-                var pesoCell = row.Cell(10);
+                var pesoCell = row.Cell(9);
                 pesoCell.Value = item.PesoTotalKg;
                 pesoCell.Style.NumberFormat.Format = "#,##0.000";
 
-                var totalCell = row.Cell(11);
+                var totalCell = row.Cell(10);
                 totalCell.Value = item.Subtotal;
                 totalCell.Style.NumberFormat.Format = "R$ #,##0.00";
 

@@ -120,7 +120,6 @@ public sealed class PedidoService : IPedidoService
         var total = itens.Sum(i => i.Subtotal);
         var pesoTotal = itens.Sum(i => i.PesoTotalKg);
         var statusNome = ObterNomeStatus(pedido);
-        var unidadeNome = pedido.UnidadeEntrega?.Nome ?? string.Empty;
         var empresaId = pedido.UnidadeEntrega?.EmpresaId ?? Guid.Empty;
         var empresaNome = pedido.UnidadeEntrega?.Empresa?.Nome ?? string.Empty;
 
@@ -129,8 +128,6 @@ public sealed class PedidoService : IPedidoService
             pedido.UsuarioId,
             pedido.UsuarioNome,
             pedido.UsuarioCpf,
-            pedido.UnidadeEntregaId,
-            unidadeNome,
             empresaId,
             empresaNome,
             pedido.StatusId,
@@ -245,11 +242,11 @@ public sealed class PedidoService : IPedidoService
 
     public async Task<PedidoResumoDto> CriarPedidoAsync(string usuarioEmail, string? usuarioMicrosoftId, string usuarioNome, PedidoCreateDto dto, CancellationToken ct)
     {
-        if (dto.UnidadeEntregaId == Guid.Empty)
-            throw new InvalidOperationException("Unidade de entrega inválida.");
+        if (dto.EmpresaId == Guid.Empty)
+            throw new InvalidOperationException("Empresa inválida.");
 
-        var unidadeEntrega = await _unidadesEntrega.ObterPorIdAsync(dto.UnidadeEntregaId, ct)
-            ?? throw new InvalidOperationException("Unidade de entrega inválida.");
+        var unidadeEntrega = (await _unidadesEntrega.ListarAsync(dto.EmpresaId, ct)).FirstOrDefault()
+            ?? throw new InvalidOperationException("Empresa sem unidade de entrega configurada.");
 
         var agora = DateTimeOffset.UtcNow;
         var perfil = await _usuarios.GarantirCpfAsync(usuarioEmail, usuarioMicrosoftId, dto.Cpf, usuarioNome, ct);
@@ -324,8 +321,6 @@ public sealed class PedidoService : IPedidoService
             pedido.Id,
             pedido.UsuarioNome,
             pedido.UsuarioCpf,
-            pedido.UnidadeEntregaId,
-            unidadeEntrega.Nome,
             empresaId,
             empresaNome,
             pedido.StatusId,
@@ -362,8 +357,6 @@ public sealed class PedidoService : IPedidoService
                 p.Id,
                 p.UsuarioNome,
                 p.UsuarioCpf,
-                p.UnidadeEntregaId,
-                p.UnidadeEntrega != null ? p.UnidadeEntrega.Nome : string.Empty,
                 p.UnidadeEntrega != null ? p.UnidadeEntrega.EmpresaId : Guid.Empty,
                 p.UnidadeEntrega != null && p.UnidadeEntrega.Empresa != null
                     ? p.UnidadeEntrega.Empresa.Nome
@@ -506,11 +499,6 @@ public sealed class PedidoService : IPedidoService
         if (!isAdmin && !EstaDentroJanelaEdicao(agora))
             throw new InvalidOperationException($"As edições estão disponíveis apenas entre os dias {_settings.EditWindowOpeningDay} e {_settings.EditWindowClosingDay} de cada mês.");
 
-        if (dto.UnidadeEntregaId == Guid.Empty)
-            throw new InvalidOperationException("Unidade de entrega inválida.");
-
-        var novaUnidade = await _unidadesEntrega.ObterPorIdAsync(dto.UnidadeEntregaId, ct)
-            ?? throw new InvalidOperationException("Unidade de entrega inválida.");
 
         var itensNormalizados = NormalizarItensAtualizacao(dto.Itens);
         if (itensNormalizados.Count == 0)
@@ -614,25 +602,6 @@ public sealed class PedidoService : IPedidoService
         if (!usuarioSemLimite && pesoBase + pesoNovoPedido > _limiteKgMes)
             throw new InvalidOperationException($"Limite mensal de {FormatarLimiteMensal()} kg excedido.");
 
-        var unidadeAnteriorId = pedido.UnidadeEntregaId;
-        var unidadeAnteriorNome = pedido.UnidadeEntrega?.Nome;
-        var houveAlteracaoUnidade = unidadeAnteriorId != novaUnidade.Id;
-
-        pedido.UnidadeEntregaId = novaUnidade.Id;
-
-        if (houveAlteracaoUnidade)
-        {
-            pedido.UnidadeEntrega = new UnidadeEntrega
-            {
-                Id = novaUnidade.Id,
-                Nome = novaUnidade.Nome,
-                EmpresaId = novaUnidade.EmpresaId
-            };
-        }
-        else if (pedido.UnidadeEntrega is not null)
-        {
-            pedido.UnidadeEntrega.Nome = novaUnidade.Nome;
-        }
         pedido.AtualizadoEm = agora;
         pedido.AtualizadoPorUsuarioId = usuarioAtualId;
 
@@ -642,11 +611,11 @@ public sealed class PedidoService : IPedidoService
         }
 
         PedidoHistorico? historicoRegistro = null;
-        if (historicoAlteracoes.Count > 0 || houveAlteracaoUnidade)
+        if (historicoAlteracoes.Count > 0)
         {
             var detalhes = new PedidoHistoricoDetalhesDto(
-                unidadeAnteriorNome,
-                novaUnidade.Nome,
+                null,
+                null,
                 historicoAlteracoes,
                 null,
                 null

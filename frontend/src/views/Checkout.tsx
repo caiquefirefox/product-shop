@@ -287,7 +287,7 @@ export default function Checkout() {
     try {
       const cpfDigits = sanitizeCpf(cpf);
       const dto = {
-        unidadeEntregaId: unidadeId,
+        empresaId,
         itens: items.map(i => ({ produtoCodigo: i.codigo, quantidade: i.quantidade })),
         cpf: cpfDigits || undefined,
       };
@@ -328,7 +328,6 @@ export default function Checkout() {
     loadingUnidades ||
     loadingPerfil ||
     !empresaId ||
-    !unidadeId ||
     anyBelowMinimum ||
     (!cpfBloqueado && !isValidCpf(cpf));
 
@@ -410,36 +409,6 @@ export default function Checkout() {
               )}
             </div>
 
-            <div className="flex flex-col gap-2">
-              {loadingUnidades ? (
-                <>
-                  <span className="text-sm font-medium text-gray-700">Entrega</span>
-                  <div className="text-sm text-gray-600">Carregando unidades...</div>
-                </>
-              ) : !empresaId ? (
-                <>
-                  <span className="text-sm font-medium text-gray-700">Entrega</span>
-                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                    Selecione uma empresa para listar as unidades de entrega.
-                  </div>
-                </>
-              ) : unidades.length ? (
-                <DeliveryDropdown
-                  id="entrega-select"
-                  label="Entrega"
-                  options={unidades}
-                  value={unidadeId}
-                  onChange={setUnidadeId}
-                />
-              ) : (
-                <>
-                  <span className="text-sm font-medium text-gray-700">Entrega</span>
-                  <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                    Não foi possível carregar as unidades de entrega. Tente novamente mais tarde.
-                  </div>
-                </>
-              )}
-            </div>
           </div>
         </section>
 

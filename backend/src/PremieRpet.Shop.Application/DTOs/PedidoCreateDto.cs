@@ -5,7 +5,7 @@ namespace PremieRpet.Shop.Application.DTOs;
 
 public sealed record PedidoCreateDto
 {
-    public Guid UnidadeEntregaId { get; init; }
+    public Guid EmpresaId { get; init; }
     public IReadOnlyList<PedidoItemDto> Itens { get; init; } = Array.Empty<PedidoItemDto>();
     public string? Cpf { get; init; }
 }

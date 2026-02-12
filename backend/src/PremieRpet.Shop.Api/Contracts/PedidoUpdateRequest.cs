@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using PremieRpet.Shop.Application.DTOs;
@@ -8,14 +7,10 @@ namespace PremieRpet.Shop.Api.Contracts;
 public sealed class PedidoUpdateRequest
 {
     [Required]
-    public Guid UnidadeEntregaId { get; set; }
-
-    [Required]
     public List<PedidoUpdateItemRequest> Itens { get; set; } = new();
 
     public PedidoUpdateDto ToDto()
         => new(
-            UnidadeEntregaId,
             Itens?.ConvertAll(i => new PedidoUpdateItemDto(i.ProdutoCodigo, i.Quantidade))
                 ?? new List<PedidoUpdateItemDto>()
         );
