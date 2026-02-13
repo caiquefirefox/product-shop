@@ -15,6 +15,7 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
             migrationBuilder.InsertData(
                 table: "Empresas",
                 columns: new[] { "Id", "Nome" },
+                columnTypes: new[] { "uuid", "character varying(200)" },
                 values: new object[,]
                 {
                     { new Guid("acdf44fb-34d5-4556-ad2d-8175194f2acd"), "Grandfood Agrícola" },
@@ -27,11 +28,13 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
             migrationBuilder.DeleteData(
                 table: "Empresas",
                 keyColumn: "Id",
+                keyColumnType: "uuid",
                 keyValue: new Guid("acdf44fb-34d5-4556-ad2d-8175194f2acd"));
 
             migrationBuilder.DeleteData(
                 table: "Empresas",
                 keyColumn: "Id",
+                keyColumnType: "uuid",
                 keyValue: new Guid("74eaed99-6c22-4f5d-89d6-2bf5ee7eb8de"));
         }
     }
