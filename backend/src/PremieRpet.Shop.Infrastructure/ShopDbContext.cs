@@ -28,6 +28,8 @@ public sealed class ShopDbContext : DbContext
     {
         var premierEmpresaId = Guid.Parse("f6413e92-bc2f-4baf-881c-d1ec6f6c0a4e");
         var eucatexEmpresaId = Guid.Parse("6f9502b1-5ba6-4f4b-920a-66a79ab41c45");
+        var grandfoodAgricolaEmpresaId = Guid.Parse("acdf44fb-34d5-4556-ad2d-8175194f2acd");
+        var brascorpEmpresaId = Guid.Parse("74eaed99-6c22-4f5d-89d6-2bf5ee7eb8de");
 
         b.Entity<Produto>(e =>
         {
@@ -87,7 +89,9 @@ public sealed class ShopDbContext : DbContext
 
             e.HasData(
                 new Empresa { Id = premierEmpresaId, Nome = "PremieRpet" },
-                new Empresa { Id = eucatexEmpresaId, Nome = "Eucatex" }
+                new Empresa { Id = eucatexEmpresaId, Nome = "Eucatex" },
+                new Empresa { Id = grandfoodAgricolaEmpresaId, Nome = "Grandfood Agrícola" },
+                new Empresa { Id = brascorpEmpresaId, Nome = "Brascorp" }
             );
         });
 

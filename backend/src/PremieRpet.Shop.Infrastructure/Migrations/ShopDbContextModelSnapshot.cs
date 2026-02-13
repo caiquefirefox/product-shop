@@ -50,6 +50,16 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                         {
                             Id = new Guid("6f9502b1-5ba6-4f4b-920a-66a79ab41c45"),
                             Nome = "Eucatex"
+                        },
+                        new
+                        {
+                            Id = new Guid("acdf44fb-34d5-4556-ad2d-8175194f2acd"),
+                            Nome = "Grandfood Agrícola"
+                        },
+                        new
+                        {
+                            Id = new Guid("74eaed99-6c22-4f5d-89d6-2bf5ee7eb8de"),
+                            Nome = "Brascorp"
                         });
                 });
 
