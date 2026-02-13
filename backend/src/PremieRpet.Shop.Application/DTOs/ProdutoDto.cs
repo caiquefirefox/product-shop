@@ -19,4 +19,5 @@ public record ProdutoDto(
     string FaixaEtariaNome,
     decimal Preco,
     int QuantidadeMinimaDeCompra,
-    string? ImagemUrl);
+    string? ImagemUrl,
+    string? LinkExterno);

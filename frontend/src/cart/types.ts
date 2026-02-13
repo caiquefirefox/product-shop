@@ -17,6 +17,7 @@ export type Produto = {
   preco: number;
   quantidadeMinimaDeCompra: number; // UNIDADES
   imagemUrl?: string | null;
+  linkExterno?: string | null;
 };
 
 export type CartItem = {

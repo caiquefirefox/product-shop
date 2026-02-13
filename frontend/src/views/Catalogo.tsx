@@ -482,6 +482,16 @@ export default function Catalogo() {
                           <p className="text-sm text-slate-500">
                             {`${portes} | ${formatPeso(p.peso, p.tipoPeso)}`}
                           </p>
+                          {p.linkExterno && (
+                            <a
+                              href={p.linkExterno}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="w-fit text-sm font-semibold text-indigo-700 underline decoration-indigo-300 underline-offset-4 transition hover:text-indigo-800 hover:decoration-indigo-500"
+                            >
+                              Ver mais detalhes
+                            </a>
+                          )}
                         </div>
 
                         <div className="flex items-center justify-between gap-3 rounded-2xl bg-white/85 px-4 py-3 sm:hidden">
