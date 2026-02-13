@@ -1451,7 +1451,7 @@ export default function Produtos() {
                               rel="noopener noreferrer"
                               className="w-fit text-sm font-semibold text-indigo-700 underline decoration-indigo-300 underline-offset-4 transition hover:text-indigo-800 hover:decoration-indigo-500"
                             >
-                              Ver mais detalhes
+                              {p.linkExterno}
                             </a>
                           )}
                         </div>
