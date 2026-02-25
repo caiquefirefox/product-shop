@@ -235,6 +235,11 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                     b.Property<Guid?>("AtualizadoPorUsuarioId")
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("Ativo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
                     b.Property<string>("Codigo")
                         .IsRequired()
                         .HasMaxLength(64)
