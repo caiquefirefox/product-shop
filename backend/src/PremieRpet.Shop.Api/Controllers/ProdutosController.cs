@@ -151,11 +151,14 @@ public class ProdutosController : ControllerBase
     [Authorize("Admin")]
     public async Task<IActionResult> Delete(string codigo, CancellationToken ct)
     {
-        var produto = await _svc.GetByCodigoAsync(codigo, ct);
-        await _svc.DeleteAsync(codigo, ct);
-
-        if (!string.IsNullOrWhiteSpace(produto?.ImagemUrl))
-            await _imagemStorage.DeleteAsync(produto!.ImagemUrl!, ct);
+        try
+        {
+            await _svc.DeleteAsync(codigo, ct);
+        }
+        catch (InvalidOperationException ex) when (ex.Message == "Produto não encontrado.")
+        {
+            return NotFound();
+        }
 
         return NoContent();
     }

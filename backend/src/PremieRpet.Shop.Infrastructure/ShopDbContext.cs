@@ -44,6 +44,7 @@ public sealed class ShopDbContext : DbContext
             e.Property(x => x.Preco).HasColumnType("numeric(18,2)");
             e.Property(p => p.TipoPeso).HasColumnType("int");
             e.Property(x => x.QuantidadeMinimaDeCompra).HasDefaultValue(1);
+            e.Property(p => p.Ativo).HasDefaultValue(true);
             e.Property(p => p.ImagemUrl).HasMaxLength(1024);
             e.Property(p => p.LinkExterno).HasMaxLength(1024);
             e.Property(p => p.CriadoPorUsuarioId);

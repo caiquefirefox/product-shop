@@ -1,7 +1,8 @@
 import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronDown, FilePenLine, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, Check, ChevronDown, FilePenLine, Plus, Trash2 } from "lucide-react";
 import Select, { MultiValue, StylesConfig } from "react-select";
 import api from "../lib/api";
+import { useToast } from "../ui/toast";
 import ProductFilters, {
   type ProductFilterChangeHandler,
   type ProductFilterOptions,
@@ -463,6 +464,9 @@ export default function Produtos() {
   const produtosRequestIdRef = useRef(0);
   const formContainerRef = useRef<HTMLDivElement | null>(null);
   const shouldScrollToFormRef = useRef(false);
+  const [produtoParaExcluir, setProdutoParaExcluir] = useState<Produto | null>(null);
+  const [excluindoProdutoCodigo, setExcluindoProdutoCodigo] = useState<string | null>(null);
+  const toast = useToast();
 
   const editando = produtoEmEdicao !== null;
 
@@ -1037,11 +1041,38 @@ export default function Produtos() {
     fecharFormulario();
   };
 
-  const remover = async (c: string) => {
-    await api.delete(`/produtos/${c}`);
-    setReloadProdutosToken(token => token + 1);
-    if (produtoEmEdicao?.codigo === c) {
-      fecharFormulario();
+  const abrirConfirmacaoExclusao = (produto: Produto) => {
+    if (excluindoProdutoCodigo) return;
+    setProdutoParaExcluir(produto);
+  };
+
+  const fecharConfirmacaoExclusao = () => {
+    if (excluindoProdutoCodigo) return;
+    setProdutoParaExcluir(null);
+  };
+
+  const confirmarExclusao = async () => {
+    if (!produtoParaExcluir) return;
+
+    const codigoProduto = produtoParaExcluir.codigo;
+    setExcluindoProdutoCodigo(codigoProduto);
+
+    try {
+      await api.delete(`/produtos/${codigoProduto}`);
+      setReloadProdutosToken(token => token + 1);
+      if (produtoEmEdicao?.codigo === codigoProduto) {
+        fecharFormulario();
+      }
+      toast.success("Produto excluído", `O produto ${codigoProduto} foi removido com sucesso.`);
+      setProdutoParaExcluir(null);
+    } catch (error) {
+      const detail =
+        (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
+        (error as { message?: string })?.message ||
+        "Não foi possível excluir o produto.";
+      toast.error("Falha ao excluir produto", detail);
+    } finally {
+      setExcluindoProdutoCodigo(null);
     }
   };
 
@@ -1065,6 +1096,63 @@ export default function Produtos() {
 
   return (
     <div className="space-y-8">
+      {produtoParaExcluir && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/70 px-4 py-6 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="excluir-produto-title"
+          aria-describedby="excluir-produto-description"
+          onClick={fecharConfirmacaoExclusao}
+        >
+          <div
+            className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-black/5"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start gap-4 border-b border-gray-100 px-6 py-5">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-100 text-red-600">
+                <AlertTriangle className="h-6 w-6" aria-hidden="true" />
+              </span>
+              <div className="space-y-1">
+                <h2 id="excluir-produto-title" className="text-lg font-semibold text-gray-900">
+                  Excluir produto
+                </h2>
+                <p id="excluir-produto-description" className="text-sm text-gray-600">
+                  Tem certeza de que deseja excluir o produto <span className="font-semibold text-gray-900">{produtoParaExcluir.codigo}</span>? Essa ação ocultará o item do catálogo e da listagem de produtos.
+                </p>
+              </div>
+            </div>
+            <div className="space-y-3 px-6 py-5 text-sm text-gray-600">
+              <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+                <span className="text-gray-500">Código</span>
+                <span className="font-semibold text-gray-900">{produtoParaExcluir.codigo}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+                <span className="text-gray-500">Descrição</span>
+                <span className="max-w-[220px] truncate text-right font-semibold text-gray-900">{produtoParaExcluir.descricao}</span>
+              </div>
+            </div>
+            <div className="flex flex-col gap-3 border-t border-gray-100 bg-gray-50 px-6 py-5 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={fecharConfirmacaoExclusao}
+                disabled={!!excluindoProdutoCodigo}
+                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+              >
+                Manter produto
+              </button>
+              <button
+                type="button"
+                onClick={confirmarExclusao}
+                disabled={excluindoProdutoCodigo === produtoParaExcluir.codigo}
+                className="w-full rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
+              >
+                {excluindoProdutoCodigo === produtoParaExcluir.codigo ? "Excluindo..." : "Excluir produto"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-3xl font-bold">Produtos</h1>
         <button onClick={iniciarNovoProduto} className={addProductButtonClasses}>
@@ -1435,7 +1523,7 @@ export default function Produtos() {
                                 <FilePenLine className="h-4 w-4" aria-hidden="true" />
                                 Editar
                               </button>
-                              <button onClick={() => remover(p.codigo)} className={deleteButtonClasses}>
+                              <button onClick={() => abrirConfirmacaoExclusao(p)} className={deleteButtonClasses}>
                                 <Trash2 className="h-4 w-4" aria-hidden="true" />
                                 Excluir
                               </button>
@@ -1494,7 +1582,7 @@ export default function Produtos() {
                             <FilePenLine className="h-4 w-4" aria-hidden="true" />
                             Editar
                           </button>
-                          <button onClick={() => remover(p.codigo)} className={deleteButtonClasses}>
+                          <button onClick={() => abrirConfirmacaoExclusao(p)} className={deleteButtonClasses}>
                             <Trash2 className="h-4 w-4" aria-hidden="true" />
                             Excluir
                           </button>

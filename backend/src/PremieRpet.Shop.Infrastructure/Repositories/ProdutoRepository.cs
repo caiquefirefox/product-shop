@@ -20,7 +20,7 @@ public sealed class ProdutoRepository : IProdutoRepository
 
     public async Task DeleteAsync(Produto produto, CancellationToken ct)
     {
-        _db.Produtos.Remove(produto);
+        produto.Ativo = false;
         await _db.SaveChangesAsync(ct);
     }
 
@@ -73,6 +73,7 @@ public sealed class ProdutoRepository : IProdutoRepository
 
     public IQueryable<Produto> Query()
         => _db.Produtos
+            .Where(p => p.Ativo)
             .Include(p => p.EspecieOpcao)
             .Include(p => p.TipoProdutoOpcao)
             .Include(p => p.FaixaEtariaOpcao)

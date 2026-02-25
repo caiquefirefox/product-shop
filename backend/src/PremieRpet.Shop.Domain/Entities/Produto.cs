@@ -21,6 +21,7 @@ public sealed class Produto
     public ICollection<ProdutoPorte> Portes { get; set; } = new List<ProdutoPorte>();
     public required decimal Preco { get; set; }
     public int QuantidadeMinimaDeCompra { get; set; } = 1;
+    public bool Ativo { get; set; } = true;
     public string? ImagemUrl { get; set; }
     public string? LinkExterno { get; set; }
     public DateTimeOffset CriadoEm { get; set; } = DateTimeOffset.UtcNow;
