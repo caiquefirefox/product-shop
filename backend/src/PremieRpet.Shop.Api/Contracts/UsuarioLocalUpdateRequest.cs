@@ -7,4 +7,5 @@ public sealed class UsuarioLocalUpdateRequest
     public string? Nome { get; set; } = null;
     public IEnumerable<string>? Roles { get; set; } = null;
     public bool SemLimite { get; set; }
+    public int CondicaoPagamento { get; set; } = 3;
 }

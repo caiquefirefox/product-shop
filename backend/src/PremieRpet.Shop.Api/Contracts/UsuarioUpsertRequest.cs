@@ -9,4 +9,5 @@ public sealed record UsuarioUpsertRequest
     public string? Nome { get; init; }
     public IReadOnlyCollection<string>? Roles { get; init; }
     public bool SemLimite { get; init; }
+    public int CondicaoPagamento { get; init; } = 3;
 }

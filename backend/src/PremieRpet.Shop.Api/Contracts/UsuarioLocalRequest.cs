@@ -8,4 +8,5 @@ public sealed record UsuarioLocalRequest
     public string? Email { get; init; }
     public string? Nome { get; init; }
     public bool SemLimite { get; init; }
+    public int CondicaoPagamento { get; init; } = 3;
 }

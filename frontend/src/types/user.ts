@@ -6,6 +6,7 @@ type UsuarioPerfil = {
   ativo: boolean;
   deveTrocarSenha: boolean;
   semLimite: boolean;
+  condicaoPagamento: number;
   cpf: string | null;
   roles: string[];
   criadoEm: string;

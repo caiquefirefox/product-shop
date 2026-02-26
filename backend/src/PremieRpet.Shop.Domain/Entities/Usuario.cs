@@ -12,6 +12,7 @@ public sealed class Usuario
     public string? PasswordHash { get; set; } = null;
     public bool DeveTrocarSenha { get; set; }
     public bool SemLimite { get; set; }
+    public int CondicaoPagamento { get; set; } = 3;
     public bool Ativo { get; set; } = true;
     public DateTimeOffset CriadoEm { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset AtualizadoEm { get; set; } = DateTimeOffset.UtcNow;
