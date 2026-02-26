@@ -11,6 +11,7 @@ public sealed record UsuarioDto(
     bool Ativo,
     bool DeveTrocarSenha,
     bool SemLimite,
+    int CondicaoPagamento,
     string? Cpf,
     IReadOnlyCollection<string> Roles,
     DateTimeOffset CriadoEm,

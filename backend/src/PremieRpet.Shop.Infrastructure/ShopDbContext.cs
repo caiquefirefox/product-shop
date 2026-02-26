@@ -213,6 +213,7 @@ public sealed class ShopDbContext : DbContext
             e.Property(u => u.PasswordHash).HasMaxLength(500);
             e.Property(u => u.DeveTrocarSenha).HasDefaultValue(false);
             e.Property(u => u.SemLimite).HasDefaultValue(false);
+            e.Property(u => u.CondicaoPagamento).HasDefaultValue(3);
             e.Property(u => u.Ativo).HasDefaultValue(true);
             e.Property(u => u.CriadoEm);
             e.Property(u => u.AtualizadoEm);

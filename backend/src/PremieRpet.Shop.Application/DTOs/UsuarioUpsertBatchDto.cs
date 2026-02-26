@@ -12,5 +12,6 @@ public sealed record UsuarioUpsertBatchDto(
     string? Cpf,
     IEnumerable<string>? Roles,
     bool? SemLimite,
+    int? CondicaoPagamento,
     bool? Ativo
 );

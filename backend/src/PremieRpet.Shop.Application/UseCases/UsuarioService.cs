@@ -9,6 +9,7 @@ using PremieRpet.Shop.Application.Exceptions;
 using PremieRpet.Shop.Application.Interfaces.Repositories;
 using PremieRpet.Shop.Application.Interfaces.Services;
 using PremieRpet.Shop.Application.Interfaces.UseCases;
+using PremieRpet.Shop.Domain.Constants;
 using PremieRpet.Shop.Domain.Entities;
 using PremieRpet.Shop.Domain.Rules;
 
@@ -52,6 +53,7 @@ public sealed class UsuarioService : IUsuarioService
                 MicrosoftId = resolvedMicrosoftId,
                 Email = normalizedEmail,
                 Ativo = true,
+                CondicaoPagamento = UsuarioCondicaoPagamento.Padrao,
                 CriadoEm = agora,
                 AtualizadoEm = agora,
             };
@@ -72,6 +74,7 @@ public sealed class UsuarioService : IUsuarioService
         }
 
         usuario = await EnsureNomeAsync(usuario, nomeNormalizado, ct);
+        usuario = await EnsureCondicaoPagamentoPadraoAsync(usuario, ct);
 
         return ToDto(usuario);
     }
@@ -106,6 +109,7 @@ public sealed class UsuarioService : IUsuarioService
                 Email = normalizedEmail,
                 Cpf = sanitized,
                 Ativo = true,
+                CondicaoPagamento = UsuarioCondicaoPagamento.Padrao,
                 CriadoEm = agora,
                 AtualizadoEm = agora,
             };
@@ -113,6 +117,7 @@ public sealed class UsuarioService : IUsuarioService
             ApplyRoles(usuario, normalizedRoles);
             await _usuarios.AddAsync(usuario, ct);
             usuario = await EnsureNomeAsync(usuario, nomeNormalizado, ct);
+            usuario = await EnsureCondicaoPagamentoPadraoAsync(usuario, ct);
             return ToDto(usuario);
         }
 
@@ -135,6 +140,7 @@ public sealed class UsuarioService : IUsuarioService
             await _usuarios.UpdateAsync(usuario, ct);
         }
 
+        usuario = await EnsureCondicaoPagamentoPadraoAsync(usuario, ct);
         return ToDto(usuario);
     }
 
@@ -168,6 +174,7 @@ public sealed class UsuarioService : IUsuarioService
                 Email = normalizedEmail,
                 Cpf = sanitized,
                 Ativo = true,
+                CondicaoPagamento = UsuarioCondicaoPagamento.Padrao,
                 CriadoEm = agora,
                 AtualizadoEm = agora,
             };
@@ -175,6 +182,7 @@ public sealed class UsuarioService : IUsuarioService
             ApplyRoles(usuario, normalizedRoles);
             await _usuarios.AddAsync(usuario, ct);
             usuario = await EnsureNomeAsync(usuario, nomeNormalizado, ct);
+            usuario = await EnsureCondicaoPagamentoPadraoAsync(usuario, ct);
             return ToDto(usuario);
         }
 
@@ -205,6 +213,7 @@ public sealed class UsuarioService : IUsuarioService
             }
 
             usuario = await EnsureNomeAsync(usuario, nomeNormalizado, ct);
+            usuario = await EnsureCondicaoPagamentoPadraoAsync(usuario, ct);
             return ToDto(usuario);
         }
 
@@ -221,6 +230,7 @@ public sealed class UsuarioService : IUsuarioService
         await _usuarios.UpdateAsync(usuario, ct);
 
         usuario = await EnsureNomeAsync(usuario, nomeNormalizado, ct);
+        usuario = await EnsureCondicaoPagamentoPadraoAsync(usuario, ct);
 
         return ToDto(usuario);
     }
@@ -307,7 +317,7 @@ public sealed class UsuarioService : IUsuarioService
         return new PagedResultDto<UsuarioDto>(resultados, page, pageSize, totalItems, totalPages);
     }
 
-    public async Task<UsuarioDto> UpsertAsync(string email, string? cpf, string? nome, IEnumerable<string>? roles, bool semLimite, CancellationToken ct)
+    public async Task<UsuarioDto> UpsertAsync(string email, string? cpf, string? nome, IEnumerable<string>? roles, bool semLimite, int condicaoPagamento, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(email))
             throw new InvalidOperationException("E-mail do usuário obrigatório.");
@@ -316,6 +326,7 @@ public sealed class UsuarioService : IUsuarioService
         var nomeNormalizado = NormalizeNome(nome);
         var normalizedRoles = NormalizeRoles(roles);
         var sanitizedCpf = SanitizeCpfOrNull(cpf);
+        EnsureCondicaoPagamentoValida(condicaoPagamento);
 
         var (usuario, microsoftId) = await FindExistingUsuarioAsync(normalizedEmail, null, ct);
         var agora = DateTimeOffset.UtcNow;
@@ -332,6 +343,7 @@ public sealed class UsuarioService : IUsuarioService
                 Email = normalizedEmail,
                 Cpf = sanitizedCpf,
                 SemLimite = semLimite,
+                CondicaoPagamento = condicaoPagamento,
                 Ativo = true,
                 CriadoEm = agora,
                 AtualizadoEm = agora,
@@ -342,6 +354,7 @@ public sealed class UsuarioService : IUsuarioService
             await _entraRoles.ReplaceUserRolesAsync(microsoftId, normalizedRoles, ct);
 
             usuario = await EnsureNomeAsync(usuario, nomeNormalizado, ct);
+            usuario = await EnsureCondicaoPagamentoPadraoAsync(usuario, ct);
             return ToDto(usuario);
         }
 
@@ -363,6 +376,7 @@ public sealed class UsuarioService : IUsuarioService
         }
 
         usuario.SemLimite = semLimite;
+        usuario.CondicaoPagamento = condicaoPagamento;
         usuario.AtualizadoEm = agora;
         await _usuarios.UpdateAsync(usuario, ct);
         await _usuarios.ReplaceRolesAsync(usuario.Id, normalizedRoles, ct);
@@ -374,7 +388,7 @@ public sealed class UsuarioService : IUsuarioService
         return ToDto(atualizado);
     }
 
-    public async Task<UsuarioDto> CriarLocalAsync(string cpf, string senha, IEnumerable<string>? roles, string? email, string? nome, bool semLimite, CancellationToken ct)
+    public async Task<UsuarioDto> CriarLocalAsync(string cpf, string senha, IEnumerable<string>? roles, string? email, string? nome, bool semLimite, int condicaoPagamento, CancellationToken ct)
     {
         var sanitizedCpf = SanitizeCpfOrNull(cpf) ?? throw new InvalidOperationException("CPF obrigatório.");
         if (string.IsNullOrWhiteSpace(senha))
@@ -383,6 +397,7 @@ public sealed class UsuarioService : IUsuarioService
         var normalizedEmail = TryNormalizeEmail(email);
         var nomeNormalizado = NormalizeNome(nome);
         var normalizedRoles = NormalizeRoles(roles, strict: false);
+        EnsureCondicaoPagamentoValida(condicaoPagamento);
 
         if (!string.IsNullOrWhiteSpace(normalizedEmail))
         {
@@ -402,6 +417,7 @@ public sealed class UsuarioService : IUsuarioService
             PasswordHash = HashPassword(senha),
             DeveTrocarSenha = true,
             SemLimite = semLimite,
+            CondicaoPagamento = condicaoPagamento,
             Ativo = true,
             CriadoEm = agora,
             AtualizadoEm = agora,
@@ -449,16 +465,17 @@ public sealed class UsuarioService : IUsuarioService
                     var email = alteracao.Email ?? usuario.Email;
                     var cpf = alteracao.Cpf ?? usuario.Cpf;
                     var semLimite = alteracao.SemLimite ?? usuario.SemLimite;
+                    var condicaoPagamento = alteracao.CondicaoPagamento ?? usuario.CondicaoPagamento;
 
                     if (string.IsNullOrWhiteSpace(usuario.MicrosoftId))
                     {
                         var emailParaAtualizar = email ?? throw new InvalidOperationException("E-mail do usuário obrigatório.");
-                        await AtualizarLocalAsync(usuario.Id, emailParaAtualizar, cpf, nome, roles, semLimite, innerCt);
+                        await AtualizarLocalAsync(usuario.Id, emailParaAtualizar, cpf, nome, roles, semLimite, condicaoPagamento, innerCt);
                     }
                     else
                     {
                         var emailParaAtualizar = email ?? usuario.Email ?? throw new InvalidOperationException("E-mail do usuário obrigatório.");
-                        await UpsertAsync(emailParaAtualizar, cpf, nome, roles, semLimite, innerCt);
+                        await UpsertAsync(emailParaAtualizar, cpf, nome, roles, semLimite, condicaoPagamento, innerCt);
                     }
 
                     usuario = await _usuarios.GetByIdAsync(alteracao.Id, innerCt)
@@ -574,7 +591,7 @@ public sealed class UsuarioService : IUsuarioService
         return ToDto(usuario);
     }
 
-    public async Task<UsuarioDto> AtualizarLocalAsync(Guid usuarioId, string email, string? cpf, string? nome, IEnumerable<string>? roles, bool semLimite, CancellationToken ct)
+    public async Task<UsuarioDto> AtualizarLocalAsync(Guid usuarioId, string email, string? cpf, string? nome, IEnumerable<string>? roles, bool semLimite, int condicaoPagamento, CancellationToken ct)
     {
         if (usuarioId == Guid.Empty)
             throw new InvalidOperationException("Identificador do usuário obrigatório.");
@@ -584,6 +601,7 @@ public sealed class UsuarioService : IUsuarioService
 
         var normalizedEmail = NormalizeEmailValue(email);
         var sanitizedCpf = SanitizeCpfOrNull(cpf);
+        EnsureCondicaoPagamentoValida(condicaoPagamento);
         var nomeNormalizado = NormalizeNome(nome);
         var normalizedRoles = NormalizeRoles(roles, strict: false);
 
@@ -614,6 +632,7 @@ public sealed class UsuarioService : IUsuarioService
 
         usuario.Email = normalizedEmail;
         usuario.SemLimite = semLimite;
+        usuario.CondicaoPagamento = condicaoPagamento;
         usuario.AtualizadoEm = DateTimeOffset.UtcNow;
 
         await _usuarios.UpdateAsync(usuario, ct);
@@ -740,6 +759,15 @@ public sealed class UsuarioService : IUsuarioService
                         atualizados.Add(existentePorId);
                 }
 
+                if (!UsuarioCondicaoPagamento.IsValid(existentePorId.CondicaoPagamento))
+                {
+                    existentePorId.CondicaoPagamento = UsuarioCondicaoPagamento.Padrao;
+                    existentePorId.AtualizadoEm = agora;
+
+                    if (atualizadosPorId.Add(existentePorId.Id))
+                        atualizados.Add(existentePorId);
+                }
+
                 existentesPorId[remoto.MicrosoftId] = existentePorId;
                 continue;
             }
@@ -773,6 +801,15 @@ public sealed class UsuarioService : IUsuarioService
                         atualizados.Add(existentePorEmail);
                 }
 
+                if (!UsuarioCondicaoPagamento.IsValid(existentePorEmail.CondicaoPagamento))
+                {
+                    existentePorEmail.CondicaoPagamento = UsuarioCondicaoPagamento.Padrao;
+                    existentePorEmail.AtualizadoEm = agora;
+
+                    if (atualizadosPorId.Add(existentePorEmail.Id))
+                        atualizados.Add(existentePorEmail);
+                }
+
                 existentesPorId[remoto.MicrosoftId] = existentePorEmail;
                 continue;
             }
@@ -787,6 +824,7 @@ public sealed class UsuarioService : IUsuarioService
                 MicrosoftId = remoto.MicrosoftId,
                 Email = emailNormalizado,
                 Ativo = true,
+                CondicaoPagamento = UsuarioCondicaoPagamento.Padrao,
                 CriadoEm = agora,
                 AtualizadoEm = agora,
             };
@@ -1037,6 +1075,24 @@ public sealed class UsuarioService : IUsuarioService
         return usuario;
     }
 
+    private async Task<Usuario> EnsureCondicaoPagamentoPadraoAsync(Usuario usuario, CancellationToken ct)
+    {
+        if (UsuarioCondicaoPagamento.IsValid(usuario.CondicaoPagamento))
+            return usuario;
+
+        usuario.CondicaoPagamento = UsuarioCondicaoPagamento.Padrao;
+        usuario.AtualizadoEm = DateTimeOffset.UtcNow;
+        await _usuarios.UpdateAsync(usuario, ct);
+
+        return usuario;
+    }
+
+    private static void EnsureCondicaoPagamentoValida(int condicaoPagamento)
+    {
+        if (!UsuarioCondicaoPagamento.IsValid(condicaoPagamento))
+            throw new InvalidOperationException("Condição de pagamento inválida.");
+    }
+
     private static void ApplyRoles(Usuario usuario, IReadOnlyCollection<string> roles)
     {
         usuario.Roles.Clear();
@@ -1070,7 +1126,7 @@ public sealed class UsuarioService : IUsuarioService
 
         var email = usuario.Email ?? string.Empty;
 
-        return new UsuarioDto(usuario.Id, usuario.Nome, microsoftId, email, usuario.Ativo, usuario.DeveTrocarSenha, usuario.SemLimite, usuario.Cpf, roles, usuario.CriadoEm, usuario.AtualizadoEm);
+        return new UsuarioDto(usuario.Id, usuario.Nome, microsoftId, email, usuario.Ativo, usuario.DeveTrocarSenha, usuario.SemLimite, usuario.CondicaoPagamento, usuario.Cpf, roles, usuario.CriadoEm, usuario.AtualizadoEm);
     }
 
     private static string? TryNormalizeEmail(string? email)

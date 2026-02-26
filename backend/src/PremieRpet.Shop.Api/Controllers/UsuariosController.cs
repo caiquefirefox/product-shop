@@ -41,6 +41,13 @@ public sealed class UsuariosController(IUsuarioService usuarios) : ControllerBas
         return Ok(lista);
     }
 
+    [HttpGet("configuracoes")]
+    [Authorize("Admin")]
+    public IActionResult ObterConfiguracoesCadastro()
+    {
+        return Ok(new { condicoesPagamento = PremieRpet.Shop.Domain.Constants.UsuarioCondicaoPagamento.Permitidas, padraoCondicaoPagamento = PremieRpet.Shop.Domain.Constants.UsuarioCondicaoPagamento.Padrao });
+    }
+
     [HttpGet("buscar")]
     [Authorize("Admin")]
     public async Task<IActionResult> Buscar([FromQuery] string termo, CancellationToken ct)
@@ -62,7 +69,7 @@ public sealed class UsuariosController(IUsuarioService usuarios) : ControllerBas
     {
         try
         {
-            var resultado = await usuarios.UpsertAsync(request.Email, request.Cpf, request.Nome, request.Roles, request.SemLimite, ct);
+            var resultado = await usuarios.UpsertAsync(request.Email, request.Cpf, request.Nome, request.Roles, request.SemLimite, request.CondicaoPagamento, ct);
             return Ok(resultado);
         }
         catch (InvalidOperationException ex)
@@ -92,7 +99,7 @@ public sealed class UsuariosController(IUsuarioService usuarios) : ControllerBas
     {
         try
         {
-            var resultado = await usuarios.CriarLocalAsync(request.Cpf, request.Senha, request.Roles, request.Email, request.Nome, request.SemLimite, ct);
+            var resultado = await usuarios.CriarLocalAsync(request.Cpf, request.Senha, request.Roles, request.Email, request.Nome, request.SemLimite, request.CondicaoPagamento, ct);
             return Ok(resultado);
         }
         catch (InvalidOperationException ex)
@@ -107,7 +114,7 @@ public sealed class UsuariosController(IUsuarioService usuarios) : ControllerBas
     {
         try
         {
-            var resultado = await usuarios.AtualizarLocalAsync(id, request.Email, request.Cpf, request.Nome, request.Roles, request.SemLimite, ct);
+            var resultado = await usuarios.AtualizarLocalAsync(id, request.Email, request.Cpf, request.Nome, request.Roles, request.SemLimite, request.CondicaoPagamento, ct);
             return Ok(resultado);
         }
         catch (InvalidOperationException ex)

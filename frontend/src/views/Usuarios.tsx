@@ -185,6 +185,7 @@ export default function Usuarios() {
   const [newCpf, setNewCpf] = useState("");
   const [newIsAdmin, setNewIsAdmin] = useState(false);
   const [newSemLimite, setNewSemLimite] = useState(false);
+  const [newCondicaoPagamento, setNewCondicaoPagamento] = useState(3);
   const [creating, setCreating] = useState(false);
   const [localCpf, setLocalCpf] = useState("");
   const [localSenha, setLocalSenha] = useState("");
@@ -192,6 +193,7 @@ export default function Usuarios() {
   const [localEmail, setLocalEmail] = useState("");
   const [localIsAdmin, setLocalIsAdmin] = useState(false);
   const [localSemLimite, setLocalSemLimite] = useState(false);
+  const [localCondicaoPagamento, setLocalCondicaoPagamento] = useState(3);
   const [creatingLocal, setCreatingLocal] = useState(false);
 
   const [searchResults, setSearchResults] = useState<UsuarioLookup[]>([]);
@@ -205,6 +207,9 @@ export default function Usuarios() {
   const [draftNomes, setDraftNomes] = useState<Record<string, string>>({});
   const [draftAtivos, setDraftAtivos] = useState<Record<string, boolean>>({});
   const [draftSemLimites, setDraftSemLimites] = useState<Record<string, boolean>>({});
+  const [draftCondicoesPagamento, setDraftCondicoesPagamento] = useState<Record<string, number>>({});
+  const [condicoesPagamentoDisponiveis, setCondicoesPagamentoDisponiveis] = useState<number[]>([3, 28]);
+  const [condicaoPagamentoPadrao, setCondicaoPagamentoPadrao] = useState(3);
   const [draftBases, setDraftBases] = useState<Record<string, UsuarioPerfil>>({});
   const [syncing, setSyncing] = useState(false);
   const [confirmChangesOpen, setConfirmChangesOpen] = useState(false);
@@ -231,6 +236,7 @@ export default function Usuarios() {
     setNewCpf("");
     setNewIsAdmin(false);
     setNewSemLimite(false);
+    setNewCondicaoPagamento(condicaoPagamentoPadrao);
     setSelectedSuggestion(null);
     setSearchResults([]);
     setSearchError(null);
@@ -254,6 +260,7 @@ export default function Usuarios() {
     setLocalEmail("");
     setLocalIsAdmin(false);
     setLocalSemLimite(false);
+    setLocalCondicaoPagamento(condicaoPagamentoPadrao);
   };
 
   const handleOpenLocalPanel = () => {
@@ -330,6 +337,29 @@ export default function Usuarios() {
     },
     [filterCpf, filterEmail, filterOrigem, filterPerfil, page, toast],
   );
+
+  useEffect(() => {
+    const carregarConfiguracoesCadastro = async () => {
+      try {
+        const { data } = await api.get<UsuarioConfiguracoesCadastro>("/usuarios/configuracoes");
+        const condicoes = Array.isArray(data?.condicoesPagamento) ? data.condicoesPagamento : [];
+        const padrao = typeof data?.padraoCondicaoPagamento === "number" ? data.padraoCondicaoPagamento : 3;
+
+        if (condicoes.length > 0) {
+          setCondicoesPagamentoDisponiveis(condicoes);
+        }
+
+        setCondicaoPagamentoPadrao(padrao);
+        setNewCondicaoPagamento(padrao);
+        setLocalCondicaoPagamento(padrao);
+      } catch (error) {
+        console.error("Erro ao carregar configurações de cadastro", error);
+        toast.error("Não foi possível carregar as condições de pagamento.");
+      }
+    };
+
+    carregarConfiguracoesCadastro();
+  }, [toast]);
 
   useEffect(() => {
     fetchUsuarios(page);
@@ -443,10 +473,11 @@ export default function Usuarios() {
     }
 
     const roles = buildRoles(newIsAdmin);
-    const payload: { email: string; cpf?: string; roles: string[]; nome?: string; semLimite: boolean } = {
+    const payload: { email: string; cpf?: string; roles: string[]; nome?: string; semLimite: boolean; condicaoPagamento: number } = {
       email,
       roles,
       semLimite: newSemLimite,
+      condicaoPagamento: newCondicaoPagamento,
     };
     const nome = chosenUser.displayName?.trim();
     if (nome) {
@@ -464,6 +495,7 @@ export default function Usuarios() {
       setNewCpf("");
       setNewIsAdmin(false);
     setNewSemLimite(false);
+    setNewCondicaoPagamento(condicaoPagamentoPadrao);
       setSelectedSuggestion(null);
       setSearchResults([]);
       setSearchError(null);
@@ -499,12 +531,13 @@ export default function Usuarios() {
     }
 
     const roles = buildRoles(localIsAdmin);
-    const payload: { cpf: string; senha: string; roles: string[]; email?: string; nome: string; semLimite: boolean } = {
+    const payload: { cpf: string; senha: string; roles: string[]; email?: string; nome: string; semLimite: boolean; condicaoPagamento: number } = {
       cpf: sanitized,
       senha: localSenha,
       roles,
       nome: trimmedLocalNome,
       semLimite: localSemLimite,
+      condicaoPagamento: localCondicaoPagamento,
     };
 
     const trimmedLocalEmail = localEmail.trim();
@@ -522,6 +555,7 @@ export default function Usuarios() {
       setLocalEmail("");
       setLocalIsAdmin(false);
     setLocalSemLimite(false);
+    setLocalCondicaoPagamento(condicaoPagamentoPadrao);
       await fetchUsuarios(page);
       await refreshRoles();
     } catch (error: any) {
@@ -566,6 +600,11 @@ export default function Usuarios() {
     });
   };
 
+  const handleDraftCondicaoPagamentoChange = (usuario: UsuarioPerfil, value: number) => {
+    rememberDraftBase(usuario);
+    setDraftCondicoesPagamento((prev) => ({ ...prev, [usuario.id]: value }));
+  };
+
   const handleDraftEmailChange = (usuario: UsuarioPerfil, value: string) => {
     rememberDraftBase(usuario);
     setDraftEmails((prev) => ({ ...prev, [usuario.id]: value }));
@@ -598,6 +637,7 @@ export default function Usuarios() {
     rawDraftNome: string;
     draftAtivo: boolean;
     draftSemLimite: boolean;
+    draftCondicaoPagamento: number;
     cpfHasError: boolean;
     nomeHasError: boolean;
     emailHasError: boolean;
@@ -634,6 +674,16 @@ export default function Usuarios() {
       delete next[usuarioId];
       return next;
     });
+    setDraftSemLimites((prev) => {
+      const next = { ...prev };
+      delete next[usuarioId];
+      return next;
+    });
+    setDraftCondicoesPagamento((prev) => {
+      const next = { ...prev };
+      delete next[usuarioId];
+      return next;
+    });
     setDraftBases((prev) => {
       const next = { ...prev };
       delete next[usuarioId];
@@ -657,6 +707,7 @@ export default function Usuarios() {
       const draftNome = draftNomes[usuario.id] ?? usuario.nome ?? "";
       const draftAtivo = draftAtivos[usuario.id] ?? usuario.ativo;
       const draftSemLimite = draftSemLimites[usuario.id] ?? usuario.semLimite;
+      const draftCondicaoPagamento = draftCondicoesPagamento[usuario.id] ?? usuario.condicaoPagamento;
       const isLocal = !usuario.microsoftId;
       const trimmedDraftEmail = draftEmail.trim();
       const trimmedDraftNome = draftNome.trim();
@@ -666,7 +717,8 @@ export default function Usuarios() {
       const nomeChanged = isLocal && trimmedDraftNome && trimmedDraftNome !== (usuario.nome ?? "");
     const cpfChanged = cpfComplete && draftCpf !== originalCpf && !cpfHasError;
       const semLimiteChanged = draftSemLimite !== usuario.semLimite;
-      const hasProfileChanges = isAdminDraft !== isAdminOriginal || cpfChanged || emailChanged || nomeChanged || semLimiteChanged;
+      const condicaoPagamentoChanged = draftCondicaoPagamento !== usuario.condicaoPagamento;
+      const hasProfileChanges = isAdminDraft !== isAdminOriginal || cpfChanged || emailChanged || nomeChanged || semLimiteChanged || condicaoPagamentoChanged;
       const statusChanged = draftAtivo !== usuario.ativo;
       const hasChanges = hasProfileChanges || statusChanged;
       const hasError = cpfHasError || nomeHasError || emailHasError;
@@ -683,6 +735,10 @@ export default function Usuarios() {
       }
       if (semLimiteChanged) {
         changeDescriptions.push(`Sem limite: ${usuario.semLimite ? "Sim" : "Não"} → ${draftSemLimite ? "Sim" : "Não"}`);
+      }
+
+      if (condicaoPagamentoChanged) {
+        changeDescriptions.push(`Condição pagamento: ${usuario.condicaoPagamento} → ${draftCondicaoPagamento}`);
       }
       if (isAdminDraft !== isAdminOriginal) {
         changeDescriptions.push(
@@ -709,6 +765,7 @@ export default function Usuarios() {
         draftNome: trimmedDraftNome,
         draftAtivo,
         draftSemLimite,
+        draftCondicaoPagamento,
         cpfHasError,
         nomeHasError,
         emailHasError,
@@ -719,7 +776,7 @@ export default function Usuarios() {
         changeDescriptions,
       };
     },
-    [draftAdmins, draftAtivos, draftCpfs, draftEmails, draftNomes, draftSemLimites],
+    [draftAdmins, draftAtivos, draftCondicoesPagamento, draftCpfs, draftEmails, draftNomes, draftSemLimites],
   );
 
   const pendingChanges = useMemo(
@@ -731,6 +788,7 @@ export default function Usuarios() {
         ...Object.keys(draftEmails),
         ...Object.keys(draftNomes),
         ...Object.keys(draftSemLimites),
+        ...Object.keys(draftCondicoesPagamento),
       ]);
 
       const byId: Record<string, UsuarioPerfil> = {};
@@ -748,7 +806,7 @@ export default function Usuarios() {
         })
         .filter((info): info is UsuarioDraftInfo => Boolean(info?.hasChanges));
     },
-    [draftAdmins, draftAtivos, draftBases, draftCpfs, draftEmails, draftNomes, draftSemLimites, getUsuarioDraftInfo, usuarios],
+    [draftAdmins, draftAtivos, draftBases, draftCondicoesPagamento, draftCpfs, draftEmails, draftNomes, draftSemLimites, getUsuarioDraftInfo, usuarios],
   );
 
   const hasPendingErrors = useMemo(
@@ -764,7 +822,9 @@ export default function Usuarios() {
     cpf?: string | null;
     nome?: string | null;
     roles?: string[];
+    semLimite?: boolean;
     ativo?: boolean;
+    condicaoPagamento?: number;
   };
 
   const handleOpenConfirmChanges = () => {
@@ -799,6 +859,7 @@ export default function Usuarios() {
         roles: change.hasProfileChanges ? change.roles : undefined,
         ativo: change.statusChanged ? change.draftAtivo : undefined,
         semLimite: change.hasProfileChanges ? change.draftSemLimite : undefined,
+        condicaoPagamento: change.hasProfileChanges ? change.draftCondicaoPagamento : undefined,
       }));
 
       await api.post<UsuarioPerfil[]>("/usuarios/lote", { usuarios: payload });
@@ -1026,6 +1087,20 @@ export default function Usuarios() {
             {!newCpfIncomplete && newCpfInvalid && <span className="text-xs text-red-600">CPF inválido.</span>}
           </label>
 
+          <label className="flex flex-col gap-1 md:col-span-2">
+            <span className="text-sm font-medium text-gray-700">Condição de pagamento *</span>
+            <select
+              value={newCondicaoPagamento}
+              onChange={(event) => setNewCondicaoPagamento(Number(event.target.value))}
+              className="h-11 rounded-xl border border-gray-200 px-3 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-100"
+              required
+            >
+              {condicoesPagamentoDisponiveis.map((condicao) => (
+                <option key={condicao} value={condicao}>{condicao}</option>
+              ))}
+            </select>
+          </label>
+
           <div className="md:col-span-2 flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
             <div>
               <div className="text-sm font-medium text-gray-700">Perfis</div>
@@ -1144,6 +1219,20 @@ export default function Usuarios() {
                 className="h-11 rounded-xl border border-gray-200 px-3 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-100"
                 placeholder="usuario@empresa.com"
               />
+            </label>
+
+            <label className="flex flex-col gap-1 md:col-span-2">
+              <span className="text-sm font-medium text-gray-700">Condição de pagamento *</span>
+              <select
+                value={localCondicaoPagamento}
+                onChange={(event) => setLocalCondicaoPagamento(Number(event.target.value))}
+                className="h-11 rounded-xl border border-gray-200 px-3 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-100"
+                required
+              >
+                {condicoesPagamentoDisponiveis.map((condicao) => (
+                  <option key={condicao} value={condicao}>{condicao}</option>
+                ))}
+              </select>
             </label>
 
             <div className="md:col-span-2 flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
@@ -1324,6 +1413,7 @@ export default function Usuarios() {
                     <th className="px-4 py-3">CPF</th>
                     <th className="px-4 py-3 text-center">ADM</th>
                     <th className="px-4 py-3 text-center">Sem limite</th>
+                    <th className="px-4 py-3 text-center">Cond. pagto</th>
                     <th className="px-4 py-3 text-center">Ativo</th>
                     <th className="px-4 py-3">Atualizado em</th>
                     <th className="px-4 py-3 text-right">Pendências</th>
@@ -1343,6 +1433,7 @@ export default function Usuarios() {
                     rawDraftNome,
                     draftAtivo,
                     draftSemLimite,
+        draftCondicaoPagamento,
                     nomeHasError,
                     emailHasError,
                     hasChanges,
@@ -1444,6 +1535,19 @@ export default function Usuarios() {
                               title={draftSemLimite ? "Sem limite" : "Com limite"}
                             />
                           </label>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex justify-center">
+                          <select
+                            value={draftCondicaoPagamento}
+                            onChange={(event) => handleDraftCondicaoPagamentoChange(usuario, Number(event.target.value))}
+                            className="h-9 rounded-lg border border-gray-200 px-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                          >
+                            {condicoesPagamentoDisponiveis.map((condicao) => (
+                              <option key={condicao} value={condicao}>{condicao}</option>
+                            ))}
+                          </select>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-center">
