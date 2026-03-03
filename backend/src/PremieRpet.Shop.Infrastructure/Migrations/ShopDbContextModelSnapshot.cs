@@ -867,8 +867,6 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                     b.Navigation("Status");
 
                     b.Navigation("Empresa");
-
-                    b.Navigation("IntegracaoLogs");
                 });
 
             modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.PedidoHistorico", b =>
@@ -1020,15 +1018,9 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                 {
                     b.Navigation("Historicos");
 
-                    b.Navigation("IntegracaoLogs");
-
                     b.Navigation("Itens");
                 });
 
-            modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.PedidoIntegracaoStatus", b =>
-                {
-                    b.Navigation("Logs");
-                });
 
             modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.PedidoStatus", b =>
                 {
