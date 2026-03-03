@@ -191,6 +191,82 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                     b.ToTable("PedidoItens");
                 });
 
+            modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.PedidoIntegracaoLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("DataCriacao")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid>("PedidoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PedidoExternoId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Resultado")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("StatusId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DataCriacao");
+
+                    b.HasIndex("PedidoId");
+
+                    b.HasIndex("StatusId");
+
+                    b.ToTable("PedidoIntegracaoLogs");
+                });
+
+            modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.PedidoIntegracaoStatus", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Nome")
+                        .IsUnique();
+
+                    b.ToTable("PedidoIntegracaoStatus");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("5bf5f98a-f8f7-4f6c-af7f-6e6ef4e2a1bf"),
+                            Nome = "Não integrado"
+                        },
+                        new
+                        {
+                            Id = new Guid("4eca7f0b-b347-4fc4-b4ec-cf581f5f9e03"),
+                            Nome = "Processando"
+                        },
+                        new
+                        {
+                            Id = new Guid("7c8906e9-a10f-4c6f-a0cd-75cf4f7facdf"),
+                            Nome = "Integrado"
+                        },
+                        new
+                        {
+                            Id = new Guid("f5ef5e17-03d0-40f9-a5ad-231470c4ca8f"),
+                            Nome = "Erro"
+                        });
+                });
+
             modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.PedidoStatus", b =>
                 {
                     b.Property<int>("Id")
@@ -836,6 +912,27 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                     b.Navigation("Produto");
                 });
 
+            modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.PedidoIntegracaoLog", b =>
+                {
+                    b.HasOne("PremieRpet.Shop.Domain.Entities.Pedido", "Pedido")
+                        .WithMany()
+                        .HasForeignKey("PedidoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_PedidoIntegracaoLogs_Pedidos_PedidoId");
+
+                    b.HasOne("PremieRpet.Shop.Domain.Entities.PedidoIntegracaoStatus", "Status")
+                        .WithMany("Logs")
+                        .HasForeignKey("StatusId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_PedidoIntegracaoLogs_PedidoIntegracaoStatus_StatusId");
+
+                    b.Navigation("Pedido");
+
+                    b.Navigation("Status");
+                });
+
             modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.Produto", b =>
                 {
                     b.HasOne("PremieRpet.Shop.Domain.Entities.Usuario", null)
@@ -932,6 +1029,11 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
             modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.PedidoStatus", b =>
                 {
                     b.Navigation("Pedidos");
+                });
+
+            modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.PedidoIntegracaoStatus", b =>
+                {
+                    b.Navigation("Logs");
                 });
 
             modelBuilder.Entity("PremieRpet.Shop.Domain.Entities.Produto", b =>
