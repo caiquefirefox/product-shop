@@ -56,6 +56,7 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
             migrationBuilder.InsertData(
                 table: "PedidoIntegracaoStatus",
                 columns: new[] { "Id", "Nome" },
+                columnTypes: new[] { "uuid", "character varying(100)" },
                 values: new object[,]
                 {
                     { new Guid("5bf5f98a-f8f7-4f6c-af7f-6e6ef4e2a1bf"), "Não integrado" },
