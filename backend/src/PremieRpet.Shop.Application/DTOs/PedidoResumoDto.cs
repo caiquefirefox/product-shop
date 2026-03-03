@@ -8,6 +8,7 @@ public sealed record PedidoResumoDto(
     string? UsuarioCpf,
     Guid EmpresaId,
     string EmpresaNome,
+    int CondicaoPagamento,
     int StatusId,
     string StatusNome,
     DateTimeOffset DataHora,
