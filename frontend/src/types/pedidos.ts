@@ -16,8 +16,11 @@ type PedidoDetalhe = {
   usuarioCpf: string | null;
   empresaId: string;
   empresaNome: string;
+  condicaoPagamento: number;
   statusId: number;
   statusNome: string;
+  integracaoStatus: string;
+  integracaoPedidoExternoId: string | null;
   dataHora: string;
   total: number;
   pesoTotalKg: number;

@@ -13,6 +13,7 @@ public static class DependencyInjection
         services.Configure<PedidoSettings>(configuration.GetSection(PedidoSettings.SectionName));
         services.AddScoped<IProdutoService, ProdutoService>();
         services.AddScoped<IPedidoService, PedidoService>();
+        services.AddScoped<IPedidoIntegracaoService, PedidoIntegracaoService>();
         services.AddScoped<IUsuarioService, UsuarioService>();
         services.AddScoped<IEmpresaService, EmpresaService>();
         services.AddScoped<IUnidadeEntregaService, UnidadeEntregaService>();

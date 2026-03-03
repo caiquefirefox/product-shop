@@ -27,6 +27,7 @@ public sealed class PedidoService : IPedidoService
     private readonly IEmpresaRepository _empresas;
     private readonly IUsuarioService _usuarios;
     private readonly IUsuarioRepository _usuariosRepo;
+    private readonly IPedidoIntegracaoRepository _pedidoIntegracao;
     private readonly PedidoSettings _settings;
     private readonly decimal _limiteKgMes;
     private readonly int _quantidadeMinimaPadrao;
@@ -38,6 +39,7 @@ public sealed class PedidoService : IPedidoService
         IEmpresaRepository empresas,
         IUsuarioService usuarios,
         IUsuarioRepository usuariosRepo,
+        IPedidoIntegracaoRepository pedidoIntegracao,
         IOptions<PedidoSettings> settings)
     {
         _pedidos = ped;
@@ -45,6 +47,7 @@ public sealed class PedidoService : IPedidoService
         _empresas = empresas;
         _usuarios = usuarios;
         _usuariosRepo = usuariosRepo;
+        _pedidoIntegracao = pedidoIntegracao;
         _settings = Normalizar(settings?.Value ?? new PedidoSettings());
         _limiteKgMes = _settings.LimitKgPerUserPerMonth;
         _quantidadeMinimaPadrao = _settings.DefaultMinQuantity;
@@ -96,7 +99,7 @@ public sealed class PedidoService : IPedidoService
         return Math.Max(1, efetivo);
     }
 
-    private PedidoDetalheDto MapToDetalhe(Pedido pedido)
+    private PedidoDetalheDto MapToDetalhe(Pedido pedido, int condicaoPagamento, string integracaoStatus, string? integracaoPedidoExternoId)
     {
         var itens = pedido.Itens
             .OrderBy(i => i.Descricao)
@@ -130,14 +133,20 @@ public sealed class PedidoService : IPedidoService
             pedido.UsuarioCpf,
             empresaId,
             empresaNome,
+            condicaoPagamento,
             pedido.StatusId,
             statusNome,
+            integracaoStatus,
+            integracaoPedidoExternoId,
             pedido.DataHora,
             total,
             pesoTotal,
             itens
         );
     }
+
+    private PedidoDetalheDto MapToDetalhe(Pedido pedido)
+        => MapToDetalhe(pedido, 3, "Não integrado", null);
 
     private static PedidoHistoricoDto MapToHistorico(PedidoHistorico historico)
     {
@@ -313,6 +322,13 @@ public sealed class PedidoService : IPedidoService
         }
 
         await _pedidos.AddAsync(pedido, ct);
+        await _pedidoIntegracao.AddLogAsync(new PedidoIntegracaoLog
+        {
+            PedidoId = pedido.Id,
+            StatusId = PedidoIntegracaoStatusIds.NaoIntegrado,
+            Resultado = "Pedido criado no sistema",
+            DataCriacao = DateTimeOffset.UtcNow
+        }, ct);
 
         var empresaId = empresa.Id;
         var empresaNome = empresa.Nome;
@@ -323,6 +339,7 @@ public sealed class PedidoService : IPedidoService
             pedido.UsuarioCpf,
             empresaId,
             empresaNome,
+            perfil.CondicaoPagamento,
             pedido.StatusId,
             "Solicitado",
             pedido.DataHora,
@@ -351,16 +368,18 @@ public sealed class PedidoService : IPedidoService
         if (ate is not null) q = q.Where(p => p.DataHora <= ate);
         if (empresaId is Guid empresa && empresa != Guid.Empty) q = q.Where(p => p.EmpresaId == empresa);
 
-        return await q.AsNoTracking()
+        var pedidos = await q.AsNoTracking()
             .OrderByDescending(p => p.DataHora)
-            .Select(p => new PedidoResumoDto(
+            .Select(p => new
+            {
                 p.Id,
+                p.UsuarioId,
                 p.UsuarioNome,
                 p.UsuarioCpf,
                 p.EmpresaId,
-                p.Empresa != null ? p.Empresa.Nome : string.Empty,
+                EmpresaNome = p.Empresa != null ? p.Empresa.Nome : string.Empty,
                 p.StatusId,
-                p.Status != null && p.Status.Nome != null
+                StatusNome = p.Status != null && p.Status.Nome != null
                     ? p.Status.Nome
                     : p.StatusId == PedidoStatusIds.Solicitado
                         ? "Solicitado"
@@ -370,10 +389,34 @@ public sealed class PedidoService : IPedidoService
                                 ? "Cancelado"
                                 : string.Empty,
                 p.DataHora,
-                p.Itens.Sum(i => i.Preco * i.Quantidade),
-                p.Itens.AsQueryable().Select(PesoRules.ItemTotalKgExpr).Sum()
-            ))
+                Total = p.Itens.Sum(i => i.Preco * i.Quantidade),
+                PesoTotalKg = p.Itens.AsQueryable().Select(PesoRules.ItemTotalKgExpr).Sum()
+            })
             .ToListAsync(ct);
+
+        if (pedidos.Count == 0)
+            return Array.Empty<PedidoResumoDto>();
+
+        var usuariosIds = pedidos.Select(p => p.UsuarioId).Distinct().ToList();
+        var condicoesPagamento = await _usuariosRepo.Query()
+            .Where(u => usuariosIds.Contains(u.Id))
+            .Select(u => new { u.Id, u.CondicaoPagamento })
+            .ToDictionaryAsync(u => u.Id, u => u.CondicaoPagamento, ct);
+
+        return pedidos.Select(p => new PedidoResumoDto(
+                p.Id,
+                p.UsuarioNome,
+                p.UsuarioCpf,
+                p.EmpresaId,
+                p.EmpresaNome,
+                condicoesPagamento.GetValueOrDefault(p.UsuarioId, 3),
+                p.StatusId,
+                p.StatusNome,
+                p.DataHora,
+                p.Total,
+                p.PesoTotalKg
+            ))
+            .ToList();
     }
 
     public async Task<IReadOnlyList<PedidoDetalheDto>> ListarPedidosDetalhadosAsync(DateTimeOffset? de, DateTimeOffset? ate, Guid? usuarioId, int? statusId, Guid? empresaId, CancellationToken ct)
@@ -390,7 +433,47 @@ public sealed class PedidoService : IPedidoService
             .OrderByDescending(p => p.DataHora)
             .ToListAsync(ct);
 
-        return pedidos.Select(MapToDetalhe).ToList();
+        if (pedidos.Count == 0)
+            return Array.Empty<PedidoDetalheDto>();
+
+        var usuarioIds = pedidos.Select(p => p.UsuarioId).Distinct().ToList();
+        var condicoesPagamento = await _usuariosRepo.Query()
+            .Where(u => usuarioIds.Contains(u.Id))
+            .Select(u => new { u.Id, u.CondicaoPagamento })
+            .ToDictionaryAsync(u => u.Id, u => u.CondicaoPagamento, ct);
+
+        var pedidoIds = pedidos.Select(p => p.Id).ToList();
+        var ultimosLogsIntegracao = await _pedidoIntegracao.QueryLogs()
+            .Where(l => pedidoIds.Contains(l.PedidoId))
+            .OrderByDescending(l => l.DataCriacao)
+            .ThenByDescending(l => l.Id)
+            .Select(l => new
+            {
+                l.PedidoId,
+                StatusNome = l.Status != null ? l.Status.Nome : string.Empty,
+                l.PedidoExternoId,
+                l.StatusId,
+                l.DataCriacao
+            })
+            .ToListAsync(ct);
+
+        var integracaoPorPedido = ultimosLogsIntegracao
+            .GroupBy(x => x.PedidoId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.First());
+
+        return pedidos.Select(pedido =>
+        {
+            var condicaoPagamento = condicoesPagamento.GetValueOrDefault(pedido.UsuarioId, 3);
+            var possuiIntegracao = integracaoPorPedido.TryGetValue(pedido.Id, out var log);
+            var statusIntegracao = possuiIntegracao ? log!.StatusNome : "Não integrado";
+            var pedidoExternoId = possuiIntegracao && log!.StatusId == PedidoIntegracaoStatusIds.Integrado
+                ? log.PedidoExternoId
+                : null;
+
+            return MapToDetalhe(pedido, condicaoPagamento, statusIntegracao, pedidoExternoId);
+        }).ToList();
     }
 
     public async Task<PagedResultDto<PedidoDetalheDto>> ListarPedidosGerenciaveisAsync(PedidoListFiltroDto filtro, Guid usuarioAtualId, bool isAdmin, CancellationToken ct)

@@ -324,6 +324,10 @@ export default function Relatorios() {
                                 {p.statusNome}
                               </span>
                             </td>
+                            <td className="whitespace-nowrap px-5 py-4 text-sm font-semibold text-gray-900">{p.integracaoStatus}</td>
+                            <td className="whitespace-nowrap px-5 py-4 text-sm text-gray-700">
+                              {p.integracaoStatus.toLowerCase() === "integrado" ? (p.integracaoPedidoExternoId ?? "-") : "-"}
+                            </td>
                             <td className="whitespace-nowrap px-5 py-4 text-sm font-semibold text-gray-900">{itensLabel}</td>
                             <td className="whitespace-nowrap px-5 py-4 text-right text-sm font-semibold text-gray-900">
                               {formatPeso(p.pesoTotalKg, "kg", { unit: "kg" })}
@@ -345,7 +349,7 @@ export default function Relatorios() {
                           </tr>
                           {expand[p.id] && (
                             <tr id={`itens-${p.id}`} className="bg-white">
-                              <td colSpan={7} className="px-0">
+                              <td colSpan={9} className="px-0">
                                 <div className="bg-white px-5 py-4">
                                   <table className="min-w-[860px] w-full text-sm">
                                     <thead>

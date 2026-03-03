@@ -20,6 +20,7 @@ public static class DependencyInjection
         services.AddScoped<IEmpresaRepository, EmpresaRepository>();
         services.AddScoped<IUnidadeEntregaRepository, UnidadeEntregaRepository>();
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+        services.AddScoped<IPedidoIntegracaoRepository, PedidoIntegracaoRepository>();
         services.AddHttpClient();
         services.Configure<AzureBlobStorageOptions>(configuration.GetSection("AzureStorage"));
         services.AddSingleton<IProdutoImagemStorageService, AzureProdutoImagemStorageService>();
