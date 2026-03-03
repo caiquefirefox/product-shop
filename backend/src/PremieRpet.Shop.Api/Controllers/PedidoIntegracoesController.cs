@@ -9,6 +9,11 @@ namespace PremieRpet.Shop.Api.Controllers;
 [Route("api/pedidos/integracoes")]
 public class PedidoIntegracoesController(IPedidoIntegracaoService service) : ControllerBase
 {
+    [HttpGet("status")]
+    [Authorize("Admin")]
+    public Task<IReadOnlyList<PedidoIntegracaoStatusDto>> ListarStatus(CancellationToken ct)
+        => service.ListarStatusAsync(ct);
+
     [HttpPost]
     [Authorize("Admin")]
     public Task<PedidoIntegracaoLogDto> Registrar([FromBody] PedidoIntegracaoLogCreateDto dto, CancellationToken ct)

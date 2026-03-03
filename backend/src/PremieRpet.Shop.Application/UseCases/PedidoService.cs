@@ -419,7 +419,7 @@ public sealed class PedidoService : IPedidoService
             .ToList();
     }
 
-    public async Task<IReadOnlyList<PedidoDetalheDto>> ListarPedidosDetalhadosAsync(DateTimeOffset? de, DateTimeOffset? ate, Guid? usuarioId, int? statusId, Guid? empresaId, CancellationToken ct)
+    public async Task<IReadOnlyList<PedidoDetalheDto>> ListarPedidosDetalhadosAsync(DateTimeOffset? de, DateTimeOffset? ate, Guid? usuarioId, int? statusId, Guid? empresaId, Guid? integracaoStatusId, CancellationToken ct)
     {
         var q = _pedidos.Query();
 
@@ -463,7 +463,15 @@ public sealed class PedidoService : IPedidoService
                 g => g.Key,
                 g => g.First());
 
-        return pedidos.Select(pedido =>
+        var pedidosFiltradosPorIntegracao = pedidos.Where(pedido =>
+        {
+            if (integracaoStatusId is not Guid statusIntegracao || statusIntegracao == Guid.Empty)
+                return true;
+
+            return integracaoPorPedido.TryGetValue(pedido.Id, out var logFiltro) && logFiltro!.StatusId == statusIntegracao;
+        }).ToList();
+
+        return pedidosFiltradosPorIntegracao.Select(pedido =>
         {
             var condicaoPagamento = condicoesPagamento.GetValueOrDefault(pedido.UsuarioId, 3);
             var possuiIntegracao = integracaoPorPedido.TryGetValue(pedido.Id, out var log);

@@ -18,3 +18,8 @@ public sealed record PedidoIntegracaoLogDto(
     string? PedidoExternoId,
     DateTimeOffset DataCriacao
 );
+
+public sealed record PedidoIntegracaoStatusDto(
+    Guid Id,
+    string Nome
+);

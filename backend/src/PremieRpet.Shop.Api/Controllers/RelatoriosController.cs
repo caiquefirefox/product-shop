@@ -25,8 +25,9 @@ public class RelatoriosController(IPedidoService svc) : ControllerBase
         [FromQuery] Guid? usuarioId,
         [FromQuery] int? statusId,
         [FromQuery] Guid? empresaId,
+        [FromQuery] Guid? integracaoStatusId,
         CancellationToken ct)
-        => svc.ListarPedidosDetalhadosAsync(de, ate, usuarioId, statusId, empresaId, ct);
+        => svc.ListarPedidosDetalhadosAsync(de, ate, usuarioId, statusId, empresaId, integracaoStatusId, ct);
 
     [HttpGet("pedidos/excel")]
     [Authorize("Admin")]
@@ -37,7 +38,7 @@ public class RelatoriosController(IPedidoService svc) : ControllerBase
         [FromQuery] Guid? empresaId,
         CancellationToken ct)
     {
-        var pedidos = await svc.ListarPedidosDetalhadosAsync(de, ate, usuarioId, PedidoStatusIds.Aprovado, empresaId, ct);
+        var pedidos = await svc.ListarPedidosDetalhadosAsync(de, ate, usuarioId, PedidoStatusIds.Aprovado, empresaId, null, ct);
         var arquivo = PedidosExcelExporter.Gerar(pedidos);
         var nomeArquivo = $"relatorio-pedidos-{DateTimeOffset.UtcNow:yyyyMMddHHmmss}.xlsx";
         return new FileContentResult(arquivo, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")

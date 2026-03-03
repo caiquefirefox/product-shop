@@ -26,6 +26,9 @@ export default function Relatorios() {
   const [statusId, setStatusId] = useState<string>("");
   const [statusOptions, setStatusOptions] = useState<SimpleOption[]>([]);
   const [statusLoading, setStatusLoading] = useState(false);
+  const [integracaoStatusId, setIntegracaoStatusId] = useState<string>("");
+  const [integracaoStatusOptions, setIntegracaoStatusOptions] = useState<SimpleOption[]>([]);
+  const [integracaoStatusLoading, setIntegracaoStatusLoading] = useState(false);
   const [empresaId, setEmpresaId] = useState<string>("");
   const [empresas, setEmpresas] = useState<EmpresaOption[]>([]);
   const [empresasLoading, setEmpresasLoading] = useState(false);
@@ -68,6 +71,10 @@ export default function Relatorios() {
         params.empresaId = empresaId;
       }
 
+      if (integracaoStatusId) {
+        params.integracaoStatusId = integracaoStatusId;
+      }
+
       const r = await api.get<PedidoDetalhe[]>("/relatorios/pedidos/detalhes", { params });
       setPedidos(r.data);
     } catch (e: any) {
@@ -77,7 +84,7 @@ export default function Relatorios() {
     } finally {
       setLoading(false);
     }
-  }, [ate, de, empresaId, statusId]);
+  }, [ate, de, empresaId, statusId, integracaoStatusId]);
 
   useEffect(() => {
     // carrega ao montar
@@ -107,6 +114,37 @@ export default function Relatorios() {
       .finally(() => {
         if (!vivo) return;
         setStatusLoading(false);
+      });
+
+    return () => {
+      vivo = false;
+    };
+  }, []);
+
+
+  useEffect(() => {
+    let vivo = true;
+    setIntegracaoStatusLoading(true);
+
+    type IntegracaoStatusResponse = { id: string; nome: string };
+
+    api
+      .get<IntegracaoStatusResponse[]>("/pedidos/integracoes/status")
+      .then((response) => {
+        if (!vivo) return;
+        const options = (response.data || []).map((item) => ({
+          value: String(item.id),
+          label: item.nome,
+        }));
+        setIntegracaoStatusOptions(options);
+      })
+      .catch(() => {
+        if (!vivo) return;
+        setIntegracaoStatusOptions([]);
+      })
+      .finally(() => {
+        if (!vivo) return;
+        setIntegracaoStatusLoading(false);
       });
 
     return () => {
@@ -228,7 +266,7 @@ export default function Relatorios() {
     } finally {
       setExportando(false);
     }
-  }, [ate, de, empresaId, statusId]);
+  }, [ate, de, empresaId, statusId, integracaoStatusId]);
 
   return (
     <div className="space-y-4">
@@ -249,9 +287,12 @@ export default function Relatorios() {
         empresaId={empresaId}
         onChangeEmpresaId={setEmpresaId}
         empresaOptions={empresaOptions}
+        integracaoId={integracaoStatusId}
+        onChangeIntegracaoId={setIntegracaoStatusId}
+        integracaoOptions={integracaoStatusOptions}
         onApply={carregar}
         applyLabel={loading ? "Carregando..." : "Buscar"}
-        disabled={loading || statusLoading || empresasLoading}
+        disabled={loading || statusLoading || empresasLoading || integracaoStatusLoading}
       >
         <button
           type="button"

@@ -28,6 +28,9 @@ export type DateUserFiltersProps = {
   empresaId?: string;
   onChangeEmpresaId?: (value: string) => void;
   empresaOptions?: SimpleOption[];
+  integracaoId?: string;
+  onChangeIntegracaoId?: (value: string) => void;
+  integracaoOptions?: SimpleOption[];
   onApply?: () => void;
   applyLabel?: string;
   className?: string;
@@ -200,6 +203,9 @@ export function DateUserFilters({
   empresaId = "",
   onChangeEmpresaId,
   empresaOptions,
+  integracaoId = "",
+  onChangeIntegracaoId,
+  integracaoOptions,
   onApply,
   applyLabel = "Buscar",
   className = "",
@@ -228,6 +234,7 @@ export function DateUserFilters({
 
   const showStatus = Boolean(statusOptions?.length && onChangeStatusId);
   const showEmpresa = Boolean(onChangeEmpresaId);
+  const showIntegracao = Boolean(integracaoOptions?.length && onChangeIntegracaoId);
 
   const filters = (
     <>
@@ -274,6 +281,18 @@ export function DateUserFilters({
           onChange={onChangeEmpresaId!}
           disabled={disabled}
           placeholderLabel="Todas"
+        />
+      ) : null}
+
+      {showIntegracao && integracaoOptions && onChangeIntegracaoId ? (
+        <FilterDropdown
+          id="filtro-integracao"
+          label="Integração"
+          options={integracaoOptions}
+          value={integracaoId}
+          onChange={onChangeIntegracaoId}
+          disabled={disabled}
+          placeholderLabel="Todos"
         />
       ) : null}
 

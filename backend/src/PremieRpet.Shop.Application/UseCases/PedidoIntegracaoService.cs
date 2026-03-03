@@ -10,6 +10,15 @@ public sealed class PedidoIntegracaoService(
     IPedidoRepository pedidos,
     IPedidoIntegracaoRepository integracaoRepo) : IPedidoIntegracaoService
 {
+    public async Task<IReadOnlyList<PedidoIntegracaoStatusDto>> ListarStatusAsync(CancellationToken ct)
+    {
+        return await integracaoRepo.QueryStatus()
+            .AsNoTracking()
+            .OrderBy(s => s.Nome)
+            .Select(s => new PedidoIntegracaoStatusDto(s.Id, s.Nome))
+            .ToListAsync(ct);
+    }
+
     public async Task<PedidoIntegracaoLogDto> RegistrarAsync(PedidoIntegracaoLogCreateDto dto, CancellationToken ct)
     {
         var pedidoExiste = await pedidos.Query().AnyAsync(p => p.Id == dto.PedidoId, ct);
