@@ -119,6 +119,25 @@ public sealed class PedidosController(IPedidoService pedidos, IUsuarioService us
         }
     }
 
+
+    [HttpPost("integracao/log")]
+    [Authorize("Admin")]
+    public async Task<ActionResult> RegistrarIntegracao([FromBody] PedidoIntegracaoLogCreateRequest request, CancellationToken ct)
+    {
+        if (!ModelState.IsValid)
+            return ValidationProblem(ModelState);
+
+        try
+        {
+            await pedidos.AddIntegracaoLogAsync(request.ToDto(), ct);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Problem(detail: ex.Message, statusCode: StatusCodes.Status400BadRequest);
+        }
+    }
+
     [HttpGet("{id:guid}")]
     [Authorize]
     public async Task<ActionResult<PedidoDetalheCompletoDto>> Obter(Guid id, CancellationToken ct)

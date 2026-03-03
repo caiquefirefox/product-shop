@@ -15,4 +15,5 @@ public interface IPedidoService
     Task<IReadOnlyList<PedidoStatusDto>> ListarStatusAsync(CancellationToken ct);
     Task<PedidoDetalheDto> AprovarPedidoAsync(Guid pedidoId, Guid usuarioAtualId, string usuarioNome, CancellationToken ct);
     Task<PedidoDetalheDto> CancelarPedidoAsync(Guid pedidoId, Guid usuarioAtualId, string usuarioNome, bool isAdmin, CancellationToken ct);
+    Task AddIntegracaoLogAsync(PedidoIntegracaoLogCreateDto dto, CancellationToken ct);
 }

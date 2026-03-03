@@ -122,6 +122,14 @@ public sealed class PedidoService : IPedidoService
         var statusNome = ObterNomeStatus(pedido);
         var empresaId = pedido.EmpresaId;
         var empresaNome = pedido.Empresa?.Nome ?? string.Empty;
+        var condicaoPagamento = _usuariosRepo.Query()
+            .Where(u => u.Id == pedido.UsuarioId)
+            .Select(u => u.CondicaoPagamento)
+            .FirstOrDefault();
+        var integracaoStatusNome = pedido.IntegracaoLogs
+            .OrderByDescending(l => l.DataCriacao)
+            .Select(l => l.Status != null ? l.Status.Nome : null)
+            .FirstOrDefault() ?? "Não integrado";
 
         return new PedidoDetalheDto(
             pedido.Id,
@@ -132,6 +140,8 @@ public sealed class PedidoService : IPedidoService
             empresaNome,
             pedido.StatusId,
             statusNome,
+            condicaoPagamento,
+            integracaoStatusNome,
             pedido.DataHora,
             total,
             pesoTotal,
@@ -311,6 +321,13 @@ public sealed class PedidoService : IPedidoService
                 Quantidade = item.Quantidade
             });
         }
+
+        pedido.IntegracaoLogs.Add(new PedidoIntegracaoLog
+        {
+            StatusId = PedidoIntegracaoStatusIds.NaoIntegrado,
+            Resultado = "Status inicial automático no momento da criação do pedido.",
+            DataCriacao = agora
+        });
 
         await _pedidos.AddAsync(pedido, ct);
 
@@ -725,6 +742,30 @@ public sealed class PedidoService : IPedidoService
             .OrderBy(s => s.Id)
             .Select(s => new PedidoStatusDto(s.Id, s.Nome))
             .ToListAsync(ct);
+
+
+    public async Task AddIntegracaoLogAsync(PedidoIntegracaoLogCreateDto dto, CancellationToken ct)
+    {
+        _ = await _pedidos.GetByIdAsync(dto.PedidoId, ct)
+            ?? throw new InvalidOperationException("Pedido não encontrado.");
+
+        var statusValido = await _pedidos
+            .IntegracaoStatusQuery()
+            .AnyAsync(s => s.Id == dto.StatusId, ct);
+
+        if (!statusValido)
+            throw new InvalidOperationException("Status de integração inválido.");
+
+        var log = new PedidoIntegracaoLog
+        {
+            PedidoId = dto.PedidoId,
+            StatusId = dto.StatusId,
+            Resultado = dto.Resultado,
+            DataCriacao = DateTimeOffset.UtcNow
+        };
+
+        await _pedidos.AddIntegracaoLogAsync(log, ct);
+    }
 
     public async Task<PedidoDetalheDto> AprovarPedidoAsync(Guid pedidoId, Guid usuarioAtualId, string usuarioNome, CancellationToken ct)
     {

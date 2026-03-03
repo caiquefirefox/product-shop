@@ -12,6 +12,8 @@ public sealed record PedidoDetalheDto(
     string EmpresaNome,
     int StatusId,
     string StatusNome,
+    int CondicaoPagamento,
+    string IntegracaoStatusNome,
     DateTimeOffset DataHora,
     decimal Total,
     decimal PesoTotalKg,

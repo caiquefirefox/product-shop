@@ -103,6 +103,8 @@ public sealed class PedidoRepository : IPedidoRepository
              .Include(p => p.Empresa)
             .Include(p => p.Itens)
                 .ThenInclude(i => i.Produto)
+            .Include(p => p.IntegracaoLogs)
+                .ThenInclude(l => l.Status)
             .Include(p => p.Historicos)
                 .ThenInclude(h => h.Usuario)
             .FirstOrDefaultAsync(p => p.Id == id, ct);
@@ -118,7 +120,21 @@ public sealed class PedidoRepository : IPedidoRepository
          .Include(p => p.Empresa)
         .Include(p => p.Itens)
             .ThenInclude(i => i.Produto)
+        .Include(p => p.IntegracaoLogs)
+            .ThenInclude(l => l.Status)
         .AsQueryable();
 
     public IQueryable<PedidoStatus> StatusQuery() => _db.PedidoStatus.AsQueryable();
+
+    public IQueryable<PedidoIntegracaoLog> IntegracaoLogQuery() => _db.PedidoIntegracaoLogs
+        .Include(l => l.Status)
+        .AsQueryable();
+
+    public IQueryable<PedidoIntegracaoStatus> IntegracaoStatusQuery() => _db.PedidoIntegracaoStatus.AsQueryable();
+
+    public async Task AddIntegracaoLogAsync(PedidoIntegracaoLog log, CancellationToken ct)
+    {
+        _db.PedidoIntegracaoLogs.Add(log);
+        await _db.SaveChangesAsync(ct);
+    }
 }

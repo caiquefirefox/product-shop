@@ -20,6 +20,7 @@ public sealed class Pedido
     public Guid? AtualizadoPorUsuarioId { get; set; }
     public List<PedidoItem> Itens { get; set; } = new();
     public List<PedidoHistorico> Historicos { get; set; } = new();
+    public List<PedidoIntegracaoLog> IntegracaoLogs { get; set; } = new();
     public decimal Total() => Itens.Sum(i => i.Preco * i.Quantidade);
     public decimal PesoTotalKg() => PesoRules.SumTotalKg(Itens);
 }

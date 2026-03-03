@@ -18,6 +18,8 @@ type PedidoDetalhe = {
   empresaNome: string;
   statusId: number;
   statusNome: string;
+  condicaoPagamento: number;
+  integracaoStatusNome: string;
   dataHora: string; // ISO
   total: number;
   pesoTotalKg: number;

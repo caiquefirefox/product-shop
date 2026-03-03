@@ -11,4 +11,7 @@ public interface IPedidoRepository
     Task AddHistoricoAsync(PedidoHistorico historico, CancellationToken ct);
     IQueryable<Pedido> Query();
     IQueryable<PedidoStatus> StatusQuery();
+    IQueryable<PedidoIntegracaoLog> IntegracaoLogQuery();
+    IQueryable<PedidoIntegracaoStatus> IntegracaoStatusQuery();
+    Task AddIntegracaoLogAsync(PedidoIntegracaoLog log, CancellationToken ct);
 }

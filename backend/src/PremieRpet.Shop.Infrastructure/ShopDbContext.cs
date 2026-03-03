@@ -12,6 +12,8 @@ public sealed class ShopDbContext : DbContext
     public DbSet<PedidoItem> PedidoItens => Set<PedidoItem>();
     public DbSet<PedidoStatus> PedidoStatus => Set<PedidoStatus>();
     public DbSet<PedidoHistorico> PedidoHistoricos => Set<PedidoHistorico>();
+    public DbSet<PedidoIntegracaoStatus> PedidoIntegracaoStatus => Set<PedidoIntegracaoStatus>();
+    public DbSet<PedidoIntegracaoLog> PedidoIntegracaoLogs => Set<PedidoIntegracaoLog>();
     public DbSet<UnidadeEntrega> UnidadesEntrega => Set<UnidadeEntrega>();
     public DbSet<Empresa> Empresas => Set<Empresa>();
     public DbSet<ProdutoEspecieOpcao> ProdutoEspecieOpcoes => Set<ProdutoEspecieOpcao>();
@@ -180,6 +182,42 @@ public sealed class ShopDbContext : DbContext
                 .HasForeignKey(p => p.EmpresaId)
                 .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("FK_Pedidos_Empresas_EmpresaId");
+        });
+
+        b.Entity<PedidoIntegracaoStatus>(e =>
+        {
+            e.HasKey(s => s.Id);
+            e.Property(s => s.Nome).HasMaxLength(100).IsRequired();
+            e.HasIndex(s => s.Nome).IsUnique();
+
+            e.HasData(
+                new PedidoIntegracaoStatus { Id = PedidoIntegracaoStatusIds.NaoIntegrado, Nome = "Não integrado" },
+                new PedidoIntegracaoStatus { Id = PedidoIntegracaoStatusIds.Processando, Nome = "Processando" },
+                new PedidoIntegracaoStatus { Id = PedidoIntegracaoStatusIds.Integrado, Nome = "Integrado" },
+                new PedidoIntegracaoStatus { Id = PedidoIntegracaoStatusIds.Erro, Nome = "Erro" }
+            );
+        });
+
+        b.Entity<PedidoIntegracaoLog>(e =>
+        {
+            e.HasKey(l => l.Id);
+            e.Property(l => l.Resultado).HasColumnType("text");
+            e.Property(l => l.DataCriacao).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            e.HasIndex(l => l.PedidoId);
+            e.HasIndex(l => l.StatusId);
+            e.HasIndex(l => l.DataCriacao);
+
+            e.HasOne(l => l.Pedido)
+                .WithMany(p => p.IntegracaoLogs)
+                .HasForeignKey(l => l.PedidoId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("FK_PedidoIntegracaoLogs_Pedidos_PedidoId");
+
+            e.HasOne(l => l.Status)
+                .WithMany(s => s.Logs)
+                .HasForeignKey(l => l.StatusId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_PedidoIntegracaoLogs_PedidoIntegracaoStatus_StatusId");
         });
 
         b.Entity<PedidoHistorico>(e =>
