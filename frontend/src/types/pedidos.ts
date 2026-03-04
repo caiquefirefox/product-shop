@@ -19,6 +19,7 @@ type PedidoDetalhe = {
   condicaoPagamento: number;
   statusId: number;
   statusNome: string;
+  integracaoStatusId: string | null;
   integracaoStatus: string;
   integracaoPedidoExternoId: string | null;
   dataHora: string;

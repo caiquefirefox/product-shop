@@ -189,6 +189,7 @@ export default function Pedidos() {
   const canEditPedido = useMemo(() => {
     if (!pedidoSelecionado) return false;
     if (pedidoSelecionado.statusId === STATUS_CANCELADO) return false;
+    if (pedidoSelecionado.integracaoStatusId && pedidoSelecionado.integracaoStatusId.toLowerCase() === "7c8906e9-a10f-4c6f-a0cd-75cf4f7facdf") return false;
     return isAdmin || editWindowActive;
   }, [pedidoSelecionado, isAdmin, editWindowActive]);
 
@@ -1069,9 +1070,10 @@ export default function Pedidos() {
                         : loadingPedidoId === pedido.id
                           ? "bg-indigo-50/30"
                           : "bg-white";
-                      const podeEditarConteudo = pedido.statusId !== STATUS_CANCELADO && (isAdmin || editWindowActive);
+                      const pedidoIntegrado = pedido.integracaoStatusId?.toLowerCase() === "7c8906e9-a10f-4c6f-a0cd-75cf4f7facdf";
+                      const podeEditarConteudo = !pedidoIntegrado && pedido.statusId !== STATUS_CANCELADO && (isAdmin || editWindowActive);
                       const mostraAprovar = isAdmin && pedido.statusId === STATUS_SOLICITADO;
-                      const mostraCancelar = pedido.statusId !== STATUS_CANCELADO && (isAdmin || editWindowActive);
+                      const mostraCancelar = !pedidoIntegrado && pedido.statusId !== STATUS_CANCELADO && (isAdmin || editWindowActive);
                       const isEditandoAtual = isSelecionado && detailMode === "edit";
                       const isVisualizandoAtual = isSelecionado && detailMode === "view";
                       const statusStyle =
