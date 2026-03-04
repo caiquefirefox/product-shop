@@ -609,16 +609,23 @@ public sealed class PedidoService : IPedidoService
         return new PedidoDetalheCompletoDto(MapToDetalhe(pedido), historico);
     }
 
-    private async Task<bool> PedidoEstaIntegradoAsync(Guid pedidoId, CancellationToken ct)
+    private async Task<Guid> ObterUltimoStatusIntegracaoPedidoAsync(Guid pedidoId, CancellationToken ct)
     {
-        return await _pedidoIntegracao.QueryLogs()
+        var statusId = await _pedidoIntegracao.QueryLogs()
             .AsNoTracking()
             .Where(log => log.PedidoId == pedidoId)
             .OrderByDescending(log => log.DataCriacao)
             .ThenByDescending(log => log.Id)
             .Select(log => log.StatusId)
-            .FirstOrDefaultAsync(ct) == PedidoIntegracaoStatusIds.Integrado;
+            .FirstOrDefaultAsync(ct);
+
+        return statusId == Guid.Empty
+            ? PedidoIntegracaoStatusIds.NaoIntegrado
+            : statusId;
     }
+
+    private static bool PedidoPodeSerAlterado(Guid integracaoStatusId)
+        => integracaoStatusId == PedidoIntegracaoStatusIds.NaoIntegrado || integracaoStatusId == PedidoIntegracaoStatusIds.Erro;
 
     public async Task<PedidoDetalheDto> AtualizarPedidoAsync(Guid pedidoId, PedidoUpdateDto dto, Guid usuarioAtualId, string usuarioNome, bool isAdmin, CancellationToken ct)
     {
@@ -631,8 +638,9 @@ public sealed class PedidoService : IPedidoService
         if (pedido.StatusId == PedidoStatusIds.Cancelado)
             throw new InvalidOperationException("Pedidos cancelados não podem ser editados.");
 
-        if (await PedidoEstaIntegradoAsync(pedido.Id, ct))
-            throw new InvalidOperationException("Pedidos integrados não podem ser editados.");
+        var ultimoStatusIntegracao = await ObterUltimoStatusIntegracaoPedidoAsync(pedido.Id, ct);
+        if (!PedidoPodeSerAlterado(ultimoStatusIntegracao))
+            throw new InvalidOperationException("Somente pedidos com status de integração Não integrado ou Erro podem ser editados.");
 
         var agora = DateTimeOffset.UtcNow;
         if (!isAdmin && !EstaDentroJanelaEdicao(agora))
@@ -916,8 +924,9 @@ public sealed class PedidoService : IPedidoService
         if (pedido.StatusId == PedidoStatusIds.Cancelado)
             return MapToDetalhe(pedido);
 
-        if (await PedidoEstaIntegradoAsync(pedido.Id, ct))
-            throw new InvalidOperationException("Pedidos integrados não podem ser cancelados.");
+        var ultimoStatusIntegracao = await ObterUltimoStatusIntegracaoPedidoAsync(pedido.Id, ct);
+        if (!PedidoPodeSerAlterado(ultimoStatusIntegracao))
+            throw new InvalidOperationException("Somente pedidos com status de integração Não integrado ou Erro podem ser cancelados.");
 
         var agora = DateTimeOffset.UtcNow;
 
