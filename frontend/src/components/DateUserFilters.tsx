@@ -348,23 +348,25 @@ export function DateUserFilters({
 
   return (
     <div className={containerClasses}>
-      <div className="flex min-w-0 flex-1 flex-wrap items-end gap-4">{filters}</div>
+      <div className="flex min-w-0 flex-wrap items-end gap-4">
+        <div className="flex min-w-0 flex-1 flex-wrap items-end gap-4">{filters}</div>
 
-      {(onApply || children) && (
-        <div className="flex w-full shrink-0 items-center gap-3 self-start md:justify-end lg:self-auto">
-          {onApply && (
-            <button
-              type="button"
-              className="rounded-full bg-[#FF6900] px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#FF6900]/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6900]/40 disabled:cursor-not-allowed disabled:opacity-60"
-              onClick={onApply}
-              disabled={disabled}
-            >
-              {applyLabel}
-            </button>
-          )}
-          {children ? <div>{children}</div> : null}
-        </div>
-      )}
+        {(onApply || children) && (
+          <div className="ml-auto flex items-center gap-3 self-end whitespace-nowrap">
+            {onApply && (
+              <button
+                type="button"
+                className="rounded-full bg-[#FF6900] px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#FF6900]/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6900]/40 disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={onApply}
+                disabled={disabled}
+              >
+                {applyLabel}
+              </button>
+            )}
+            {children ? <div>{children}</div> : null}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
