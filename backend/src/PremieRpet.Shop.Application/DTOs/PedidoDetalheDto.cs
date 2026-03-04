@@ -13,6 +13,7 @@ public sealed record PedidoDetalheDto(
     int CondicaoPagamento,
     int StatusId,
     string StatusNome,
+    Guid? IntegracaoStatusId,
     string IntegracaoStatus,
     string? IntegracaoPedidoExternoId,
     DateTimeOffset DataHora,

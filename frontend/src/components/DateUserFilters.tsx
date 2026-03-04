@@ -296,7 +296,7 @@ export function DateUserFilters({
         />
       ) : null}
 
-      <div className="flex min-w-[150px] flex-1 flex-col gap-2">
+      <div className="flex min-w-[150px] flex-1 flex-col gap-2 md:w-[190px] md:flex-none">
         <label className={filterLabelClasses} htmlFor="filtro-de">
           De
         </label>
@@ -320,7 +320,7 @@ export function DateUserFilters({
         </div>
       </div>
 
-      <div className="flex min-w-[150px] flex-1 flex-col gap-2">
+      <div className="flex min-w-[150px] flex-1 flex-col gap-2 md:w-[190px] md:flex-none">
         <label className={filterLabelClasses} htmlFor="filtro-ate">
           Até
         </label>
@@ -348,23 +348,25 @@ export function DateUserFilters({
 
   return (
     <div className={containerClasses}>
-      <div className="flex min-w-0 flex-1 flex-wrap items-end gap-4 md:flex-nowrap">{filters}</div>
+      <div className="flex min-w-0 flex-wrap items-end gap-4">
+        {filters}
 
-      {(onApply || children) && (
-        <div className="flex w-full shrink-0 flex-wrap items-center gap-3 self-start whitespace-nowrap lg:justify-end lg:self-auto">
-          {onApply && (
-            <button
-              type="button"
-              className="rounded-full bg-[#FF6900] px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#FF6900]/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6900]/40 disabled:cursor-not-allowed disabled:opacity-60"
-              onClick={onApply}
-              disabled={disabled}
-            >
-              {applyLabel}
-            </button>
-          )}
-          {children ? <div className="flex-shrink-0">{children}</div> : null}
-        </div>
-      )}
+        {(onApply || children) && (
+          <div className="flex items-center gap-3 self-end whitespace-nowrap md:ml-auto">
+            {onApply && (
+              <button
+                type="button"
+                className="rounded-full bg-[#FF6900] px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#FF6900]/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6900]/40 disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={onApply}
+                disabled={disabled}
+              >
+                {applyLabel}
+              </button>
+            )}
+            {children ? <div>{children}</div> : null}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

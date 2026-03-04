@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMsal } from "@azure/msal-react";
 import { Routes, Route, NavLink, Navigate, useNavigate, useLocation, Link } from "react-router-dom";
-import { Menu, ShoppingCart, X } from "lucide-react";
+import { LogOut, Mail, Menu, ShoppingCart, UserCircle2, X } from "lucide-react";
 import Catalogo from "../views/Catalogo";
 import Checkout from "../views/Checkout";
 import Produtos from "../views/Produtos";
@@ -37,6 +37,8 @@ export default function App() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (isAuthRoute) {
@@ -57,7 +59,22 @@ export default function App() {
   }, [location.pathname]);
   useEffect(() => {
     setIsCartOpen(false);
+    setIsUserMenuOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (!isUserMenuOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (userMenuRef.current && !userMenuRef.current.contains(target)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isUserMenuOpen]);
   const pesoResumo = formatPeso(totalPesoKg, "kg", { unit: "kg", minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const valorFormatado = formatCurrencyBRL(totalValor);
   const itensLabel = totalUnidades === 1 ? "1 item" : `${totalUnidades} itens`;
@@ -70,6 +87,7 @@ export default function App() {
 
   const gotoLogin = () => navigate("/login");
   const activeUserName = profile?.nome ?? profile?.email ?? account?.name;
+  const userEmail = profile?.email ?? account?.username ?? null;
   const isAuthenticated = Boolean(profile ?? account);
   const logout = async () => {
     clearRolesCache?.();
@@ -141,7 +159,7 @@ export default function App() {
               <div className="flex items-center gap-3 sm:gap-4">
                 <button
                   onClick={() => setIsCartOpen(true)}
-                  className="relative flex items-center gap-2 rounded-full bg-[#FF6900] px-3 py-2 text-white transition-colors duration-150 hover:bg-[#FF6900]/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6900]/40"
+                  className="relative shrink-0 flex items-center gap-2 rounded-full bg-[#FF6900] px-3 py-2 text-white transition-colors duration-150 hover:bg-[#FF6900]/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6900]/40"
                   title={`${itensLabel} | ${valorFormatado} | ${pesoResumo}`}
                   aria-label={`${itensLabel} • ${valorFormatado} • ${pesoResumo}`}
                 >
@@ -155,11 +173,35 @@ export default function App() {
                 </button>
 
                 {isAuthenticated ? (
-                  <div className="hidden items-center gap-2 sm:flex sm:gap-3">
-                    <span className="hidden text-sm font-semibold text-gray-600 sm:inline">{activeUserName}</span>
-                    <button onClick={logout} className="rounded-lg border px-3 py-1 text-sm">
-                      Sair
+                  <div className="relative hidden sm:block" ref={userMenuRef}>
+                    <button
+                      type="button"
+                      onClick={() => setIsUserMenuOpen(prev => !prev)}
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 text-gray-600 transition hover:bg-gray-50 hover:text-gray-900"
+                      aria-label="Abrir menu do usuário"
+                      aria-expanded={isUserMenuOpen}
+                    >
+                      <UserCircle2 size={22} />
                     </button>
+
+                    {isUserMenuOpen && (
+                      <div className="absolute right-0 z-50 mt-2 w-72 rounded-xl border border-gray-200 bg-white p-4 shadow-lg">
+                        <div className="text-sm font-semibold text-gray-900">{activeUserName}</div>
+                        {userEmail && (
+                          <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
+                            <Mail size={14} />
+                            <span className="truncate">{userEmail}</span>
+                          </div>
+                        )}
+                        <button
+                          onClick={logout}
+                          className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm"
+                        >
+                          <LogOut size={14} />
+                          Sair
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <button onClick={gotoLogin} className="hidden rounded-lg border px-3 py-1 text-sm sm:inline-flex">
@@ -205,6 +247,7 @@ export default function App() {
                 {isAuthenticated ? (
                   <>
                     <span className="text-sm font-semibold text-gray-600">{activeUserName}</span>
+                    {userEmail && <span className="text-xs text-gray-500">{userEmail}</span>}
                     <button onClick={logout} className="rounded-lg border px-3 py-2 text-sm">
                       Sair
                     </button>

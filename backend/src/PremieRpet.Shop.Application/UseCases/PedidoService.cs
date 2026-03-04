@@ -99,7 +99,7 @@ public sealed class PedidoService : IPedidoService
         return Math.Max(1, efetivo);
     }
 
-    private PedidoDetalheDto MapToDetalhe(Pedido pedido, int condicaoPagamento, string integracaoStatus, string? integracaoPedidoExternoId)
+    private PedidoDetalheDto MapToDetalhe(Pedido pedido, int condicaoPagamento, Guid? integracaoStatusId, string integracaoStatus, string? integracaoPedidoExternoId)
     {
         var itens = pedido.Itens
             .OrderBy(i => i.Descricao)
@@ -136,6 +136,7 @@ public sealed class PedidoService : IPedidoService
             condicaoPagamento,
             pedido.StatusId,
             statusNome,
+            integracaoStatusId,
             integracaoStatus,
             integracaoPedidoExternoId,
             pedido.DataHora,
@@ -146,7 +147,7 @@ public sealed class PedidoService : IPedidoService
     }
 
     private PedidoDetalheDto MapToDetalhe(Pedido pedido)
-        => MapToDetalhe(pedido, 3, "Não integrado", null);
+        => MapToDetalhe(pedido, 3, PedidoIntegracaoStatusIds.NaoIntegrado, "Não integrado", null);
 
     private static PedidoHistoricoDto MapToHistorico(PedidoHistorico historico)
     {
@@ -480,7 +481,7 @@ public sealed class PedidoService : IPedidoService
                 ? log.PedidoExternoId
                 : null;
 
-            return MapToDetalhe(pedido, condicaoPagamento, statusIntegracao, pedidoExternoId);
+            return MapToDetalhe(pedido, condicaoPagamento, possuiIntegracao ? log!.StatusId : PedidoIntegracaoStatusIds.NaoIntegrado, statusIntegracao, pedidoExternoId);
         }).ToList();
     }
 
@@ -551,7 +552,42 @@ public sealed class PedidoService : IPedidoService
             .Take(pageSize)
             .ToListAsync(ct);
 
-        var itens = pedidos.Select(MapToDetalhe).ToList();
+        var usuarioIdsPagina = pedidos.Select(p => p.UsuarioId).Distinct().ToList();
+        var condicoesPagamento = await _usuariosRepo.Query()
+            .Where(u => usuarioIdsPagina.Contains(u.Id))
+            .Select(u => new { u.Id, u.CondicaoPagamento })
+            .ToDictionaryAsync(u => u.Id, u => u.CondicaoPagamento, ct);
+
+        var pedidoIdsPagina = pedidos.Select(p => p.Id).ToList();
+        var ultimosLogsIntegracao = await _pedidoIntegracao.QueryLogs()
+            .Where(log => pedidoIdsPagina.Contains(log.PedidoId))
+            .OrderByDescending(log => log.DataCriacao)
+            .ThenByDescending(log => log.Id)
+            .Select(log => new
+            {
+                log.PedidoId,
+                log.StatusId,
+                StatusNome = log.Status != null ? log.Status.Nome : string.Empty,
+                log.PedidoExternoId
+            })
+            .ToListAsync(ct);
+
+        var integracaoPorPedido = ultimosLogsIntegracao
+            .GroupBy(log => log.PedidoId)
+            .ToDictionary(group => group.Key, group => group.First());
+
+        var itens = pedidos.Select(pedido =>
+        {
+            var condicaoPagamento = condicoesPagamento.GetValueOrDefault(pedido.UsuarioId, 3);
+            var possuiIntegracao = integracaoPorPedido.TryGetValue(pedido.Id, out var integracaoLog);
+            var integracaoStatusId = possuiIntegracao ? integracaoLog!.StatusId : PedidoIntegracaoStatusIds.NaoIntegrado;
+            var integracaoStatusNome = possuiIntegracao ? integracaoLog!.StatusNome : "Não integrado";
+            var pedidoExternoId = possuiIntegracao && integracaoLog!.StatusId == PedidoIntegracaoStatusIds.Integrado
+                ? integracaoLog.PedidoExternoId
+                : null;
+
+            return MapToDetalhe(pedido, condicaoPagamento, integracaoStatusId, integracaoStatusNome, pedidoExternoId);
+        }).ToList();
 
         return new PagedResultDto<PedidoDetalheDto>(itens, page, pageSize, totalItems, totalPages);
     }
@@ -573,6 +609,24 @@ public sealed class PedidoService : IPedidoService
         return new PedidoDetalheCompletoDto(MapToDetalhe(pedido), historico);
     }
 
+    private async Task<Guid> ObterUltimoStatusIntegracaoPedidoAsync(Guid pedidoId, CancellationToken ct)
+    {
+        var statusId = await _pedidoIntegracao.QueryLogs()
+            .AsNoTracking()
+            .Where(log => log.PedidoId == pedidoId)
+            .OrderByDescending(log => log.DataCriacao)
+            .ThenByDescending(log => log.Id)
+            .Select(log => log.StatusId)
+            .FirstOrDefaultAsync(ct);
+
+        return statusId == Guid.Empty
+            ? PedidoIntegracaoStatusIds.NaoIntegrado
+            : statusId;
+    }
+
+    private static bool PedidoPodeSerAlterado(Guid integracaoStatusId)
+        => integracaoStatusId == PedidoIntegracaoStatusIds.NaoIntegrado || integracaoStatusId == PedidoIntegracaoStatusIds.Erro;
+
     public async Task<PedidoDetalheDto> AtualizarPedidoAsync(Guid pedidoId, PedidoUpdateDto dto, Guid usuarioAtualId, string usuarioNome, bool isAdmin, CancellationToken ct)
     {
         var pedido = await _pedidos.GetWithItensAsync(pedidoId, ct)
@@ -583,6 +637,10 @@ public sealed class PedidoService : IPedidoService
 
         if (pedido.StatusId == PedidoStatusIds.Cancelado)
             throw new InvalidOperationException("Pedidos cancelados não podem ser editados.");
+
+        var ultimoStatusIntegracao = await ObterUltimoStatusIntegracaoPedidoAsync(pedido.Id, ct);
+        if (!PedidoPodeSerAlterado(ultimoStatusIntegracao))
+            throw new InvalidOperationException("Somente pedidos com status de integração Não integrado ou Erro podem ser editados.");
 
         var agora = DateTimeOffset.UtcNow;
         if (!isAdmin && !EstaDentroJanelaEdicao(agora))
@@ -865,6 +923,10 @@ public sealed class PedidoService : IPedidoService
 
         if (pedido.StatusId == PedidoStatusIds.Cancelado)
             return MapToDetalhe(pedido);
+
+        var ultimoStatusIntegracao = await ObterUltimoStatusIntegracaoPedidoAsync(pedido.Id, ct);
+        if (!PedidoPodeSerAlterado(ultimoStatusIntegracao))
+            throw new InvalidOperationException("Somente pedidos com status de integração Não integrado ou Erro podem ser cancelados.");
 
         var agora = DateTimeOffset.UtcNow;
 

@@ -47,6 +47,15 @@ type EmpresaOption = {
 
 type DetailMode = "edit" | "view";
 
+const STATUS_INTEGRACAO_NAO_INTEGRADO = "5bf5f98a-f8f7-4f6c-af7f-6e6ef4e2a1bf";
+const STATUS_INTEGRACAO_ERRO = "f5ef5e17-03d0-40f9-a5ad-231470c4ca8f";
+
+function podeAlterarPedidoPorIntegracao(integracaoStatusId: string | null | undefined) {
+  if (!integracaoStatusId) return true;
+  const statusNormalizado = integracaoStatusId.toLowerCase();
+  return statusNormalizado === STATUS_INTEGRACAO_NAO_INTEGRADO || statusNormalizado === STATUS_INTEGRACAO_ERRO;
+}
+
 function formatDateTimePtBr(iso: string) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
@@ -189,6 +198,7 @@ export default function Pedidos() {
   const canEditPedido = useMemo(() => {
     if (!pedidoSelecionado) return false;
     if (pedidoSelecionado.statusId === STATUS_CANCELADO) return false;
+    if (!podeAlterarPedidoPorIntegracao(pedidoSelecionado.integracaoStatusId)) return false;
     return isAdmin || editWindowActive;
   }, [pedidoSelecionado, isAdmin, editWindowActive]);
 
@@ -1069,9 +1079,10 @@ export default function Pedidos() {
                         : loadingPedidoId === pedido.id
                           ? "bg-indigo-50/30"
                           : "bg-white";
-                      const podeEditarConteudo = pedido.statusId !== STATUS_CANCELADO && (isAdmin || editWindowActive);
+                      const podeAlterarPorIntegracao = podeAlterarPedidoPorIntegracao(pedido.integracaoStatusId);
+                      const podeEditarConteudo = podeAlterarPorIntegracao && pedido.statusId !== STATUS_CANCELADO && (isAdmin || editWindowActive);
                       const mostraAprovar = isAdmin && pedido.statusId === STATUS_SOLICITADO;
-                      const mostraCancelar = pedido.statusId !== STATUS_CANCELADO && (isAdmin || editWindowActive);
+                      const mostraCancelar = podeAlterarPorIntegracao && pedido.statusId !== STATUS_CANCELADO && (isAdmin || editWindowActive);
                       const isEditandoAtual = isSelecionado && detailMode === "edit";
                       const isVisualizandoAtual = isSelecionado && detailMode === "view";
                       const statusStyle =
