@@ -296,7 +296,7 @@ export function DateUserFilters({
         />
       ) : null}
 
-      <div className="flex min-w-[150px] flex-1 flex-col gap-2">
+      <div className="flex min-w-[150px] flex-1 flex-col gap-2 md:w-[190px] md:flex-none">
         <label className={filterLabelClasses} htmlFor="filtro-de">
           De
         </label>
@@ -320,7 +320,7 @@ export function DateUserFilters({
         </div>
       </div>
 
-      <div className="flex min-w-[150px] flex-1 flex-col gap-2">
+      <div className="flex min-w-[150px] flex-1 flex-col gap-2 md:w-[190px] md:flex-none">
         <label className={filterLabelClasses} htmlFor="filtro-ate">
           Até
         </label>
