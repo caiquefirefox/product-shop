@@ -6,12 +6,8 @@ import { DateUserFilters, type SimpleOption } from "../components/DateUserFilter
 import { ProductFilters, type ProductFilterChangeHandler, type ProductFilterOptions, type ProductFilterSelectOption, type ProductFilterValues } from "../components/ProductFilters";
 import type { Produto } from "../cart/types";
 import { minQtyFor, normalizeQuantityToMultiple, resolveMinQty, toKg } from "../cart/calc";
-import { ENV } from "../config/env";
 import { usePedidosConfig } from "../hooks/usePedidosConfig";
 import { STATUS_APROVADO, STATUS_BADGE_STYLES, STATUS_CANCELADO, STATUS_SOLICITADO } from "../pedidos/statusStyles";
-const EDIT_WINDOW_OPENING_DAY = ENV.PEDIDOS_EDIT_WINDOW_OPENING_DAY;
-const EDIT_WINDOW_CLOSING_DAY = ENV.PEDIDOS_EDIT_WINDOW_CLOSING_DAY;
-
 import type {
   PedidoDetalhe,
   PedidoDetalheCompleto,
@@ -72,7 +68,7 @@ export default function Pedidos() {
   const { isAdmin, profile } = useUser();
   const usuarioSemLimite = profile?.semLimite ?? false;
   const { success, error: toastError } = useToast();
-  const { minQtyPadrao } = usePedidosConfig();
+  const { minQtyPadrao, editWindowOpeningDay, editWindowClosingDay } = usePedidosConfig();
 
   const defaultRange = useMemo(() => {
     const now = new Date();
@@ -176,10 +172,10 @@ export default function Pedidos() {
     if (isAdmin) return true;
     const day = new Date().getDate();
     return (
-      day >= EDIT_WINDOW_OPENING_DAY &&
-      day <= EDIT_WINDOW_CLOSING_DAY
+      day >= editWindowOpeningDay &&
+      day <= editWindowClosingDay
     );
-  }, [isAdmin]);
+  }, [editWindowClosingDay, editWindowOpeningDay, isAdmin]);
 
   const editorTotals = useMemo(() => {
     const totalItensCalc = editorItens.reduce((acc, item) => acc + item.quantidade, 0);

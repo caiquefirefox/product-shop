@@ -71,6 +71,8 @@ type PedidoResumoMensal = {
   limitePedidos: number;
   pedidosUtilizados: number;
   quantidadeMinimaPadrao: number;
+  editWindowOpeningDay: number;
+  editWindowClosingDay: number;
 };
 
 export type {

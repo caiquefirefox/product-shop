@@ -62,6 +62,19 @@ function normalizeMinQty(value: unknown): number {
   return 1;
 }
 
+
+function normalizeDayOfMonth(value: unknown, fallback: number): number {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return fallback;
+  }
+
+  const day = Math.floor(numeric);
+  if (day < 1) return 1;
+  if (day > 31) return 31;
+  return day;
+}
+
 function extractErrorMessage(err: unknown): string {
   if (err && typeof err === "object") {
     const maybeResponse = (err as any).response;
@@ -81,6 +94,8 @@ function extractErrorMessage(err: unknown): string {
 type PedidosConfigContextValue = {
   limitKg: number;
   minQtyPadrao: number;
+  editWindowOpeningDay: number;
+  editWindowClosingDay: number;
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
@@ -91,6 +106,8 @@ const PedidosConfigContext = createContext<PedidosConfigContextValue | null>(nul
 export function PedidosConfigProvider({ children }: { children: ReactNode }) {
   const [limitKg, setLimitKg] = useState(0);
   const [minQtyPadrao, setMinQtyPadrao] = useState(1);
+  const [editWindowOpeningDay, setEditWindowOpeningDay] = useState(15);
+  const [editWindowClosingDay, setEditWindowClosingDay] = useState(20);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const isMountedRef = useRef(true);
@@ -109,8 +126,14 @@ export function PedidosConfigProvider({ children }: { children: ReactNode }) {
 
   const applyResult = useCallback((data?: PedidoResumoMensal) => {
     if (!isMountedRef.current) return;
+    const openingDay = normalizeDayOfMonth(data?.editWindowOpeningDay, 15);
+    const closingDayRaw = normalizeDayOfMonth(data?.editWindowClosingDay, 20);
+    const closingDay = Math.max(openingDay, closingDayRaw);
+
     setLimitKg(normalizeLimitKg(data?.limiteKg));
     setMinQtyPadrao(normalizeMinQty(data?.quantidadeMinimaPadrao));
+    setEditWindowOpeningDay(openingDay);
+    setEditWindowClosingDay(closingDay);
     setError(null);
   }, []);
 
@@ -119,6 +142,8 @@ export function PedidosConfigProvider({ children }: { children: ReactNode }) {
     setError(extractErrorMessage(err));
     setLimitKg(0);
     setMinQtyPadrao(1);
+    setEditWindowOpeningDay(15);
+    setEditWindowClosingDay(20);
   }, []);
 
   const refresh = useCallback(async () => {
@@ -138,8 +163,24 @@ export function PedidosConfigProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const value = useMemo(
-    () => ({ limitKg, minQtyPadrao, loading, error, refresh }),
-    [limitKg, minQtyPadrao, loading, error, refresh],
+    () => ({
+      limitKg,
+      minQtyPadrao,
+      editWindowOpeningDay,
+      editWindowClosingDay,
+      loading,
+      error,
+      refresh,
+    }),
+    [
+      limitKg,
+      minQtyPadrao,
+      editWindowOpeningDay,
+      editWindowClosingDay,
+      loading,
+      error,
+      refresh,
+    ],
   );
 
   return (
