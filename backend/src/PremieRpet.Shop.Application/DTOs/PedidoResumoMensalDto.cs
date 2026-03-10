@@ -10,5 +10,7 @@ public sealed record PedidoResumoMensalDto(
     int PedidosUtilizados,
     int QuantidadeMinimaPadrao,
     int EditWindowOpeningDay,
-    int EditWindowClosingDay
+    int EditWindowClosingDay,
+    bool PodeCriarPedido,
+    string? MotivoBloqueioCriacaoPedido
 );

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import api from "../lib/api";
 import { useCart } from "../cart/CartContext";
 import { useNavigate } from "react-router-dom";
@@ -17,7 +17,13 @@ type Empresa = {
 export default function Checkout() {
   const { items, totalValor, totalPesoKg, clear, anyBelowMinimum } = useCart();
   const pesoTotalFormatado = formatPeso(totalPesoKg, "kg", { unit: "kg" });
-  const { limitKg: limiteMensalKg, loading: limiteLoading, error: limiteErro } = usePedidosConfig();
+  const {
+    limitKg: limiteMensalKg,
+    loading: limiteLoading,
+    error: limiteErro,
+    podeCriarPedido,
+    motivoBloqueioCriacaoPedido,
+  } = usePedidosConfig();
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [empresaId, setEmpresaId] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -36,6 +42,7 @@ export default function Checkout() {
   const limiteMensalFormatado = usuarioSemLimite
     ? "Sem limite"
     : (limiteMensalKg > 0 ? formatPeso(limiteMensalKg, "kg", { unit: "kg" }) : "Não configurado");
+
 
   useEffect(() => {
     let alive = true;
@@ -140,7 +147,8 @@ export default function Checkout() {
     loadingPerfil ||
     !empresaId ||
     anyBelowMinimum ||
-    (!cpfBloqueado && !isValidCpf(cpf));
+    (!cpfBloqueado && !isValidCpf(cpf)) ||
+    !podeCriarPedido;
 
   return (
     <div className="space-y-6">
@@ -257,6 +265,12 @@ export default function Checkout() {
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">{limiteErro}</div>
             )}
 
+            {!podeCriarPedido && motivoBloqueioCriacaoPedido && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                {motivoBloqueioCriacaoPedido}
+              </div>
+            )}
+
             {!usuarioSemLimite && limiteMensalKg > 0 && totalPesoKg > limiteMensalKg && (
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
                 Atenção: seu carrinho tem {pesoTotalFormatado}. O limite mensal é {limiteMensalFormatado}.
@@ -276,7 +290,7 @@ export default function Checkout() {
           onClick={enviar}
           disabled={disableFinalize}
           className="inline-flex items-center justify-center rounded-full bg-[#FF6900] px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#FF6900]/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6900]/40 disabled:cursor-not-allowed disabled:opacity-60"
-          title={anyBelowMinimum ? "Há itens abaixo da quantidade mínima." : ""}
+          title={!podeCriarPedido ? (motivoBloqueioCriacaoPedido ?? "") : (anyBelowMinimum ? "Há itens abaixo da quantidade mínima." : "")}
         >
           {loading ? "Enviando..." : "Finalizar solicitação"}
         </button>
