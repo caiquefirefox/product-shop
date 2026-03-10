@@ -16,6 +16,7 @@ public sealed class Pedido
     public int StatusId { get; set; } = PedidoStatusIds.Solicitado;
     public PedidoStatus? Status { get; set; }
     public DateTimeOffset DataHora { get; set; } = DateTimeOffset.UtcNow;
+    public int CompetenciaAnoMes { get; set; }
     public DateTimeOffset AtualizadoEm { get; set; } = DateTimeOffset.UtcNow;
     public Guid? AtualizadoPorUsuarioId { get; set; }
     public List<PedidoItem> Itens { get; set; } = new();

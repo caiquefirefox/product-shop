@@ -12,6 +12,7 @@ public sealed record PedidoResumoDto(
     int StatusId,
     string StatusNome,
     DateTimeOffset DataHora,
+    int CompetenciaAnoMes,
     decimal Total,
     decimal PesoTotalKg
 );

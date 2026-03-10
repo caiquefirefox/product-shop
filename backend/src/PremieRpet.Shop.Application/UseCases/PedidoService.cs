@@ -140,6 +140,7 @@ public sealed class PedidoService : IPedidoService
             integracaoStatus,
             integracaoPedidoExternoId,
             pedido.DataHora,
+            pedido.CompetenciaAnoMes,
             total,
             pesoTotal,
             itens
@@ -213,14 +214,19 @@ public sealed class PedidoService : IPedidoService
 
     private bool EstaDentroJanelaEdicao(DateTimeOffset momentoUtc)
     {
-        DateTimeOffset referencia = momentoUtc;
+        var referencia = ConverterParaHorarioLocal(momentoUtc);
+
+        var dia = referencia.Day;
+        return dia >= _settings.EditWindowOpeningDay && dia <= _settings.EditWindowClosingDay;
+    }
+
+    private static TimeZoneInfo? ResolverTimeZoneLocal()
+    {
         foreach (var tzId in TimeZoneCandidates)
         {
             try
             {
-                var tz = TimeZoneInfo.FindSystemTimeZoneById(tzId);
-                referencia = TimeZoneInfo.ConvertTime(momentoUtc, tz);
-                break;
+                return TimeZoneInfo.FindSystemTimeZoneById(tzId);
             }
             catch (TimeZoneNotFoundException)
             {
@@ -230,16 +236,27 @@ public sealed class PedidoService : IPedidoService
             }
         }
 
-        var dia = referencia.Day;
-        return dia >= _settings.EditWindowOpeningDay && dia <= _settings.EditWindowClosingDay;
+        return null;
     }
 
-    private static DateTimeOffset InicioMesUtc(int ano, int mes)
+    private static DateTimeOffset ConverterParaHorarioLocal(DateTimeOffset momentoUtc)
     {
-        ano = Math.Clamp(ano, 1, 9999);
-        mes = Math.Clamp(mes, 1, 12);
-        return new DateTimeOffset(new DateTime(ano, mes, 1, 0, 0, 0, DateTimeKind.Utc));
+        var tz = ResolverTimeZoneLocal();
+        return tz is null ? momentoUtc : TimeZoneInfo.ConvertTime(momentoUtc, tz);
     }
+
+
+    private int ObterCompetenciaAnoMes(DateTimeOffset referenciaUtc)
+    {
+        var referenciaLocal = ConverterParaHorarioLocal(referenciaUtc);
+        if (referenciaLocal.Day > _settings.EditWindowClosingDay)
+        {
+            referenciaLocal = referenciaLocal.AddMonths(1);
+        }
+
+        return (referenciaLocal.Year * 100) + referenciaLocal.Month;
+    }
+
     private async Task<bool> UsuarioIgnoraLimitePesoAsync(Guid usuarioId, CancellationToken ct)
     {
         if (usuarioId == Guid.Empty)
@@ -263,17 +280,16 @@ public sealed class PedidoService : IPedidoService
         var usuarioSemLimite = await UsuarioIgnoraLimitePesoAsync(perfil.Id, ct);
         var pesoAcumulado = await PesoAcumuladoMesEmKgAsync(perfil.Id, agora, ct);
 
-        var inicioMes = InicioMesUtc(agora.Year, agora.Month);
-        var fimMes = inicioMes.AddMonths(1);
+        var competenciaAnoMes = ObterCompetenciaAnoMes(agora);
 
         var pedidosMes = await _pedidos.Query()
             .Where(p => p.UsuarioId == perfil.Id)
-            .Where(p => p.DataHora >= inicioMes && p.DataHora < fimMes)
+            .Where(p => p.CompetenciaAnoMes == competenciaAnoMes)
             .Where(p => PedidoStatusIds.ContaParaLimite.Contains(p.StatusId))
             .CountAsync(ct);
 
         if (_settings.MaxOrdersPerUserPerMonth > 0 && pedidosMes >= _settings.MaxOrdersPerUserPerMonth)
-            throw new InvalidOperationException($"Você já atingiu o limite de {_settings.MaxOrdersPerUserPerMonth} pedido(s) neste mês.");
+            throw new InvalidOperationException($"Você já atingiu o limite de {_settings.MaxOrdersPerUserPerMonth} pedido(s) nesta competência.");
 
         var pedido = new Pedido
         {
@@ -283,7 +299,8 @@ public sealed class PedidoService : IPedidoService
             EmpresaId = empresa.Id,
             StatusId = _settings.InitialStatusId,
             AtualizadoEm = agora,
-            AtualizadoPorUsuarioId = perfil.Id
+            AtualizadoPorUsuarioId = perfil.Id,
+            CompetenciaAnoMes = competenciaAnoMes
         };
 
         foreach (var item in dto.Itens)
@@ -344,6 +361,7 @@ public sealed class PedidoService : IPedidoService
             pedido.StatusId,
             "Solicitado",
             pedido.DataHora,
+            pedido.CompetenciaAnoMes,
             pedido.Total(),
             pedido.PesoTotalKg()
         );
@@ -351,23 +369,23 @@ public sealed class PedidoService : IPedidoService
 
     public async Task<decimal> PesoAcumuladoMesEmKgAsync(Guid usuarioId, DateTimeOffset referencia, CancellationToken ct)
     {
-        var inicio = new DateTimeOffset(new DateTime(referencia.Year, referencia.Month, 1, 0, 0, 0, DateTimeKind.Utc));
-        var fim = inicio.AddMonths(1);
+        var competenciaAnoMes = ObterCompetenciaAnoMes(referencia);
 
         return await _pedidos.Query()
-            .Where(p => p.UsuarioId == usuarioId && p.DataHora >= inicio && p.DataHora < fim)
+            .Where(p => p.UsuarioId == usuarioId && p.CompetenciaAnoMes == competenciaAnoMes)
             .Where(p => PedidoStatusIds.ContaParaLimite.Contains(p.StatusId))
             .SelectMany(p => p.Itens)
             .Select(PesoRules.ItemTotalKgExpr)
             .SumAsync(ct);
     }
 
-    public async Task<IReadOnlyList<PedidoResumoDto>> ListarPedidosAsync(DateTimeOffset? de, DateTimeOffset? ate, Guid? empresaId, CancellationToken ct)
+    public async Task<IReadOnlyList<PedidoResumoDto>> ListarPedidosAsync(DateTimeOffset? de, DateTimeOffset? ate, Guid? empresaId, int? competenciaAnoMes, CancellationToken ct)
     {
         var q = _pedidos.Query();
         if (de is not null) q = q.Where(p => p.DataHora >= de);
         if (ate is not null) q = q.Where(p => p.DataHora <= ate);
         if (empresaId is Guid empresa && empresa != Guid.Empty) q = q.Where(p => p.EmpresaId == empresa);
+        if (competenciaAnoMes is int competencia && competencia > 0) q = q.Where(p => p.CompetenciaAnoMes == competencia);
 
         var pedidos = await q.AsNoTracking()
             .OrderByDescending(p => p.DataHora)
@@ -390,6 +408,7 @@ public sealed class PedidoService : IPedidoService
                                 ? "Cancelado"
                                 : string.Empty,
                 p.DataHora,
+                p.CompetenciaAnoMes,
                 Total = p.Itens.Sum(i => i.Preco * i.Quantidade),
                 PesoTotalKg = p.Itens.AsQueryable().Select(PesoRules.ItemTotalKgExpr).Sum()
             })
@@ -414,13 +433,14 @@ public sealed class PedidoService : IPedidoService
                 p.StatusId,
                 p.StatusNome,
                 p.DataHora,
+                p.CompetenciaAnoMes,
                 p.Total,
                 p.PesoTotalKg
             ))
             .ToList();
     }
 
-    public async Task<IReadOnlyList<PedidoDetalheDto>> ListarPedidosDetalhadosAsync(DateTimeOffset? de, DateTimeOffset? ate, Guid? usuarioId, int? statusId, Guid? empresaId, Guid? integracaoStatusId, CancellationToken ct)
+    public async Task<IReadOnlyList<PedidoDetalheDto>> ListarPedidosDetalhadosAsync(DateTimeOffset? de, DateTimeOffset? ate, Guid? usuarioId, int? statusId, Guid? empresaId, Guid? integracaoStatusId, int? competenciaAnoMes, CancellationToken ct)
     {
         var q = _pedidos.Query();
 
@@ -429,6 +449,7 @@ public sealed class PedidoService : IPedidoService
         if (usuarioId is not null) q = q.Where(p => p.UsuarioId == usuarioId);
         if (statusId is int status && status > 0) q = q.Where(p => p.StatusId == status);
         if (empresaId is Guid empresa && empresa != Guid.Empty) q = q.Where(p => p.EmpresaId == empresa);
+        if (competenciaAnoMes is int competencia && competencia > 0) q = q.Where(p => p.CompetenciaAnoMes == competencia);
 
         var pedidos = await q.AsNoTracking()
             .OrderByDescending(p => p.DataHora)
@@ -500,6 +521,8 @@ public sealed class PedidoService : IPedidoService
             query = query.Where(p => p.StatusId == status);
         if (filtro.EmpresaId is Guid empresa && empresa != Guid.Empty)
             query = query.Where(p => p.EmpresaId == empresa);
+        if (filtro.CompetenciaAnoMes is int competencia && competencia > 0)
+            query = query.Where(p => p.CompetenciaAnoMes == competencia);
 
         if (isAdmin)
         {
@@ -785,7 +808,7 @@ public sealed class PedidoService : IPedidoService
         return MapToDetalhe(pedido);
     }
 
-    public async Task<PedidoResumoMensalDto> ObterResumoAsync(DateTimeOffset de, DateTimeOffset ate, Guid usuarioAtualId, bool isAdmin, Guid? usuarioFiltroId, int? statusFiltroId, Guid? empresaId, CancellationToken ct)
+    public async Task<PedidoResumoMensalDto> ObterResumoAsync(DateTimeOffset de, DateTimeOffset ate, Guid usuarioAtualId, bool isAdmin, Guid? usuarioFiltroId, int? statusFiltroId, Guid? empresaId, int? competenciaAnoMes, CancellationToken ct)
     {
         if (ate < de)
             (de, ate) = (ate, de);
@@ -795,6 +818,8 @@ public sealed class PedidoService : IPedidoService
 
         if (empresaId is Guid empresa && empresa != Guid.Empty)
             query = query.Where(p => p.EmpresaId == empresa);
+        if (competenciaAnoMes is int competencia && competencia > 0)
+            query = query.Where(p => p.CompetenciaAnoMes == competencia);
 
         if (statusFiltroId is int statusFiltro && statusFiltro > 0)
         {
@@ -823,6 +848,8 @@ public sealed class PedidoService : IPedidoService
 
         if (empresaId is Guid empresaFiltro && empresaFiltro != Guid.Empty)
             limiteQuery = limiteQuery.Where(p => p.EmpresaId == empresaFiltro);
+        if (competenciaAnoMes is int competenciaFiltro && competenciaFiltro > 0)
+            limiteQuery = limiteQuery.Where(p => p.CompetenciaAnoMes == competenciaFiltro);
 
         if (isAdmin)
         {

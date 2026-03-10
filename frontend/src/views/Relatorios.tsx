@@ -14,6 +14,25 @@ import { getStatusBadgeStyle } from "../pedidos/statusStyles";
 
 type EmpresaOption = { id: string; nome: string };
 
+
+function monthInputToCompetenciaAnoMes(value: string) {
+  const trimmed = value.trim();
+  const match = /^(\d{4})-(\d{2})$/.exec(trimmed);
+  if (!match) return null;
+  const ano = Number(match[1]);
+  const mes = Number(match[2]);
+  if (!Number.isFinite(ano) || !Number.isFinite(mes) || mes < 1 || mes > 12) return null;
+  return ano * 100 + mes;
+}
+
+function formatCompetenciaAnoMes(value: number | null | undefined) {
+  if (!value || !Number.isFinite(value)) return "-";
+  const ano = Math.floor(value / 100);
+  const mes = value % 100;
+  if (mes < 1 || mes > 12) return String(value);
+  return `${String(mes).padStart(2, "0")}/${ano}`;
+}
+
 // ---------------------- Component ---------------------- //
 export default function Relatorios() {
   // filtros
@@ -30,6 +49,7 @@ export default function Relatorios() {
   const [integracaoStatusOptions, setIntegracaoStatusOptions] = useState<SimpleOption[]>([]);
   const [integracaoStatusLoading, setIntegracaoStatusLoading] = useState(false);
   const [empresaId, setEmpresaId] = useState<string>("");
+  const [competenciaFiltro, setCompetenciaFiltro] = useState<string>("");
   const [empresas, setEmpresas] = useState<EmpresaOption[]>([]);
   const [empresasLoading, setEmpresasLoading] = useState(false);
   const [empresasErro, setEmpresasErro] = useState<string | null>(null);
@@ -75,6 +95,11 @@ export default function Relatorios() {
         params.integracaoStatusId = integracaoStatusId;
       }
 
+      const competenciaAnoMes = monthInputToCompetenciaAnoMes(competenciaFiltro);
+      if (competenciaAnoMes) {
+        params.competenciaAnoMes = String(competenciaAnoMes);
+      }
+
       const r = await api.get<PedidoDetalhe[]>("/relatorios/pedidos/detalhes", { params });
       setPedidos(r.data);
     } catch (e: any) {
@@ -84,7 +109,7 @@ export default function Relatorios() {
     } finally {
       setLoading(false);
     }
-  }, [ate, de, empresaId, statusId, integracaoStatusId]);
+  }, [ate, competenciaFiltro, de, empresaId, statusId, integracaoStatusId]);
 
   useEffect(() => {
     // carrega ao montar
@@ -241,6 +266,11 @@ export default function Relatorios() {
       params.empresaId = empresaId;
     }
 
+    const competenciaAnoMes = monthInputToCompetenciaAnoMes(competenciaFiltro);
+    if (competenciaAnoMes) {
+      params.competenciaAnoMes = String(competenciaAnoMes);
+    }
+
     setExportando(true);
     setError(null);
 
@@ -266,13 +296,25 @@ export default function Relatorios() {
     } finally {
       setExportando(false);
     }
-  }, [ate, de, empresaId, statusId, integracaoStatusId]);
+  }, [ate, competenciaFiltro, de, empresaId, statusId, integracaoStatusId]);
 
   return (
     <div className="space-y-4">
       <h1 className="text-3xl font-bold text-gray-900">Relatórios</h1>
 
       {/* Filtros */}
+
+      <div className="max-w-xs">
+        <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Competência</label>
+        <input
+          type="month"
+          value={competenciaFiltro}
+          onChange={(e) => setCompetenciaFiltro(e.target.value)}
+          className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+          disabled={loading || statusLoading || empresasLoading || integracaoStatusLoading}
+        />
+      </div>
+
       <DateUserFilters
         de={de}
         ate={ate}
@@ -356,7 +398,10 @@ export default function Relatorios() {
                             <td className="whitespace-nowrap px-5 py-4 text-sm font-semibold text-gray-900">
                               {formatDateBR(new Date(p.dataHora))}
                             </td>
-                                                        <td className="px-5 py-4 text-sm font-semibold text-gray-900">{p.empresaNome}</td>
+                            <td className="whitespace-nowrap px-5 py-4 text-sm font-semibold text-gray-900">
+                              {formatCompetenciaAnoMes(p.competenciaAnoMes)}
+                            </td>
+                            <td className="px-5 py-4 text-sm font-semibold text-gray-900">{p.empresaNome}</td>
                             <td className="px-5 py-4 text-sm">
                               <span
                                 className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide"

@@ -17,6 +17,7 @@ public sealed record PedidoDetalheDto(
     string IntegracaoStatus,
     string? IntegracaoPedidoExternoId,
     DateTimeOffset DataHora,
+    int CompetenciaAnoMes,
     decimal Total,
     decimal PesoTotalKg,
     IReadOnlyList<PedidoDetalheItemDto> Itens

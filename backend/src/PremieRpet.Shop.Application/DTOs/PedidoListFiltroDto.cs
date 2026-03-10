@@ -10,7 +10,8 @@ public sealed record PedidoListFiltroDto(
     Guid? UsuarioId,
     int? StatusId,
     string? UsuarioBusca,
-    Guid? EmpresaId
+    Guid? EmpresaId,
+    int? CompetenciaAnoMes
 )
 {
     public const int DefaultPage = 1;

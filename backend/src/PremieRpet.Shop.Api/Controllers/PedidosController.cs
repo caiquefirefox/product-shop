@@ -32,6 +32,7 @@ public sealed class PedidosController(IPedidoService pedidos, IUsuarioService us
             null,
             null,
             null,
+            null,
             null
         );
 
@@ -53,7 +54,7 @@ public sealed class PedidosController(IPedidoService pedidos, IUsuarioService us
         var agora = DateTimeOffset.UtcNow;
         var inicioPadrao = new DateTimeOffset(new DateTime(agora.Year, agora.Month, 1, 0, 0, 0, DateTimeKind.Utc));
         var fimPadrao = inicioPadrao.AddMonths(1).AddTicks(-1);
-        var (de, ate, usuarioIdFiltro, statusIdFiltro, empresaIdFiltro) = query?.Normalize(agora) ?? (inicioPadrao, fimPadrao, (Guid?)null, (int?)null, (Guid?)null);
+        var (de, ate, usuarioIdFiltro, statusIdFiltro, empresaIdFiltro, competenciaAnoMesFiltro) = query?.Normalize(agora) ?? (inicioPadrao, fimPadrao, (Guid?)null, (int?)null, (Guid?)null, (int?)null);
 
         var isAdmin = User.IsInRole("Admin");
         if (!isAdmin)
@@ -61,7 +62,7 @@ public sealed class PedidosController(IPedidoService pedidos, IUsuarioService us
             usuarioIdFiltro = null;
         }
 
-        var resumo = await pedidos.ObterResumoAsync(de, ate, usuario.Id, isAdmin, usuarioIdFiltro, statusIdFiltro, empresaIdFiltro, ct);
+        var resumo = await pedidos.ObterResumoAsync(de, ate, usuario.Id, isAdmin, usuarioIdFiltro, statusIdFiltro, empresaIdFiltro, competenciaAnoMesFiltro, ct);
         return Ok(resumo);
     }
 

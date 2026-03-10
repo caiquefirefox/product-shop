@@ -23,6 +23,7 @@ type PedidoDetalhe = {
   integracaoStatus: string;
   integracaoPedidoExternoId: string | null;
   dataHora: string;
+  competenciaAnoMes: number;
   total: number;
   pesoTotalKg: number;
   itens: PedidoItemDetalhe[];

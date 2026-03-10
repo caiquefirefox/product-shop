@@ -78,6 +78,9 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                     b.Property<DateTimeOffset>("DataHora")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("CompetenciaAnoMes")
+                        .HasColumnType("integer");
+
                     b.Property<int>("StatusId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
@@ -105,6 +108,8 @@ namespace PremieRpet.Shop.Infrastructure.Migrations
                     b.HasIndex("StatusId");
 
                     b.HasIndex("EmpresaId");
+
+                    b.HasIndex("CompetenciaAnoMes");
 
                     b.HasIndex("UsuarioId");
 

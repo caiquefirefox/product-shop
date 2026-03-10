@@ -52,6 +52,24 @@ function podeAlterarPedidoPorIntegracao(integracaoStatusId: string | null | unde
   return statusNormalizado === STATUS_INTEGRACAO_NAO_INTEGRADO || statusNormalizado === STATUS_INTEGRACAO_ERRO;
 }
 
+function formatCompetenciaAnoMes(value: number | null | undefined) {
+  if (!value || !Number.isFinite(value)) return "-";
+  const ano = Math.floor(value / 100);
+  const mes = value % 100;
+  if (mes < 1 || mes > 12) return String(value);
+  return `${String(mes).padStart(2, "0")}/${ano}`;
+}
+
+function monthInputToCompetenciaAnoMes(value: string) {
+  const trimmed = value.trim();
+  const match = /^(\d{4})-(\d{2})$/.exec(trimmed);
+  if (!match) return null;
+  const ano = Number(match[1]);
+  const mes = Number(match[2]);
+  if (!Number.isFinite(ano) || !Number.isFinite(mes) || mes < 1 || mes > 12) return null;
+  return ano * 100 + mes;
+}
+
 function formatDateTimePtBr(iso: string) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
@@ -92,6 +110,8 @@ export default function Pedidos() {
   const [statusLoading, setStatusLoading] = useState(false);
   const [empresaFiltro, setEmpresaFiltro] = useState("");
   const [appliedEmpresaFiltro, setAppliedEmpresaFiltro] = useState("");
+  const [competenciaFiltro, setCompetenciaFiltro] = useState("");
+  const [appliedCompetenciaFiltro, setAppliedCompetenciaFiltro] = useState("");
   const [empresas, setEmpresas] = useState<EmpresaOption[]>([]);
   const [empresasLoading, setEmpresasLoading] = useState(false);
   const [empresasError, setEmpresasError] = useState<string | null>(null);
@@ -217,8 +237,9 @@ export default function Pedidos() {
     const status = appliedStatusFiltro.trim();
     const usuario = appliedUsuarioFiltro.trim();
     const empresa = appliedEmpresaFiltro.trim();
-    return status || usuario || empresa || appliedDe !== defaultDe || appliedAte !== defaultAte;
-  }, [appliedAte, appliedDe, appliedEmpresaFiltro, appliedStatusFiltro, appliedUsuarioFiltro, defaultAte, defaultDe]);
+    const competencia = appliedCompetenciaFiltro.trim();
+    return status || usuario || empresa || competencia || appliedDe !== defaultDe || appliedAte !== defaultAte;
+  }, [appliedAte, appliedCompetenciaFiltro, appliedDe, appliedEmpresaFiltro, appliedStatusFiltro, appliedUsuarioFiltro, defaultAte, defaultDe]);
 
   const isSingleUserList = useMemo(() => {
     if (!isAdmin) return true;
@@ -299,6 +320,11 @@ export default function Pedidos() {
         params.empresaId = appliedEmpresaFiltro.trim();
       }
 
+      const competenciaAnoMes = monthInputToCompetenciaAnoMes(appliedCompetenciaFiltro);
+      if (competenciaAnoMes) {
+        params.competenciaAnoMes = String(competenciaAnoMes);
+      }
+
       if (isAdmin && appliedUsuarioFiltro.trim()) {
         params.usuarioBusca = appliedUsuarioFiltro.trim();
       }
@@ -317,7 +343,7 @@ export default function Pedidos() {
     } finally {
       setListLoading(false);
     }
-  }, [appliedAte, appliedDe, appliedEmpresaFiltro, appliedStatusFiltro, appliedUsuarioFiltro, isAdmin, page, pageSize]);
+  }, [appliedAte, appliedCompetenciaFiltro, appliedDe, appliedEmpresaFiltro, appliedStatusFiltro, appliedUsuarioFiltro, isAdmin, page, pageSize]);
 
   const loadResumo = useCallback(async () => {
     const requestId = resumoRequestIdRef.current + 1;
@@ -361,6 +387,11 @@ export default function Pedidos() {
         params.empresaId = appliedEmpresaFiltro.trim();
       }
 
+      const competenciaAnoMes = monthInputToCompetenciaAnoMes(appliedCompetenciaFiltro);
+      if (competenciaAnoMes) {
+        params.competenciaAnoMes = String(competenciaAnoMes);
+      }
+
       if (isAdmin && resumoUsuarioId) {
         params.usuarioId = resumoUsuarioId;
       }
@@ -377,7 +408,7 @@ export default function Pedidos() {
       if (requestId !== resumoRequestIdRef.current) return;
       setResumoLoading(false);
     }
-  }, [appliedAte, appliedDe, appliedEmpresaFiltro, appliedStatusFiltro, isAdmin, resumoUsuarioId]);
+  }, [appliedAte, appliedCompetenciaFiltro, appliedDe, appliedEmpresaFiltro, appliedStatusFiltro, isAdmin, resumoUsuarioId]);
 
   const aplicarFiltros = useCallback(() => {
     setListError(null);
@@ -388,7 +419,8 @@ export default function Pedidos() {
     setAppliedUsuarioFiltro(usuarioFiltro);
     setAppliedStatusFiltro(statusFiltro);
     setAppliedEmpresaFiltro(empresaFiltro);
-  }, [ate, de, empresaFiltro, statusFiltro, usuarioFiltro]);
+    setAppliedCompetenciaFiltro(competenciaFiltro);
+  }, [ate, competenciaFiltro, de, empresaFiltro, statusFiltro, usuarioFiltro]);
 
   const limparFiltros = useCallback(() => {
     setDe(defaultDe);
@@ -396,12 +428,14 @@ export default function Pedidos() {
     setUsuarioFiltro("");
     setStatusFiltro("");
     setEmpresaFiltro("");
+    setCompetenciaFiltro("");
     setPage(1);
     setAppliedDe(defaultDe);
     setAppliedAte(defaultAte);
     setAppliedUsuarioFiltro("");
     setAppliedStatusFiltro("");
     setAppliedEmpresaFiltro("");
+    setAppliedCompetenciaFiltro("");
     setListError(null);
     setResumoError(null);
   }, [defaultAte, defaultDe]);
@@ -1002,6 +1036,17 @@ export default function Pedidos() {
         <h1 className="text-3xl font-bold text-gray-900">Pedidos</h1>
       </div>
 
+      <div className="max-w-xs">
+        <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Competência</label>
+        <input
+          type="month"
+          value={competenciaFiltro}
+          onChange={(e) => setCompetenciaFiltro(e.target.value)}
+          className="w-full rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+          disabled={listLoading || statusLoading || empresasLoading}
+        />
+      </div>
+
       <DateUserFilters
         de={de}
         ate={ate}
@@ -1051,6 +1096,7 @@ export default function Pedidos() {
                   <tr className="h-[49px]">
                     <th className="px-4 text-left text-xs font-bold uppercase tracking-wide text-black align-middle">Código</th>
                     <th className="px-4 text-left text-xs font-bold uppercase tracking-wide text-black align-middle">Data</th>
+                    <th className="px-4 text-left text-xs font-bold uppercase tracking-wide text-black align-middle">Competência</th>
                     <th className="px-4 text-left text-xs font-bold uppercase tracking-wide text-black align-middle">Colaborador</th>
                     <th className="px-4 text-center text-xs font-bold uppercase tracking-wide text-black align-middle">Status</th>
                     <th className="px-4 text-right text-xs font-bold uppercase tracking-wide text-black align-middle">Peso (kg)</th>
@@ -1062,7 +1108,7 @@ export default function Pedidos() {
                 <tbody className="divide-y divide-gray-100">
                   {pedidos.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-4 py-6 text-center text-sm text-gray-500">
+                      <td colSpan={9} className="px-4 py-6 text-center text-sm text-gray-500">
                         Nenhum pedido encontrado para o período selecionado.
                       </td>
                     </tr>
@@ -1096,6 +1142,7 @@ export default function Pedidos() {
                         <tr key={pedido.id} className={linhaClasse}>
                           <td className="px-4 py-3 text-sm font-medium text-gray-700">{pedido.id.slice(0, 8)}</td>
                           <td className="px-4 py-3 text-sm text-gray-600">{formatDateTimePtBr(pedido.dataHora)}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{formatCompetenciaAnoMes(pedido.competenciaAnoMes)}</td>
                           <td className="px-4 py-3 text-sm text-gray-600">
                             <div>{pedido.usuarioNome}</div>
                             {pedido.usuarioCpf && <div className="text-xs text-gray-400">CPF: {pedido.usuarioCpf}</div>}
@@ -1235,7 +1282,7 @@ export default function Pedidos() {
                       <span className="text-gray-700">{pedidoSelecionado.usuarioNome}</span>
                     </p>
                     <p>
-                      Pedido realizado em {formatDateTimePtBr(pedidoSelecionado.dataHora)}
+                      Pedido realizado em {formatDateTimePtBr(pedidoSelecionado.dataHora)} • Competência {formatCompetenciaAnoMes(pedidoSelecionado.competenciaAnoMes)}
                       {pedidoSelecionado.empresaNome ? ` · Empresa: ${pedidoSelecionado.empresaNome}` : ""}
                     </p>
                   </div>

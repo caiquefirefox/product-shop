@@ -11,6 +11,7 @@ internal static class PedidosExcelExporter
     private static readonly string[] Headers =
     [
         "DATA",
+        "COMPETÊNCIA",
         "NOME",
         "CPF",
         "EMPRESA",
@@ -66,31 +67,42 @@ internal static class PedidosExcelExporter
                 dataCell.Value = pedido.DataHora.DateTime;
                 dataCell.Style.DateFormat.Format = "dd/MM/yyyy";
 
-                row.Cell(2).Value = pedido.UsuarioNome;
-                row.Cell(3).Value = FormatarCpf(pedido.UsuarioCpf);
-                row.Cell(4).Value = pedido.EmpresaNome;
-                row.Cell(5).Value = item.ProdutoCodigo;
-                row.Cell(6).Value = item.Descricao;
+                row.Cell(2).Value = FormatarCompetencia(pedido.CompetenciaAnoMes);
+                row.Cell(3).Value = pedido.UsuarioNome;
+                row.Cell(4).Value = FormatarCpf(pedido.UsuarioCpf);
+                row.Cell(5).Value = pedido.EmpresaNome;
+                row.Cell(6).Value = item.ProdutoCodigo;
+                row.Cell(7).Value = item.Descricao;
 
-                var quantidadeCell = row.Cell(7);
+                var quantidadeCell = row.Cell(8);
                 quantidadeCell.Value = item.Quantidade;
                 quantidadeCell.Style.NumberFormat.Format = "0";
 
-                var precoUnitCell = row.Cell(8);
+                var precoUnitCell = row.Cell(9);
                 precoUnitCell.Value = item.Preco;
                 precoUnitCell.Style.NumberFormat.Format = "R$ #,##0.00";
 
-                var pesoCell = row.Cell(9);
+                var pesoCell = row.Cell(10);
                 pesoCell.Value = item.PesoTotalKg;
                 pesoCell.Style.NumberFormat.Format = "#,##0.000";
 
-                var totalCell = row.Cell(10);
+                var totalCell = row.Cell(11);
                 totalCell.Value = item.Subtotal;
                 totalCell.Style.NumberFormat.Format = "R$ #,##0.00";
 
                 linha++;
             }
         }
+    }
+
+    private static string FormatarCompetencia(int competenciaAnoMes)
+    {
+        if (competenciaAnoMes <= 0)
+            return string.Empty;
+
+        var ano = competenciaAnoMes / 100;
+        var mes = competenciaAnoMes % 100;
+        return mes is >= 1 and <= 12 ? $"{mes:00}/{ano:0000}" : competenciaAnoMes.ToString(CultureInfo.InvariantCulture);
     }
 
     private static string FormatarCpf(string? cpf)

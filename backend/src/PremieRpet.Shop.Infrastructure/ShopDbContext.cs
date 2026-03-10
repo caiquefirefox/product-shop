@@ -150,6 +150,7 @@ public sealed class ShopDbContext : DbContext
             e.Property(p => p.UsuarioCpf).HasMaxLength(11);
             e.Property(p => p.EmpresaId).IsRequired();
             e.Property(p => p.DataHora);
+            e.Property(p => p.CompetenciaAnoMes).IsRequired();
             e.Property(p => p.AtualizadoEm);
             e.Property(p => p.AtualizadoPorUsuarioId);
             e.Property(p => p.StatusId).HasColumnType("int").HasDefaultValue(PedidoStatusIds.Solicitado);
@@ -159,6 +160,7 @@ public sealed class ShopDbContext : DbContext
             e.HasIndex(p => p.AtualizadoPorUsuarioId);
             e.HasIndex(p => p.StatusId);
             e.HasIndex(p => p.EmpresaId);
+            e.HasIndex(p => p.CompetenciaAnoMes);
 
             e.HasOne<Usuario>()
                 .WithMany()

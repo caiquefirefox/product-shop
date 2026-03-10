@@ -13,6 +13,7 @@ public sealed class PedidoListQuery
     public int? StatusId { get; set; }
     public string? UsuarioBusca { get; set; }
     public Guid? EmpresaId { get; set; }
+    public int? CompetenciaAnoMes { get; set; }
 
     public PedidoListFiltroDto ToDto() => new(
         Page,
@@ -22,6 +23,7 @@ public sealed class PedidoListQuery
         UsuarioId,
         StatusId,
         UsuarioBusca,
-        EmpresaId
+        EmpresaId,
+        CompetenciaAnoMes
     );
 }
