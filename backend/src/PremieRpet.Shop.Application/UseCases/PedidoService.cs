@@ -864,7 +864,9 @@ public sealed class PedidoService : IPedidoService
             totalPedidos,
             _settings.MaxOrdersPerUserPerMonth,
             pedidosUtilizados,
-            _quantidadeMinimaPadrao
+            _quantidadeMinimaPadrao,
+            _settings.EditWindowOpeningDay,
+            _settings.EditWindowClosingDay
         );
     }
 
