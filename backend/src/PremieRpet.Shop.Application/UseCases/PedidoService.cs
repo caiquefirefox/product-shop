@@ -211,7 +211,7 @@ public sealed class PedidoService : IPedidoService
         return agrupados;
     }
 
-    private bool EstaDentroJanelaEdicao(DateTimeOffset momentoUtc)
+    private static DateTimeOffset ConverterParaHorarioLocal(DateTimeOffset momentoUtc)
     {
         DateTimeOffset referencia = momentoUtc;
         foreach (var tzId in TimeZoneCandidates)
@@ -230,9 +230,25 @@ public sealed class PedidoService : IPedidoService
             }
         }
 
+        return referencia;
+    }
+
+    private bool EstaDentroJanelaEdicao(DateTimeOffset momentoUtc)
+    {
+        var referencia = ConverterParaHorarioLocal(momentoUtc);
+
         var dia = referencia.Day;
         return dia >= _settings.EditWindowOpeningDay && dia <= _settings.EditWindowClosingDay;
     }
+
+    private bool EstaDentroPrazoSolicitacaoPedido(DateTimeOffset momentoUtc)
+    {
+        var referencia = ConverterParaHorarioLocal(momentoUtc);
+        return referencia.Day <= _settings.EditWindowClosingDay;
+    }
+
+    private string ObterMensagemPrazoSolicitacaoEncerrado()
+        => $"Não é mais possível realizar pedidos para este mês. O prazo de fechamento encerrou no dia {_settings.EditWindowClosingDay}.";
 
     private static DateTimeOffset InicioMesUtc(int ano, int mes)
     {
@@ -259,6 +275,9 @@ public sealed class PedidoService : IPedidoService
             ?? throw new InvalidOperationException("Empresa inválida.");
 
         var agora = DateTimeOffset.UtcNow;
+        if (!EstaDentroPrazoSolicitacaoPedido(agora))
+            throw new InvalidOperationException(ObterMensagemPrazoSolicitacaoEncerrado());
+
         var perfil = await _usuarios.GarantirCpfAsync(usuarioEmail, usuarioMicrosoftId, dto.Cpf, usuarioNome, ct);
         var usuarioSemLimite = await UsuarioIgnoraLimitePesoAsync(perfil.Id, ct);
         var pesoAcumulado = await PesoAcumuladoMesEmKgAsync(perfil.Id, agora, ct);
@@ -856,6 +875,9 @@ public sealed class PedidoService : IPedidoService
             ? await UsuarioIgnoraLimitePesoAsync(usuarioResumoId.Value, ct)
             : false;
 
+        var agora = DateTimeOffset.UtcNow;
+        var podeCriarPedido = isAdmin || EstaDentroPrazoSolicitacaoPedido(agora);
+
         return new PedidoResumoMensalDto(
             usuarioSemLimite ? 0 : _limiteKgMes,
             totalKg,
@@ -866,7 +888,9 @@ public sealed class PedidoService : IPedidoService
             pedidosUtilizados,
             _quantidadeMinimaPadrao,
             _settings.EditWindowOpeningDay,
-            _settings.EditWindowClosingDay
+            _settings.EditWindowClosingDay,
+            podeCriarPedido,
+            podeCriarPedido ? null : ObterMensagemPrazoSolicitacaoEncerrado()
         );
     }
 

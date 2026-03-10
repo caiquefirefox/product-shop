@@ -73,6 +73,8 @@ type PedidoResumoMensal = {
   quantidadeMinimaPadrao: number;
   editWindowOpeningDay: number;
   editWindowClosingDay: number;
+  podeCriarPedido: boolean;
+  motivoBloqueioCriacaoPedido: string | null;
 };
 
 export type {

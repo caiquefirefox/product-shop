@@ -98,6 +98,8 @@ type PedidosConfigContextValue = {
   editWindowClosingDay: number;
   loading: boolean;
   error: string | null;
+  podeCriarPedido: boolean;
+  motivoBloqueioCriacaoPedido: string | null;
   refresh: () => Promise<void>;
 };
 
@@ -110,6 +112,8 @@ export function PedidosConfigProvider({ children }: { children: ReactNode }) {
   const [editWindowClosingDay, setEditWindowClosingDay] = useState(20);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [podeCriarPedido, setPodeCriarPedido] = useState(true);
+  const [motivoBloqueioCriacaoPedido, setMotivoBloqueioCriacaoPedido] = useState<string | null>(null);
   const isMountedRef = useRef(true);
 
   useEffect(() => {
@@ -134,6 +138,11 @@ export function PedidosConfigProvider({ children }: { children: ReactNode }) {
     setMinQtyPadrao(normalizeMinQty(data?.quantidadeMinimaPadrao));
     setEditWindowOpeningDay(openingDay);
     setEditWindowClosingDay(closingDay);
+    setPodeCriarPedido(data?.podeCriarPedido !== false);
+    const motivoBloqueio = typeof data?.motivoBloqueioCriacaoPedido === "string" && data.motivoBloqueioCriacaoPedido.trim()
+      ? data.motivoBloqueioCriacaoPedido.trim()
+      : null;
+    setMotivoBloqueioCriacaoPedido(motivoBloqueio);
     setError(null);
   }, []);
 
@@ -144,6 +153,8 @@ export function PedidosConfigProvider({ children }: { children: ReactNode }) {
     setMinQtyPadrao(1);
     setEditWindowOpeningDay(15);
     setEditWindowClosingDay(20);
+    setPodeCriarPedido(true);
+    setMotivoBloqueioCriacaoPedido(null);
   }, []);
 
   const refresh = useCallback(async () => {
@@ -170,6 +181,8 @@ export function PedidosConfigProvider({ children }: { children: ReactNode }) {
       editWindowClosingDay,
       loading,
       error,
+      podeCriarPedido,
+      motivoBloqueioCriacaoPedido,
       refresh,
     }),
     [
@@ -179,6 +192,8 @@ export function PedidosConfigProvider({ children }: { children: ReactNode }) {
       editWindowClosingDay,
       loading,
       error,
+      podeCriarPedido,
+      motivoBloqueioCriacaoPedido,
       refresh,
     ],
   );
