@@ -12,9 +12,28 @@ function requireEnv(name: string, value: string | undefined) {
   return value;
 }
 
+function resolveRedirectUri(configuredRedirectUri: string) {
+  if (typeof window === "undefined") {
+    return configuredRedirectUri;
+  }
+
+  const currentOrigin = window.location.origin;
+
+  try {
+    const parsedRedirectUri = new URL(configuredRedirectUri);
+    if (parsedRedirectUri.origin === currentOrigin) {
+      return configuredRedirectUri;
+    }
+
+    return `${currentOrigin}${parsedRedirectUri.pathname}${parsedRedirectUri.search}${parsedRedirectUri.hash}`;
+  } catch {
+    return `${currentOrigin}/login`;
+  }
+}
+
 const TENANT = requireEnv('VITE_AAD_TENANT_ID', import.meta.env.VITE_AAD_TENANT_ID);
 const CLIENT = requireEnv('VITE_AAD_CLIENT_ID', import.meta.env.VITE_AAD_CLIENT_ID);
-const REDIRECT = requireEnv('VITE_REDIRECT_URI', import.meta.env.VITE_REDIRECT_URI);
+const REDIRECT = resolveRedirectUri(requireEnv('VITE_REDIRECT_URI', import.meta.env.VITE_REDIRECT_URI));
 const SCOPE = requireEnv('VITE_API_SCOPE', import.meta.env.VITE_API_SCOPE);
 
 export const msalConfig: Configuration = {
