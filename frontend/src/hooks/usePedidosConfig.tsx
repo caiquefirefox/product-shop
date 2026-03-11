@@ -91,6 +91,15 @@ function extractErrorMessage(err: unknown): string {
   return "Não foi possível carregar as configurações de pedidos.";
 }
 
+function isUnauthorizedError(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    typeof (err as { response?: { status?: unknown } }).response?.status === "number" &&
+    (err as { response?: { status?: number } }).response?.status === 401
+  );
+}
+
 type PedidosConfigContextValue = {
   limitKg: number;
   minQtyPadrao: number;
@@ -148,7 +157,13 @@ export function PedidosConfigProvider({ children }: { children: ReactNode }) {
 
   const applyError = useCallback((err: unknown) => {
     if (!isMountedRef.current) return;
-    setError(extractErrorMessage(err));
+
+    if (isUnauthorizedError(err)) {
+      setError(null);
+    } else {
+      setError(extractErrorMessage(err));
+    }
+
     setLimitKg(0);
     setMinQtyPadrao(1);
     setEditWindowOpeningDay(15);
