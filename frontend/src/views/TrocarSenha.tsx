@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import premierPetLogo from "../assets/images/premierpet-logo.png";
+import premierPetLogo from "../assets/images/premierpet-store.png";
 import api from "../lib/api";
 import { sanitizeCpf } from "../lib/cpf";
 import { hasLocalToken, setLocalToken } from "../auth/localAuth";

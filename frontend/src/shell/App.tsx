@@ -14,7 +14,7 @@ import Protected from "../auth/Protected";
 import { useUser } from "../auth/useUser";
 import { useCart } from "../cart/CartContext";
 import { formatPeso, formatCurrencyBRL } from "../lib/format";
-import premierPetLogo from "../assets/images/premierpet-logo.png";
+import premierPetLogo from "../assets/images/premierpet-store.png";
 import CartSidebar from "../components/CartSidebar";
 
 const PREMIERPET_LOGO_SRC =

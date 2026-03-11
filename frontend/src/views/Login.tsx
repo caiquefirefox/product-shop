@@ -1,7 +1,7 @@
 import { useMsal, useIsAuthenticated } from "@azure/msal-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState, type SVGProps, FormEvent } from "react";
-import premierPetLogo from "../assets/images/premierpet-logo.png";
+import premierPetLogo from "../assets/images/premierpet-store.png";
 import api from "../lib/api";
 import { sanitizeCpf } from "../lib/cpf";
 import { hasLocalToken, setLocalToken } from "../auth/localAuth";
@@ -45,6 +45,10 @@ export default function Login() {
   const isLocalAuth = hasLocalToken();
 
   const returnTo = state?.returnTo || "/"; // padrão: catálogo
+
+  useEffect(() => {
+    document.title = "Bem-vindos ao PremieRpet Store - A loja de pedidos internos da PremieRpet®.";
+  }, []);
 
   // se já estiver autenticado e entrou em /login, redireciona
   useEffect(() => {
@@ -150,13 +154,16 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4 py-12">
-      <div className="w-full max-w-3xl rounded-[32px] border border-gray-100 bg-white px-8 py-10 shadow-[0_24px_60px_rgba(15,23,42,0.12)] sm:px-12 sm:py-14">
-        <div className="mx-auto flex w-full max-w-md flex-col items-center text-center">
-          <img src={PREMIERPET_LOGO_SRC} alt="PremieRpet" className="h-14 w-auto" />
+    <div className="flex min-h-[100dvh] items-center justify-center bg-gray-100 px-4 py-4 sm:py-6">
+      <div className="w-full max-w-4xl rounded-[32px] border border-gray-100 bg-white px-8 py-7 shadow-[0_24px_60px_rgba(15,23,42,0.12)] sm:px-12 sm:py-9">
+        <div className="mx-auto flex w-full max-w-xl flex-col items-center text-center">
+          <img src={PREMIERPET_LOGO_SRC} alt="PremieRpet" className="h-20 w-auto" />
 
-          <div className="mt-10 space-y-3">
-            <h1 className="text-3xl font-semibold text-slate-900">Bem-vindo ao portal de pedidos internos da PremieRpet®</h1>
+          <div className="mt-6 space-y-2">
+            <h1 className="text-3xl font-semibold text-slate-900">
+              Bem-vindos ao <span className="whitespace-nowrap">PremieRpet Store</span> - A loja de pedidos internos da PremieRpet®.
+            </h1>
+
             <p className="text-base text-slate-500">Escolha como deseja acessar o sistema.</p>
           </div>
 
@@ -166,7 +173,7 @@ export default function Login() {
             </div>
           )}
 
-          <div className="mt-10 flex w-full flex-col gap-3 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-4 text-left">
+          <div className="mt-6 flex w-full flex-col gap-3 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-4 text-left">
             <h2 className="text-lg font-semibold text-slate-900">Acesse com CPF e senha</h2>
             <form className="space-y-3" onSubmit={doLocalLogin}>
               <div className="space-y-1">
